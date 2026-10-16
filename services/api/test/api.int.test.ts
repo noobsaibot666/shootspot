@@ -46,6 +46,14 @@ describe('health', () => {
     const res = await env.app.inject({ method: 'GET', url: '/ready' });
     expect(res.json()).toEqual({ status: 'ok', checks: { db: true, storage: true } });
   });
+
+  it('sends security headers and never lets private data be cached', async () => {
+    const res = await env.app.inject({ method: 'GET', url: '/v1/legal' });
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('DENY');
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined(); // no CORS (D-23)
+  });
 });
 
 describe('auth and onboarding', () => {
@@ -649,6 +657,78 @@ describe('admin (server-side role + MFA)', () => {
       .filter((e: { target_id: string }) => e.target_id === rec)
       .map((e: { action: string }) => e.action);
     expect(actions).toEqual(expect.arrayContaining(['record.hide', 'record.view_creator']));
+  });
+});
+
+describe('admin-managed tags (D-25)', () => {
+  it('add, use, relabel and hide a tag without breaking existing records', async () => {
+    const { headers: adminHeaders } = await admin(env, 'tags-admin@example.com');
+    const m = await member(env, 'tags-member@example.com');
+    const draft = (goodFor: string[]) =>
+      draftBody({ short: { label: 'Rooftop', goodFor, bestLight: ['night'], bearingDeg: 90 } });
+
+    // Unknown until added.
+    const before = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: m,
+      payload: draft(['rooftop']),
+    });
+    expect(before.statusCode).toBe(400);
+    expect(before.json().error).toBe('unknown_tag');
+
+    const add = await env.app.inject({
+      method: 'POST',
+      url: '/admin/v1/vocabulary',
+      headers: adminHeaders,
+      payload: { kind: 'good_for', key: 'rooftop', label: 'Rooftop' },
+    });
+    expect(add.statusCode).toBe(201);
+    const vocab = (await env.app.inject({ method: 'GET', url: '/v1/vocabulary' })).json();
+    expect(vocab.goodFor.at(-1)).toEqual({ key: 'rooftop', label: 'Rooftop' });
+    expect(vocab.bestLight.length).toBe(9);
+
+    const ok = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: m,
+      payload: draft(['rooftop']),
+    });
+    expect(ok.statusCode).toBe(201);
+
+    await env.app.inject({
+      method: 'PATCH',
+      url: '/admin/v1/vocabulary/good_for/rooftop',
+      headers: adminHeaders,
+      payload: { label: 'Rooftops & terraces', active: false },
+    });
+    const hidden = (await env.app.inject({ method: 'GET', url: '/v1/vocabulary' })).json();
+    expect(hidden.goodFor.some((t: { key: string }) => t.key === 'rooftop')).toBe(false);
+    const after = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: m,
+      payload: draft(['rooftop']),
+    });
+    expect(after.statusCode).toBe(400);
+    // The record created while it was active keeps its key.
+    const kept = await env.pool.query(`select good_for from locations where id = $1`, [
+      ok.json().recordId,
+    ]);
+    expect(kept.rows[0].good_for).toEqual(['rooftop']);
+
+    const list = (
+      await env.app.inject({ method: 'GET', url: '/admin/v1/vocabulary', headers: adminHeaders })
+    ).json();
+    expect(list.items.find((t: { key: string }) => t.key === 'rooftop')).toMatchObject({
+      active: false,
+      used: 1,
+      label: 'Rooftops & terraces',
+    });
+    // Members can't manage tags.
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/admin/v1/vocabulary', headers: m })).statusCode,
+    ).toBe(403);
   });
 });
 

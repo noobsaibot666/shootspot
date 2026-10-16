@@ -1,15 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import {
-  BEST_LIGHT_PERIODS,
-  GOOD_FOR_TAGS,
-  formatBearing,
-  type AdvancedInput,
-} from '@shootspot/shared';
+import { formatBearing, type AdvancedInput } from '@shootspot/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { useCapture } from '../../capture/context';
-import { BEST_LIGHT_LABEL, GOOD_FOR_LABEL } from '../../lib/labels';
+import { useVocabulary } from '../../lib/vocabulary';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Chip, Field, Label, Mono, Row, Screen } from '../../ui';
 
@@ -17,6 +12,7 @@ type Group = keyof AdvancedInput;
 
 /** Short input (one screen) + optional advanced input (D-16, docs/phase-0/02 §3). */
 export default function Details() {
+  const { vocab, label } = useVocabulary();
   const t = useTheme();
   const { state, update } = useCapture();
   const [open, setOpen] = useState(false);
@@ -56,14 +52,16 @@ export default function Details() {
         <View style={{ gap: space.sm }}>
           <Label>Good for (up to 8)</Label>
           <Row wrap>
-            {GOOD_FOR_TAGS.map((tag) => (
-              <Chip
-                key={tag}
-                label={GOOD_FOR_LABEL[tag]}
-                selected={state.goodFor.includes(tag)}
-                onPress={() => update({ goodFor: toggle(state.goodFor, tag, 8) })}
-              />
-            ))}
+            {vocab.goodFor
+              .map((v) => v.key)
+              .map((tag) => (
+                <Chip
+                  key={tag}
+                  label={label('good_for', tag)}
+                  selected={state.goodFor.includes(tag)}
+                  onPress={() => update({ goodFor: toggle(state.goodFor, tag, 8) })}
+                />
+              ))}
           </Row>
           <Field
             label="Note (optional)"
@@ -76,14 +74,16 @@ export default function Details() {
         <View style={{ gap: space.sm }}>
           <Label>Best light</Label>
           <Row wrap>
-            {BEST_LIGHT_PERIODS.map((p) => (
-              <Chip
-                key={p}
-                label={BEST_LIGHT_LABEL[p]}
-                selected={state.bestLight.includes(p)}
-                onPress={() => update({ bestLight: toggle(state.bestLight, p) })}
-              />
-            ))}
+            {vocab.bestLight
+              .map((v) => v.key)
+              .map((p) => (
+                <Chip
+                  key={p}
+                  label={label('best_light', p)}
+                  selected={state.bestLight.includes(p)}
+                  onPress={() => update({ bestLight: toggle(state.bestLight, p) })}
+                />
+              ))}
           </Row>
           <Field
             label="Light note (optional)"

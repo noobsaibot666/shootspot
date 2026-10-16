@@ -24,7 +24,8 @@ import {
 } from 'react-native';
 import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
-import { BEST_LIGHT_LABEL, GOOD_FOR_LABEL, REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
+import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
+import { useVocabulary } from '../../lib/vocabulary';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Card, Label, Mono, Row, Screen } from '../../ui';
 
@@ -40,6 +41,7 @@ const LIGHT = {
  * attribution, Open in Maps, save to project, report. The owner also sees status and controls.
  */
 export default function RecordScreen() {
+  const { label } = useVocabulary();
   const t = useTheme();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -186,12 +188,12 @@ export default function RecordScreen() {
           />
         </Row>
 
-        <Body>{record.goodFor.map((g) => GOOD_FOR_LABEL[g]).join(' · ')}</Body>
+        <Body>{record.goodFor.map((g) => label('good_for', g)).join(' · ')}</Body>
         {record.goodForNote ? <Body muted>{record.goodForNote}</Body> : null}
 
         <View style={{ gap: 4 }}>
           <Label>Best light</Label>
-          <Body>{record.bestLight.map((b) => BEST_LIGHT_LABEL[b]).join(', ')}</Body>
+          <Body>{record.bestLight.map((b) => label('best_light', b)).join(', ')}</Body>
           {record.bestLightNote ? <Body muted>{record.bestLightNote}</Body> : null}
         </View>
 

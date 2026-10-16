@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { tx } from '../db';
 import { HttpError, notFound, requireOnboarded, getViewer, type AppDeps } from '../http/context';
 import { legalVersions } from '../legal';
+import { assertActiveTags } from '../vocabulary/routes';
 import { ATTRIBUTION_JOIN, PUBLIC_COLUMNS, toPublicRecord, type PublicRow } from './dto';
 
 const UPLOAD_URL_TTL = 15 * 60;
@@ -48,6 +49,7 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
     if (today.rows[0].n >= DAILY_RECORD_LIMIT) throw new HttpError(429, 'daily_limit');
 
     if (draft.attributed) await assertAttributionAccepted(viewer.userId);
+    await assertActiveTags(pool, draft.short.goodFor, draft.short.bestLight);
 
     const sun = sunAtCapture(new Date(draft.capture.capturedAt), draft.pin.lat, draft.pin.lon);
     const created = await tx(pool, async (c) => {

@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 /**
  * Scout record data (decision D-16): a short input every record has, plus an optional advanced
- * input. Vocabulary is the Phase 0 proposal in docs/phase-0/02-v1-scope-and-flows.md §3 and will
- * move to admin-managed tags in Phase 2; these lists are the seed values.
+ * input. Tags are admin-managed (D-25): the lists below are only the SEED values; the live lists
+ * come from GET /v1/vocabulary and the API checks keys against the active vocabulary.
  */
 
 export const GOOD_FOR_TAGS = [
@@ -36,8 +36,21 @@ export const BEST_LIGHT_PERIODS = [
   'overcast',
 ] as const;
 
-export const goodForTag = z.enum(GOOD_FOR_TAGS);
-export const bestLightPeriod = z.enum(BEST_LIGHT_PERIODS);
+/** A tag key: stable, lowercase, never renamed (labels can change; records store keys). */
+export const tagKey = z.string().regex(/^[a-z][a-z0-9_]{1,31}$/, 'invalid tag key');
+export const goodForTag = tagKey;
+export const bestLightPeriod = tagKey;
+export const TAG_KINDS = ['good_for', 'best_light'] as const;
+export type TagKind = (typeof TAG_KINDS)[number];
+
+export interface VocabularyTag {
+  key: string;
+  label: string;
+}
+export interface Vocabulary {
+  goodFor: VocabularyTag[];
+  bestLight: VocabularyTag[];
+}
 
 const shortText = (max: number) => z.string().trim().max(max);
 

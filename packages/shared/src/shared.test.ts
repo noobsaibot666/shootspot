@@ -145,11 +145,13 @@ describe('scout schema', () => {
     expect(parsed.attributed).toBe(false);
   });
 
-  it('rejects unknown tags and out-of-range bearings', () => {
-    expect(
-      draftRecordSchema.safeParse({ ...valid, short: { ...valid.short, goodFor: ['selfie'] } })
-        .success,
-    ).toBe(false);
+  it('rejects malformed tag keys and out-of-range bearings (unknown keys are checked by the API)', () => {
+    for (const bad of ['Selfie', 'x', 'has space', '9lives', 'a'.repeat(40)]) {
+      expect(
+        draftRecordSchema.safeParse({ ...valid, short: { ...valid.short, goodFor: [bad] } })
+          .success,
+      ).toBe(false);
+    }
     expect(
       draftRecordSchema.safeParse({ ...valid, short: { ...valid.short, bearingDeg: 360 } }).success,
     ).toBe(false);

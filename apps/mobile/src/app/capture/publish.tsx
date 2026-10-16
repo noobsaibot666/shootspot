@@ -15,7 +15,7 @@ import { Alert, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useCapture } from '../../capture/context';
 import { ApiError, api } from '../../lib/api';
 import { saveDraft, submitDraft } from '../../lib/drafts';
-import { BEST_LIGHT_LABEL, GOOD_FOR_LABEL } from '../../lib/labels';
+import { useVocabulary } from '../../lib/vocabulary';
 import { useSession } from '../../lib/session';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Card, ErrorNote, Label, Mono, Row, Screen } from '../../ui';
@@ -32,6 +32,7 @@ const LIGHT_LABEL = {
  * Attribution (D-07) is off unless the member turns it on and accepts the responsibility notice.
  */
 export default function Publish() {
+  const { label } = useVocabulary();
   const t = useTheme();
   const { width } = useWindowDimensions();
   const { state: session } = useSession();
@@ -131,13 +132,13 @@ export default function Publish() {
         <Row wrap>
           {state.goodFor.map((g) => (
             <Text key={g} style={{ color: t.ink, fontSize: 14 }}>
-              {GOOD_FOR_LABEL[g]} ·
+              {label('good_for', g)} ·
             </Text>
           ))}
         </Row>
         <View style={{ gap: 4 }}>
           <Label>Best light</Label>
-          <Body>{state.bestLight.map((b) => BEST_LIGHT_LABEL[b]).join(', ')}</Body>
+          <Body>{state.bestLight.map((b) => label('best_light', b)).join(', ')}</Body>
           {state.bestLightNote ? <Body muted>{state.bestLightNote}</Body> : null}
         </View>
         <View style={{ gap: 4 }}>

@@ -9,6 +9,7 @@ import { meRoutes } from './me/routes';
 import { projectRoutes } from './projects/routes';
 import { feedRoutes } from './records/feed';
 import { recordRoutes } from './records/routes';
+import { vocabularyRoutes } from './vocabulary/routes';
 
 export type { AppDeps } from './http/context';
 
@@ -36,6 +37,21 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   if (deps.config.NODE_ENV !== 'test') {
     await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
   }
+
+  // Security headers on every response; API data is private, so never cache it in between.
+  app.addHook('onSend', async (req, reply) => {
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'no-referrer');
+    reply.header('x-frame-options', 'DENY');
+    reply.header('cross-origin-resource-policy', 'same-site');
+    if (
+      req.url.startsWith('/v1') ||
+      req.url.startsWith('/admin') ||
+      req.url.startsWith('/api/auth')
+    ) {
+      reply.header('cache-control', 'no-store');
+    }
+  });
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof HttpError) return sendError(reply, err);
@@ -124,6 +140,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   meRoutes(app, deps);
   projectRoutes(app, deps);
   adminRoutes(app, deps);
+  vocabularyRoutes(app, deps);
 
   return app;
 }

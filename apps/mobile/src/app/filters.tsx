@@ -1,15 +1,15 @@
-import { BEST_LIGHT_PERIODS, GOOD_FOR_TAGS } from '@shootspot/shared';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
-import { BEST_LIGHT_LABEL, GOOD_FOR_LABEL } from '../lib/labels';
+import { useVocabulary } from '../lib/vocabulary';
 import { RADII, useScope } from '../lib/scope';
 import { space } from '../theme/tokens';
 import { Body, Button, Chip, ErrorNote, Field, Label, Row, Screen } from '../ui';
 
 /** Filter sheet (design spec §4.4): location, radius, scouting attributes; reset / apply. */
 export default function Filters() {
+  const { vocab, label } = useVocabulary();
   const { scope, setScope, locationDenied } = useScope();
   const [draft, setDraft] = useState(scope);
   const [query, setQuery] = useState(scope.place?.label ?? '');
@@ -101,28 +101,32 @@ export default function Filters() {
         <View style={{ gap: space.sm }}>
           <Label>Good for</Label>
           <Row wrap>
-            {GOOD_FOR_TAGS.map((g) => (
-              <Chip
-                key={g}
-                label={GOOD_FOR_LABEL[g]}
-                selected={draft.goodFor.includes(g)}
-                onPress={() => setDraft((d) => ({ ...d, goodFor: toggle(d.goodFor, g) }))}
-              />
-            ))}
+            {vocab.goodFor
+              .map((v) => v.key)
+              .map((g) => (
+                <Chip
+                  key={g}
+                  label={label('good_for', g)}
+                  selected={draft.goodFor.includes(g)}
+                  onPress={() => setDraft((d) => ({ ...d, goodFor: toggle(d.goodFor, g) }))}
+                />
+              ))}
           </Row>
         </View>
 
         <View style={{ gap: space.sm }}>
           <Label>Best light</Label>
           <Row wrap>
-            {BEST_LIGHT_PERIODS.map((b) => (
-              <Chip
-                key={b}
-                label={BEST_LIGHT_LABEL[b]}
-                selected={draft.bestLight.includes(b)}
-                onPress={() => setDraft((d) => ({ ...d, bestLight: toggle(d.bestLight, b) }))}
-              />
-            ))}
+            {vocab.bestLight
+              .map((v) => v.key)
+              .map((b) => (
+                <Chip
+                  key={b}
+                  label={label('best_light', b)}
+                  selected={draft.bestLight.includes(b)}
+                  onPress={() => setDraft((d) => ({ ...d, bestLight: toggle(d.bestLight, b) }))}
+                />
+              ))}
           </Row>
         </View>
 

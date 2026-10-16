@@ -1,6 +1,7 @@
-import type { BestLightPeriod, GoodForTag, RecordStatus } from '@shootspot/shared';
+import type { RecordStatus } from '@shootspot/shared';
 
-export const GOOD_FOR_LABEL: Record<GoodForTag, string> = {
+/** Built-in seed labels; the live, admin-managed lists come from useVocabulary() (D-25). */
+export const GOOD_FOR_LABEL: Record<string, string> = {
   portrait: 'Portrait',
   fashion: 'Fashion',
   landscape: 'Landscape',
@@ -18,7 +19,7 @@ export const GOOD_FOR_LABEL: Record<GoodForTag, string> = {
   drone: 'Drone (where legal)',
 };
 
-export const BEST_LIGHT_LABEL: Record<BestLightPeriod, string> = {
+export const BEST_LIGHT_LABEL: Record<string, string> = {
   blue_hour_am: 'Blue hour (AM)',
   golden_am: 'Sunrise / golden (AM)',
   morning: 'Morning',

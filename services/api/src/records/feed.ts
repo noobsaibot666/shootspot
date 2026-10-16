@@ -24,6 +24,9 @@ export function decodeCursor(cursor: string): { at: string; id: string } {
   return { at, id };
 }
 
+/** Plan §10: search/feed rate limit (per client IP; the global limit is 300/min). */
+const SEARCH_LIMIT = { max: 60, timeWindow: '1 minute' };
+
 export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
   const { pool, storage } = deps;
 
@@ -31,7 +34,7 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
    * Discover published records, newest first. With lat/lon: only within radiusKm, with distance.
    * Without: everything (manual browsing, D-15). Filters: Good for / best light (any match).
    */
-  app.get('/v1/feed', async (req, reply) => {
+  app.get('/v1/feed', { config: { rateLimit: SEARCH_LIMIT } }, async (req, reply) => {
     await requireViewer(deps, req); // D-05: sign-in required to see anything
     const q = feedQuerySchema.parse(req.query);
     if ((q.lat == null) !== (q.lon == null)) throw new HttpError(400, 'lat_lon_pair');
@@ -80,7 +83,7 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
    * Map tab: published records inside the visible box, newest first, capped. Lightweight pins
    * (the detail screen fetches the full record). No creator data, same as the feed.
    */
-  app.get('/v1/map', async (req, reply) => {
+  app.get('/v1/map', { config: { rateLimit: SEARCH_LIMIT } }, async (req, reply) => {
     await requireViewer(deps, req);
     const q = mapQuerySchema.parse(req.query);
     const params: unknown[] = [q.minLon, q.minLat, q.maxLon, q.maxLat];

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
-import { GOOD_FOR_LABEL } from '../../lib/labels';
+import { useVocabulary } from '../../lib/vocabulary';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { font, radius, space, useTheme } from '../../theme/tokens';
 import { Body, Button } from '../../ui';
@@ -163,6 +163,7 @@ export default function Feed() {
 }
 
 function Card({ record, width }: { record: PublicRecord; width: number }) {
+  const { label } = useVocabulary();
   const t = useTheme();
   const h = width / (record.images.width / record.images.height);
   return (
@@ -201,7 +202,7 @@ function Card({ record, width }: { record: PublicRecord; width: number }) {
               .join(' · ')}
           </Text>
           <Text style={{ color: t.muted, fontSize: 13 }} numberOfLines={1}>
-            {record.goodFor.map((g) => GOOD_FOR_LABEL[g]).join(' · ')}
+            {record.goodFor.map((g) => label('good_for', g)).join(' · ')}
           </Text>
         </View>
         <Pressable
