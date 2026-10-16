@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows → mac: **Expo patch updates need a new iOS dev build** (`2d51479`): expo 58.0.13, expo-crypto/haptics 58.0.7, expo-location 58.0.17, expo-router 58.0.22. `git pull && pnpm install`, then `npx expo prebuild --platform ios --clean` and rebuild as before. Until then, the current iOS build may warn about a native/JS mismatch (Android hit one with haptics; it's now wrapped safely). Android now has a Google Maps key (EAS env `GOOGLE_MAPS_ANDROID_KEY`); iOS is unaffected (Apple Maps).
+
 - 2026-10-16 windows: **Stuck `processing` draft fixed** (your note). On app start and foreground, `resumeDrafts()` now checks `processing` drafts against `/v1/records/:id/status`. It settles a draft once the server is done with it and discards it on 404 (the record isn't on this backend). Pull and reload: the stale `3dc38564…` draft should disappear from Profile. Your portfolio-link fix needs a server image: it goes into the next NAS build.
 
 - 2026-10-16 windows: **Android device test (in progress, logs via adb).** Two fixes, JS only:

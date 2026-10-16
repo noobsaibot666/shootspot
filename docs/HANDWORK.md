@@ -173,7 +173,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   3. **SMTP & API → SMTP:** note the SMTP login and create an SMTP key.
   4. Tell Claude when the domain shows as verified. Claude gives you the NAS block that stores the SMTP key securely and turns off the test inbox. This fixes security finding F1 and is **required before anyone else tests**.
 - [x] **3.3 Admin 2-factor.** Done: owner `alanxalves@me.com` signed in on the NAS admin web (`http://192.168.178.146:4401`) with an authenticator.
-- [ ] **3.4 Google Maps key** 💶 ⏱ 20 min. Android maps need it; without it the Android app shows "Map coming soon".
+- [x] **3.4 Google Maps key.** Done 2026-10-16: Google Cloud project `shootspot-0t76lk` (exposeuberlin@gmail.com), key `shootspot-android` restricted to the app and the Maps SDK, a 5/month budget, and `GOOGLE_MAPS_ANDROID_KEY` stored in EAS (Sensitive). Created via Cloud Shell because local `gcloud auth login` fails (Google retired the OAuth client). Steps, for reference or to redo it:
   1. https://console.cloud.google.com → new project `ShootSpot` → link billing (displaying maps in the Android SDK has no usage charge).
   2. **APIs & Services → Library:** enable **Maps SDK for Android**.
   3. **Credentials → Create credentials → API key**, then edit it:
