@@ -173,7 +173,15 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   3. **SMTP & API → SMTP:** note the SMTP login and create an SMTP key.
   4. Tell Claude when the domain shows as verified. Claude gives you the NAS block that stores the SMTP key securely and turns off the test inbox. This fixes security finding F1 and is **required before anyone else tests**.
 - [x] **3.3 Admin 2-factor.** Done: owner `alanxalves@me.com` signed in on the NAS admin web (`http://192.168.178.146:4401`) with an authenticator.
-- [ ] **3.4 Google Maps key** 💶 ⏱ 20 min. Android maps need it. Claude will walk you through the Google Cloud setup, including a spending cap.
+- [ ] **3.4 Google Maps key** 💶 ⏱ 20 min. Android maps need it; without it the Android app shows "Map coming soon".
+  1. https://console.cloud.google.com → new project `ShootSpot` → link billing (displaying maps in the Android SDK has no usage charge).
+  2. **APIs & Services → Library:** enable **Maps SDK for Android**.
+  3. **Credentials → Create credentials → API key**, then edit it:
+     - Application restriction **Android apps**: package `com.shootspot.app`, SHA-1 `87:2B:59:5F:C5:93:77:D9:10:23:23:86:C4:08:82:B0:EE:7C:1B:14` (the EAS build key).
+     - API restriction: **Maps SDK for Android** only.
+  4. **Billing → Budgets & alerts:** a €5/month budget with email alerts.
+  5. On expo.dev: **@expose.u/shootspot → Environment variables**, add `GOOGLE_MAPS_ANDROID_KEY` (Sensitive, all environments). Don't paste the key in chat. Tell Claude, who starts a new Android build.
+  6. **Later, at Play Store launch:** add the Play App Signing SHA-1 (Play Console → App integrity) to the same key.
 - [x] **3.5 Logo / app icon.** Done. Generated from `shared/design/app-icon/Group 15@4x.png`; previews are in `shared/design/app-icon/generated/`. If the logo changes, drop the new export there and ask Claude to re-run `tools/make-icons.mjs`.
 - [ ] **3.6 Review the photo tags and note fields** in [02-v1-scope-and-flows.md §3](phase-0/02-v1-scope-and-flows.md#3-scout-record-fields).
 - [ ] **3.7 Sentry crash reports (D-24)** ⏱ 15 min.
