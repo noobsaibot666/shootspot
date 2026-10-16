@@ -43,7 +43,7 @@
         "expo-image-picker",
         {
           "photosPermission": "ShootSpot lets you import location photos you took. Their location and time prefill the pin; that data never leaves your phone.",
-          "cameraPermission": false,
+          "cameraPermission": "ShootSpot uses the camera to photograph locations you scout.",
           "microphonePermission": false
         }
       ],
