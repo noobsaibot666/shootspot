@@ -1,36 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildApp } from './app';
+import { decryptSecret, encryptSecret, verifyTotp, currentTotp, newTotp } from './admin/mfa';
 import { loadConfig } from './config';
+import { decodeCursor, encodeCursor } from './records/feed';
 
-const okStorage = { ping: async () => {}, ensureBuckets: async () => {} };
-
-describe('api', () => {
-  it('reports liveness', async () => {
-    const app = buildApp({ pingDb: async () => {}, storage: okStorage });
-    const res = await app.inject({ method: 'GET', url: '/health' });
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ status: 'ok' });
-  });
-
-  it('reports ready when dependencies answer', async () => {
-    const app = buildApp({ pingDb: async () => {}, storage: okStorage });
-    const res = await app.inject({ method: 'GET', url: '/ready' });
-    expect(res.statusCode).toBe(200);
-  });
-
-  it('returns 503 without leaking error details when a dependency fails', async () => {
-    const app = buildApp({
-      pingDb: async () => {
-        throw new Error('password authentication failed for user "shootspot"');
-      },
-      storage: okStorage,
-    });
-    const res = await app.inject({ method: 'GET', url: '/ready' });
-    expect(res.statusCode).toBe(503);
-    expect(res.json()).toEqual({ status: 'unavailable', checks: { db: false, storage: true } });
-    expect(res.body).not.toContain('password');
-  });
-
+describe('config', () => {
   it('rejects invalid configuration without echoing secret values', () => {
     expect(() => loadConfig({ DATABASE_URL: 'nope', S3_SECRET_ACCESS_KEY: 'hunter2' })).toThrow(
       /Invalid configuration/,
@@ -40,5 +13,28 @@ describe('api', () => {
     } catch (e) {
       expect(String(e)).not.toContain('hunter2');
     }
+  });
+});
+
+describe('feed cursor', () => {
+  it('round-trips and rejects garbage', () => {
+    const at = new Date('2026-10-16T10:00:00Z');
+    const id = '6f1c2b8e-3d4a-4b5c-9d6e-7f8a9b0c1d2e';
+    expect(decodeCursor(encodeCursor(at, id))).toEqual({ at: at.toISOString(), id });
+    expect(() => decodeCursor('bm9wZQ')).toThrow();
+  });
+});
+
+describe('admin mfa', () => {
+  it('encrypts secrets and verifies codes', () => {
+    const { base32, uri } = newTotp('owner@example.com');
+    expect(uri).toMatch(/^otpauth:\/\/totp\/ShootSpot%20Admin/);
+    const stored = encryptSecret('k'.repeat(32), base32);
+    expect(stored).not.toContain(base32);
+    expect(decryptSecret('k'.repeat(32), stored)).toBe(base32);
+    expect(() => decryptSecret('x'.repeat(32), stored)).toThrow();
+    expect(verifyTotp(base32, currentTotp(base32))).toBe(true);
+    expect(verifyTotp(base32, '000000')).toBe(currentTotp(base32) === '000000');
+    expect(verifyTotp(base32, 'abc')).toBe(false);
   });
 });

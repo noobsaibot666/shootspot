@@ -1,18 +1,62 @@
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import { fromNodeHeaders } from 'better-auth/node';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
-import type { Storage } from './storage';
+import { ZodError } from 'zod';
+import { adminRoutes } from './admin/routes';
+import { HttpError, sendError, type AppDeps } from './http/context';
+import { meRoutes } from './me/routes';
+import { projectRoutes } from './projects/routes';
+import { feedRoutes } from './records/feed';
+import { recordRoutes } from './records/routes';
 
-export interface AppDeps {
-  /** Resolves when the database answers a trivial query. */
-  pingDb(): Promise<void>;
-  storage: Storage;
-  logger?: boolean;
-}
+export type { AppDeps } from './http/context';
 
-export function buildApp(deps: AppDeps): FastifyInstance {
+export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: deps.logger ?? false,
     // Never log request bodies or query strings: they may carry coordinates.
     logController: new LogController({ disableRequestLogging: true }),
+    trustProxy: true,
+  });
+
+  // Clients often send `content-type: application/json` on body-less POSTs (upload-complete,
+  // MFA enrol). Accept an empty body there; everything else still goes through Fastify's
+  // prototype-poisoning-safe JSON parser.
+  const safeJson = app.getDefaultJsonParser('error', 'error');
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    const text = typeof body === 'string' ? body : body.toString('utf8');
+    if (text === '') return done(null, undefined);
+    return safeJson(req, text, done);
+  });
+
+  await app.register(cors, {
+    origin: deps.config.TRUSTED_ORIGINS,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['content-type', 'authorization'],
+    exposedHeaders: ['set-auth-token'],
+    maxAge: 86400,
+  });
+  if (deps.config.NODE_ENV !== 'test') {
+    await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+  }
+
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof HttpError) return sendError(reply, err);
+    if (err instanceof ZodError) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        issues: err.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+    }
+    const status = (err as { statusCode?: number }).statusCode;
+    if (status && status < 500) {
+      return reply.code(status).send({ error: 'bad_request', message: (err as Error).message });
+    }
+    app.log.error({ err }, 'unhandled');
+    return reply.code(500).send({ error: 'internal' });
   });
 
   /** Liveness: the process is up. */
@@ -20,18 +64,50 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   /** Readiness: dependencies answer. Details stay out of the response body. */
   app.get('/ready', async (_req, reply) => {
-    const [db, storage] = await Promise.allSettled([deps.pingDb(), deps.storage.ping()]);
+    const [db, storage] = await Promise.allSettled([
+      deps.pool.query('select 1'),
+      deps.storage.ping(),
+    ]);
     const checks = { db: db.status === 'fulfilled', storage: storage.status === 'fulfilled' };
     if (!checks.db || !checks.storage) {
-      app.log.warn({ db: settledReason(db), storage: settledReason(storage) }, 'not ready');
+      app.log.warn({ db: reason(db), storage: reason(storage) }, 'not ready');
       return reply.code(503).send({ status: 'unavailable', checks });
     }
     return { status: 'ok', checks };
   });
 
+  // Better Auth: email-code sign-in, sessions, bearer tokens.
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/api/auth/*',
+    async handler(req, reply) {
+      const url = new URL(req.url, deps.config.PUBLIC_API_URL);
+      const response = await deps.auth.handler(
+        new Request(url, {
+          method: req.method,
+          headers: fromNodeHeaders(req.headers),
+          ...(req.body ? { body: JSON.stringify(req.body) } : {}),
+        }),
+      );
+      reply.status(response.status);
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() !== 'set-cookie') reply.header(key, value);
+      });
+      const cookies = response.headers.getSetCookie();
+      if (cookies.length) reply.header('set-cookie', cookies);
+      return reply.send(response.body ? await response.text() : null);
+    },
+  });
+
+  recordRoutes(app, deps);
+  feedRoutes(app, deps);
+  meRoutes(app, deps);
+  projectRoutes(app, deps);
+  adminRoutes(app, deps);
+
   return app;
 }
 
-function settledReason(result: PromiseSettledResult<void>): string | undefined {
+function reason(result: PromiseSettledResult<unknown>): string | undefined {
   return result.status === 'rejected' ? String(result.reason) : undefined;
 }

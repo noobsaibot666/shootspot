@@ -35,3 +35,7 @@ coverage/
 ios/Pods/
 android/.gradle/
 android/app/build/
+
+# Next.js generated
+next-env.d.ts
+*.tsbuildinfo

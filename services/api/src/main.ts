@@ -1,24 +1,25 @@
-import pg from 'pg';
 import { buildApp } from './app';
+import { createAuth } from './auth';
 import { loadConfig } from './config';
+import { createPool } from './db';
+import { createSmtpMailer } from './mailer';
+import { createJobQueue } from './queue';
 import { createStorage } from './storage';
 
 const config = loadConfig();
-const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 10 });
+const pool = createPool(config.DATABASE_URL);
 const storage = createStorage(config);
+const mailer = createSmtpMailer(config.SMTP_URL, config.MAIL_FROM);
+const auth = createAuth({ pool, config, mailer });
+const queue = await createJobQueue(config.DATABASE_URL);
 
 if (config.NODE_ENV === 'development') await storage.ensureBuckets();
 
-const app = buildApp({
-  pingDb: async () => {
-    await pool.query('select 1');
-  },
-  storage,
-  logger: true,
-});
+const app = await buildApp({ config, pool, auth, storage, queue, logger: true });
 
 const shutdown = async () => {
   await app.close();
+  await queue.stop();
   await pool.end();
   process.exit(0);
 };
