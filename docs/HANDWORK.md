@@ -177,7 +177,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   1. https://console.cloud.google.com → new project `ShootSpot` → link billing (displaying maps in the Android SDK has no usage charge).
   2. **APIs & Services → Library:** enable **Maps SDK for Android**.
   3. **Credentials → Create credentials → API key**, then edit it:
-     - Application restriction **Android apps**: package `com.shootspot.app`, SHA-1 `87:2B:59:5F:C5:93:77:D9:10:23:23:86:C4:08:82:B0:EE:7C:1B:14` (the EAS build key).
+     - Application restriction **Android apps**: package `com.shootspot.app`, SHA-1 `87:2B:59:5F:C5:93:77:D9:10:23:23:86:C4:08:82:B0:EE:7C:1B:14` (the EAS build key), plus SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (the standard React Native debug key, so local Windows builds show maps).
      - API restriction: **Maps SDK for Android** only.
   4. **Billing → Budgets & alerts:** a €5/month budget with email alerts.
   5. On expo.dev: **@expose.u/shootspot → Environment variables**, add `GOOGLE_MAPS_ANDROID_KEY` (Sensitive, all environments). Don't paste the key in chat. Tell Claude, who starts a new Android build.
