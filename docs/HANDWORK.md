@@ -76,7 +76,7 @@ The app now has sign-in, the new camera, the map pin, notes and publishing. It c
 
 **Builds:**
 
-- **Android:** run `pnpm --filter @shootspot/mobile build:dev:android` and install the new APK. The map on the pin screen stays grey until you have a Google Maps key (3.4). Everything else works without it.
+- **Android:** run `pnpm --filter @shootspot/mobile build:dev:android` and install the new APK. Until there's a Google Maps key (3.4) and a new build, Android shows "Map coming soon" on the Map tab and a GPS/search-only pin screen. Everything else works without it.
 - **iPhone:** the Mac follows the request in the handoff file.
 
 **Test:** sign in → onboarding → capture (sideways and upright) → pin → notes → publish, and check the status screen shows **Published**. Send Claude the results.

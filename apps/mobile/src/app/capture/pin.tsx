@@ -14,6 +14,7 @@ import {
 import MapView, { type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCapture } from '../../capture/context';
+import { mapsAvailable } from '../../lib/device';
 import { radius, space, useTheme } from '../../theme/tokens';
 import { Body, Button, Mono } from '../../ui';
 
@@ -40,11 +41,13 @@ export default function PinScreen() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const moveTo = (lat: number, lon: number) =>
+  const moveTo = (lat: number, lon: number) => {
+    if (!mapsAvailable) return setCenter({ lat, lon });
     map.current?.animateToRegion(
       { latitude: lat, longitude: lon, latitudeDelta: DELTA, longitudeDelta: DELTA },
       350,
     );
+  };
 
   function onRegionChangeComplete(r: Region) {
     const next = { lat: r.latitude, lon: r.longitude };
@@ -103,22 +106,30 @@ export default function PinScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={{ flex: 1 }}>
-        <MapView
-          ref={map}
-          style={StyleSheet.absoluteFill}
-          initialRegion={{
-            latitude: start.lat,
-            longitude: start.lon,
-            latitudeDelta: DELTA,
-            longitudeDelta: DELTA,
-          }}
-          onRegionChangeComplete={onRegionChangeComplete}
-          showsUserLocation={Boolean(gps)}
-          showsMyLocationButton={false}
-          toolbarEnabled={false}
-          rotateEnabled={false}
-          pitchEnabled={false}
-        />
+        {mapsAvailable ? (
+          <MapView
+            ref={map}
+            style={StyleSheet.absoluteFill}
+            initialRegion={{
+              latitude: start.lat,
+              longitude: start.lon,
+              latitudeDelta: DELTA,
+              longitudeDelta: DELTA,
+            }}
+            onRegionChangeComplete={onRegionChangeComplete}
+            showsUserLocation={Boolean(gps)}
+            showsMyLocationButton={false}
+            toolbarEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.noMap, { backgroundColor: t.surface }]}>
+            <Body muted>
+              The map isn't available in this build. Use your GPS position or search for the place.
+            </Body>
+          </View>
+        )}
         {/* Fixed centre pin: its tip marks the location. */}
         <View pointerEvents="none" style={styles.pinWrap}>
           <Ionicons
@@ -183,6 +194,7 @@ export default function PinScreen() {
 }
 
 const styles = StyleSheet.create({
+  noMap: { alignItems: 'center', justifyContent: 'center', padding: space.xl },
   pinWrap: {
     position: 'absolute',
     top: 0,

@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
+import { mapsAvailable } from '../../lib/device';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { radius, space, useTheme } from '../../theme/tokens';
 
@@ -86,6 +87,26 @@ export default function MapTab() {
   }, [center]);
 
   const clusters = useMemo(() => cluster(pins, region), [pins, region]);
+
+  if (!mapsAvailable)
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: t.canvas,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: space.xl,
+          gap: space.md,
+        }}
+      >
+        <Ionicons name="map-outline" size={40} color={t.muted} />
+        <Text style={{ color: t.ink, fontSize: 17, fontWeight: '600' }}>Map coming soon</Text>
+        <Text style={{ color: t.muted, fontSize: 15, textAlign: 'center' }}>
+          The map isn't available in this build yet. Browse locations in the Feed.
+        </Text>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: t.canvas }}>

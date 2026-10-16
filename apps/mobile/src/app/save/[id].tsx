@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { api } from '../../lib/api';
+import { haptics } from '../../lib/device';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, ErrorNote, Field, Row, Screen, Title } from '../../ui';
 
@@ -47,7 +47,7 @@ export default function SaveSheet() {
       else next.delete(projectId);
       return next;
     });
-    void Haptics.selectionAsync();
+    haptics.selection();
     try {
       if (on)
         await api(`/v1/projects/${projectId}/items`, { method: 'POST', body: { recordId: id } });

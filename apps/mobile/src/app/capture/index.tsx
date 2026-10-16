@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { Framing } from '@shootspot/shared';
-import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,6 +27,7 @@ import {
 } from 'react-native-vision-camera';
 import { useCapture } from '../../capture/context';
 import { iconRotation, isSideways, previewCropRect } from '../../capture/crop';
+import { haptics } from '../../lib/device';
 import { processCapture, toFileUri } from '../../capture/process';
 import { useFieldSensors } from '../../capture/sensors';
 import { camera as c } from '../../theme/tokens';
@@ -140,7 +140,7 @@ export default function CameraScreen() {
           setFocus({ x, y });
           setExposure(0);
           void cameraRef.current?.focusTo({ x, y }).catch(() => {});
-          void Haptics.selectionAsync();
+          haptics.selection();
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,7 +151,7 @@ export default function CameraScreen() {
     if (busy || !device || !started) return;
     setBusy(true);
     setError(null);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.light();
     Animated.sequence([
       Animated.timing(flashOverlay, { toValue: 1, duration: 60, useNativeDriver: true }),
       Animated.timing(flashOverlay, { toValue: 0, duration: 180, useNativeDriver: true }),

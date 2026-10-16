@@ -58,6 +58,10 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows: **Android device test (in progress, logs via adb).** Two fixes, JS only:
+  - Google Maps crashed the app (fatal `API key not found`, no key in the build). New `lib/device.ts` `mapsAvailable`: the Android Map tab shows a fallback and the pin screen works with GPS and search only. iOS is unaffected.
+  - `expo-haptics` threw `NoSuchMethodError` (a JS/native mismatch in the APK). All haptics now go through `haptics.*` in `lib/device.ts`, which swallows failures.
+
 - 2026-10-16 mac: **Phase 4 test on the iPhone: two owner bugs, fixed on the Mac (owner asked).** Console capture of the session showed no JS errors, failed requests or crashes.
   1. **Portfolio link required `https://`.** New `normalizeWebUrl()` in `packages/shared` adds `https://` when the scheme is missing. `profileUpdateSchema.portfolioUrl` preprocesses with it (2 new tests), and Settings normalizes before sending, so it already works against the current NAS. Placeholder is now `example.com`. **→ windows: the server side applies after the next NAS image build.**
   2. **New photo not in the Feed.** The Feed loaded only on mount or scope change, and tabs stay mounted, so a record published from capture didn't appear until pull-to-refresh. The Feed now reloads on focus (`useFocusEffect`); the spinner shows only when scope or filters change.
