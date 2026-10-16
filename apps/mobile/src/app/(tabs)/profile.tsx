@@ -14,6 +14,7 @@ import {
   submitDraft,
   type LocalDraft,
 } from '../../lib/drafts';
+import { listImports, subscribeImports } from '../../lib/imports';
 import { STATUS_LABEL } from '../../lib/labels';
 import { useSession } from '../../lib/session';
 import { radius, space, useTheme } from '../../theme/tokens';
@@ -65,6 +66,7 @@ export default function Profile() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newName, setNewName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingImports, setPendingImports] = useState(0);
   const me = state.status === 'signed-in' ? state.me : null;
   const name = me
     ? me.profile.displayName || `${me.profile.firstName} ${me.profile.lastName}`.trim()
@@ -72,6 +74,7 @@ export default function Profile() {
 
   const load = useCallback(async () => {
     setDrafts(await listDrafts());
+    setPendingImports((await listImports()).filter((i) => i.state === 'todo').length);
     const [r, p] = await Promise.allSettled([
       api<{ items: MyRecord[] }>('/v1/me/records'),
       api<{ items: Project[] }>('/v1/projects'),
@@ -86,6 +89,16 @@ export default function Profile() {
     }, [load]),
   );
   useEffect(() => subscribeDrafts(() => void listDrafts().then(setDrafts)), []);
+  useEffect(
+    () =>
+      subscribeImports(
+        () =>
+          void listImports().then((l) =>
+            setPendingImports(l.filter((i) => i.state === 'todo').length),
+          ),
+      ),
+    [],
+  );
 
   async function createProject() {
     if (!newName.trim()) return;
@@ -173,6 +186,26 @@ export default function Profile() {
           </Pressable>
         ))}
       </View>
+      {tab === 'locations' && pendingImports > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/capture/import')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.md,
+            padding: space.md,
+            borderRadius: radius.card,
+            backgroundColor: t.surface,
+          }}
+        >
+          <Ionicons name="images-outline" size={22} color={t.ink} />
+          <Text style={{ flex: 1, color: t.ink, fontSize: 15, fontWeight: '600' }}>
+            {pendingImports} imported photo{pendingImports === 1 ? '' : 's'} to review
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={t.muted} />
+        </Pressable>
+      ) : null}
       {tab === 'locations' ? (
         <Body muted>
           Only you can see this list. Your locations are anonymous to others unless you chose to

@@ -18,9 +18,14 @@ export interface CaptureState {
   bearingDeg: number | null;
   advanced: AdvancedInput;
   attributed: boolean;
+  /** camera, or a gallery import (D-28) whose GPS/time/heading came from the photo. */
+  origin: 'camera' | 'import';
+  /** The import queue item being reviewed. */
+  importId: string | null;
+  focalLength35mm: number | null;
 }
 
-const initial: CaptureState = {
+export const initialCapture: CaptureState = {
   photo: null,
   capturedAt: null,
   altitudeM: null,
@@ -35,7 +40,11 @@ const initial: CaptureState = {
   bearingDeg: null,
   advanced: {},
   attributed: false,
+  origin: 'camera',
+  importId: null,
+  focalLength35mm: null,
 };
+const initial = initialCapture;
 
 interface Capture {
   state: CaptureState;

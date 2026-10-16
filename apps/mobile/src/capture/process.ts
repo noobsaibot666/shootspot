@@ -33,6 +33,32 @@ export async function processCapture(fileUri: string, framing: Framing): Promise
   };
 }
 
+/** Upright size of an image file (EXIF orientation applied), for the import crop screen. */
+export async function uprightSize(fileUri: string): Promise<{ width: number; height: number }> {
+  const r = await ImageManipulator.manipulate(fileUri).renderAsync();
+  return { width: r.width, height: r.height };
+}
+
+/**
+ * Import crop (D-28): the member placed the frame; crop that rectangle (in upright source
+ * pixels) and re-encode as JPEG, which also drops the photo's metadata.
+ */
+export async function processImportCrop(
+  fileUri: string,
+  rect: { left: number; top: number; width: number; height: number },
+): Promise<Omit<ProcessedCapture, 'source'>> {
+  const cropped = await ImageManipulator.manipulate(fileUri)
+    .crop({ originX: rect.left, originY: rect.top, width: rect.width, height: rect.height })
+    .renderAsync();
+  const saved = await cropped.saveAsync({ format: SaveFormat.JPEG, compress: 0.9 });
+  return {
+    uri: saved.uri,
+    width: saved.width,
+    height: saved.height,
+    check: checkPublishable({ width: saved.width, height: saved.height }),
+  };
+}
+
 export function toFileUri(path: string): string {
   return path.startsWith('file://') ? path : `file://${path}`;
 }

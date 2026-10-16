@@ -30,11 +30,12 @@ export default function PinScreen() {
   const { state, update } = useCapture();
   const map = useRef<MapView>(null);
   const gps = state.gps;
+  const imported = state.origin === 'import';
   const start =
     state.pin ?? (gps ? { lat: gps.lat, lon: gps.lon } : { lat: 38.7223, lon: -9.1393 });
   const [center, setCenter] = useState({ lat: start.lat, lon: start.lon });
   const [source, setSource] = useState<'gps' | 'manual' | 'search'>(
-    state.pin?.source ?? (gps ? 'gps' : 'manual'),
+    state.pin?.source === 'photo' ? 'gps' : (state.pin?.source ?? (gps ? 'gps' : 'manual')),
   );
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -92,7 +93,8 @@ export default function PinScreen() {
         lat: center.lat,
         lon: center.lon,
         accuracyM: source === 'gps' ? (gps?.accuracyM ?? null) : null,
-        source,
+        // An imported photo's own GPS is recorded as such (D-28), not as a live device fix.
+        source: source === 'gps' && imported ? 'photo' : source,
       },
       label,
     });
@@ -117,7 +119,7 @@ export default function PinScreen() {
               longitudeDelta: DELTA,
             }}
             onRegionChangeComplete={onRegionChangeComplete}
-            showsUserLocation={Boolean(gps)}
+            showsUserLocation={Boolean(gps) && !imported}
             showsMyLocationButton={false}
             toolbarEnabled={false}
             rotateEnabled={false}
@@ -156,7 +158,7 @@ export default function PinScreen() {
         {gps ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Use my GPS position"
+            accessibilityLabel={imported ? "Use the photo's location" : 'Use my GPS position'}
             onPress={() => {
               setSource('gps');
               moveTo(gps.lat, gps.lon);
@@ -182,10 +184,14 @@ export default function PinScreen() {
         <Body muted>
           {searchError ??
             (source === 'gps'
-              ? 'Pinned from your GPS. Move the map if the spot is off.'
+              ? imported
+                ? "Pinned from the photo's location. Move the map if the spot is off."
+                : 'Pinned from your GPS. Move the map if the spot is off.'
               : gps
                 ? 'Placed by hand. Move the map until the pin is on the spot.'
-                : 'Location is off. Search for the place or move the map to put the pin on the spot.')}
+                : imported
+                  ? 'This photo has no location. Search for the place or move the map to put the pin on the spot.'
+                  : 'Location is off. Search for the place or move the map to put the pin on the spot.')}
         </Body>
         <Button label="Confirm location" busy={busy} onPress={() => void confirm()} />
       </View>

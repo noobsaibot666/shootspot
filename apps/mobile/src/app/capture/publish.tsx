@@ -15,6 +15,7 @@ import { Alert, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useCapture } from '../../capture/context';
 import { ApiError, api } from '../../lib/api';
 import { saveDraft, submitDraft } from '../../lib/drafts';
+import { markImported } from '../../lib/imports';
 import { useVocabulary } from '../../lib/vocabulary';
 import { useSession } from '../../lib/session';
 import { space, useTheme } from '../../theme/tokens';
@@ -93,8 +94,9 @@ export default function Publish() {
       capture: {
         capturedAt: state.capturedAt,
         altitudeM: state.altitudeM,
-        focalLength35mm: null,
+        focalLength35mm: state.focalLength35mm,
         headingDeg: state.headingDeg,
+        origin: state.origin,
       },
       attributed: state.attributed,
     });
@@ -102,6 +104,12 @@ export default function Publish() {
       // Saved on the phone first: nothing is lost if the network drops from here on.
       await saveDraft(draft, photo!.uri, { width: photo!.width, height: photo!.height });
       const result = await submitDraft(draft.draftId);
+      // Import batch (D-28): back to the batch for the next photo; the draft uploads meanwhile.
+      if (state.importId) {
+        await markImported(state.importId, draft.draftId);
+        router.dismissTo('/capture/import');
+        return;
+      }
       // Closing the capture modal discards its state (CaptureProvider unmounts). Resetting first
       // would re-render the screens underneath with an empty capture (iOS console report #1).
       // dismissAll() would only return to the camera (first screen of the capture stack);
@@ -172,6 +180,9 @@ export default function Publish() {
         <Button label="Publish" busy={busy} onPress={() => void publish()} />
         <Body muted>
           By publishing you confirm you took this photo and may share it under the image licence.
+          {state.origin === 'import'
+            ? ' Imported photos: only publish photos you took yourself.'
+            : ''}
         </Body>
       </View>
     </Screen>

@@ -28,6 +28,7 @@ import {
 import { useCapture } from '../../capture/context';
 import { iconRotation, isSideways, previewCropRect } from '../../capture/crop';
 import { haptics } from '../../lib/device';
+import { listImports, pickPhotos } from '../../lib/imports';
 import { processCapture, toFileUri } from '../../capture/process';
 import { useFieldSensors } from '../../capture/sensors';
 import { camera as c } from '../../theme/tokens';
@@ -146,6 +147,15 @@ export default function CameraScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [exposure, currentZoom, started, device, evMin, evMax],
   );
+
+  async function openGallery() {
+    try {
+      const pending = (await listImports()).some((i) => i.state === 'todo');
+      if ((await pickPhotos()) > 0 || pending) router.push('/capture/import');
+    } catch {
+      setError('Could not open your photos.');
+    }
+  }
 
   async function shoot() {
     if (busy || !device || !started) return;
@@ -320,19 +330,16 @@ export default function CameraScreen() {
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.side}>
-          {capture.state.photo ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Last photo"
-              onPress={() => router.push('/capture/review')}
-            >
-              <Image
-                source={capture.state.photo.uri}
-                style={[styles.thumb, rotate]}
-                contentFit="cover"
-              />
-            </Pressable>
-          ) : null}
+          {/* Gallery import (D-28), where native cameras keep the photo library. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Import photos from your gallery"
+            onPress={() => void openGallery()}
+            style={[styles.gallery, rotate]}
+            hitSlop={8}
+          >
+            <Ionicons name="images-outline" size={22} color={c.control} />
+          </Pressable>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -490,7 +497,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 28,
   },
-  thumb: { width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: c.controlMuted },
+  gallery: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: c.controlMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shutter: {
     width: 76,
     height: 76,

@@ -1,8 +1,13 @@
-import { Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, router } from 'expo-router';
+import { Pressable } from 'react-native';
 import { CaptureProvider } from '../../capture/context';
 import { useTheme } from '../../theme/tokens';
 
-/** Capture → review crop → confirm pin → notes → preview & publish. */
+/**
+ * Capture → review crop → confirm pin → notes → preview & publish.
+ * Gallery import (D-28): import batch → frame (crop) → the same pin → notes → publish.
+ */
 export default function CaptureLayout() {
   const t = useTheme();
   return (
@@ -22,6 +27,27 @@ export default function CaptureLayout() {
         />
         <Stack.Screen
           name="review"
+          options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }}
+        />
+        <Stack.Screen
+          name="import"
+          options={{
+            title: 'Import photos',
+            // Closes the whole capture modal; unfinished photos stay listed in Profile.
+            headerLeft: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={12}
+                onPress={() => router.dismissTo('/profile')}
+              >
+                <Ionicons name="close" size={26} color={t.ink} />
+              </Pressable>
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="crop"
           options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }}
         />
         <Stack.Screen name="pin" options={{ title: 'Confirm location' }} />

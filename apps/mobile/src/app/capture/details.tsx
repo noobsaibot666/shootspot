@@ -102,8 +102,12 @@ export default function Details() {
             error={bearingText !== '' && !bearingValid ? 'Enter 0 to 359.' : null}
             hint={
               state.headingDeg == null
-                ? 'No compass reading: enter the direction, 0 = north, 90 = east.'
-                : 'From your compass at the moment of capture. Correct it if needed.'
+                ? state.origin === 'import'
+                  ? 'This photo has no direction data: enter it, 0 = north, 90 = east.'
+                  : 'No compass reading: enter the direction, 0 = north, 90 = east.'
+                : state.origin === 'import'
+                  ? "From the photo's direction data. Correct it if needed."
+                  : 'From your compass at the moment of capture. Correct it if needed.'
             }
           />
           {bearingValid ? <Mono>{formatBearing(bearing!)}</Mono> : null}

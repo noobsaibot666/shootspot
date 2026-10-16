@@ -59,7 +59,8 @@ export const pinSchema = z.object({
   lon: z.number().min(-180).max(180),
   /** Horizontal accuracy in metres; null when the pin was placed manually. */
   accuracyM: z.number().nonnegative().nullable(),
-  source: z.enum(['gps', 'manual', 'search']),
+  /** gps: device fix at capture · photo: GPS in an imported photo (D-28) · manual · search. */
+  source: z.enum(['gps', 'photo', 'manual', 'search']),
 });
 
 export const shortInputSchema = z.object({
@@ -124,6 +125,8 @@ export const captureMetaSchema = z.object({
   altitudeM: z.number().nullable(),
   focalLength35mm: z.number().positive().nullable(),
   headingDeg: z.number().min(0).lt(360).nullable(),
+  /** camera: taken in the app · import: from the phone gallery (D-28); time/heading from metadata. */
+  origin: z.enum(['camera', 'import']).default('camera'),
 });
 
 export const draftRecordSchema = z.object({

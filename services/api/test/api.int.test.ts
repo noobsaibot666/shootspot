@@ -176,6 +176,44 @@ describe('records', () => {
     expect(stolen.statusCode).toBe(409);
   });
 
+  it('records gallery imports with the photo as pin source (D-28)', async () => {
+    const headers = await member(env, 'importer@example.com');
+    const body = draftBody({
+      pin: { lat: 52.4934, lon: 13.4234, accuracyM: null, source: 'photo' },
+      capture: {
+        capturedAt: '2026-05-01T16:42:10.000Z',
+        altitudeM: null,
+        focalLength35mm: 26,
+        headingDeg: null,
+        origin: 'import',
+      },
+    });
+    const res = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers,
+      payload: body,
+    });
+    expect(res.statusCode).toBe(201);
+    const row = (
+      await env.pool.query('select pin_source, capture_origin from locations where id = $1', [
+        res.json().recordId,
+      ])
+    ).rows[0];
+    expect(row).toEqual({ pin_source: 'photo', capture_origin: 'import' });
+    // Older clients that send no origin are camera captures.
+    const legacy = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers,
+      payload: draftBody(),
+    });
+    const origin = await env.pool.query('select capture_origin from locations where id = $1', [
+      legacy.json().recordId,
+    ]);
+    expect(origin.rows[0].capture_origin).toBe('camera');
+  });
+
   it('refuses upload-complete before the object exists, then queues processing', async () => {
     const headers = await member(env, 'eva@example.com');
     const created = (
