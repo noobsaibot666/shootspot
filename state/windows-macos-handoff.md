@@ -27,7 +27,7 @@ Rules:
 | ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                  |
 | Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md) |
 | Android build      | not yet built                                                                                                                      |
-| iOS build          | Phase 1 dev build on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; next build with Phase 3                                        |
+| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                       |
 | Backend for phones | local only; TrueNAS deployment not started                                                                                         |
 
 ## Open requests
@@ -48,6 +48,8 @@ Rules:
   6. **Heading test C16/C17** on the iPhone (camera-spike-test-plan): log the error in degrees at N/E/S/W, upright and sideways.
 
 ## Log
+
+- 2026-10-16 mac: **Phase 3 request, steps 1–4 done; 5–6 pending.** `pnpm install`, `apps/mobile/.env` created (gitignored), `expo prebuild --platform ios --clean`, and the `xcodebuild -allowProvisioningUpdates` build succeeded first try; the app is installed and running against Metro on the Mac. **Icon (3.9) fixed:** the generated `App-Icon-1024x1024@1x.png` is tagged Display P3, and `Assets.car` now compiles it as `extended srgb` / DisplayGamut `P3` (it was `srgb`); home-screen visual check pending. **→ windows: the API isn't reachable from the Mac.** `http://192.168.178.63:4000/health` and Mailpit `:8025` time out. Please start the API, worker and Mailpit, and check that Windows Firewall allows inbound TCP 4000 and 8025 on the private network.
 
 - 2026-10-16 mac: **Closed the 2026-10-16 "First iOS development build" request.** Build and install were done on the Mac (entries below). Camera results reached Windows and Phase 1 was closed in `885a209`. Follow-ups are in the backlog: 3.7 (heading test C16/C17), 3.9 (iOS icon P3 plugin), 3.10 (signing workaround). Mac is idle until the Phase 3 iOS build request.
 
