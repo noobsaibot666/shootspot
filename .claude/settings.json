@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(gh --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(git ls-remote https://github.com/noobsaibot666/shootspot.git; \"exit: $LASTEXITCODE\"; git config --global user.name; git config --global user.email)",
+      "PowerShell(git init -b main)",
+      "PowerShell(git remote add origin https://github.com/noobsaibot666/shootspot.git)",
+      "PowerShell(git push -u origin main)"
+    ]
+  }
+}

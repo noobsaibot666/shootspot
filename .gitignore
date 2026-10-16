@@ -1,0 +1,37 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.keystore
+*.jks
+*.mobileprovision
+
+# Build output
+dist/
+build/
+.next/
+out/
+coverage/
+.expo/
+ios/Pods/
+android/.gradle/
+android/app/build/
