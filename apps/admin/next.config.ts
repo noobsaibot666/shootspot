@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 /**
@@ -9,6 +10,8 @@ const API_URL = process.env.API_URL ?? 'http://127.0.0.1:4000';
 const config: NextConfig = {
   poweredByHeader: false,
   output: 'standalone',
+  // Monorepo: trace dependencies from the repo root so the standalone server is complete.
+  outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
   async rewrites() {
     return [
       { source: '/api/auth/:path*', destination: `${API_URL}/api/auth/:path*` },

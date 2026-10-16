@@ -1,9 +1,18 @@
-import { expo } from '@better-auth/expo';
 import { betterAuth } from 'better-auth';
 import { bearer, emailOTP } from 'better-auth/plugins';
 import type pg from 'pg';
 import type { Config } from './config';
 import type { Mailer } from './mailer';
+
+/** The mobile app's URL scheme (app.json "scheme"). */
+export const APP_ORIGIN = 'shootspot://';
+
+/**
+ * Native apps send no Origin header. The Expo auth client sends `expo-origin: shootspot://`
+ * instead; the auth route (app.ts) copies it into Origin when Origin is absent, as Better Auth's
+ * expo() server plugin would, without pulling Expo and React Native into the API image.
+ */
+export const APP_ORIGIN_HEADER = 'expo-origin';
 
 /**
  * Authentication (ADR 0005): Better Auth inside the API, tables in our Postgres.
@@ -11,9 +20,6 @@ import type { Mailer } from './mailer';
  * bearer tokens, the admin web uses cookies. Admin MFA is enforced by our own admin routes
  * (src/admin/mfa.ts), because email-code sign-in is not challenged by Better Auth's 2FA plugin.
  */
-/** The mobile app's URL scheme (app.json "scheme"). */
-export const APP_ORIGIN = 'shootspot://';
-
 export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer }) {
   const { pool, config, mailer } = deps;
   return betterAuth({
@@ -22,8 +28,7 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     basePath: '/api/auth',
     secret: config.AUTH_SECRET,
     database: pool,
-    // Browser origins (admin web) plus the app's own scheme, which the Expo client sends as
-    // `expo-origin` and the expo() plugin turns into Origin (native apps send no Origin header).
+    // Browser origins (admin web) plus the app's own scheme (see APP_ORIGIN_HEADER).
     trustedOrigins: [...config.TRUSTED_ORIGINS, APP_ORIGIN],
     telemetry: { enabled: false },
     emailAndPassword: { enabled: false },
@@ -76,7 +81,6 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
         },
       }),
       bearer(),
-      expo(),
     ],
   });
 }

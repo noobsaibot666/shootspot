@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@11.22.0",
   "engines": {
-    "node": "\u003e=24"
+    "node": ">=24"
   },
   "scripts": {
     "typecheck": "pnpm -r --if-present typecheck",

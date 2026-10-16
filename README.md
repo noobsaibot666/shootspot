@@ -4,21 +4,24 @@ A mobile-first, community-maintained location scouting library for photographers
 
 ## Status
 
-**Phase 1: technical proof and foundations.** The repo, local stack, image pipeline and camera spike are built. The device testing still to do is listed in [docs/HANDWORK.md](docs/HANDWORK.md).
+**Phase 2 complete: backend and admin foundation.** The API (email-code sign-in, records, feed, projects, reports, export and deletion), the image worker, the admin web (MFA, moderation, audit) and the Docker/NAS stack are built and tested. The first NAS deploy and the Phase 3 mobile work are next. See the [API contract](docs/api.md) and [docs/HANDWORK.md](docs/HANDWORK.md).
 
 Key V1 decisions: EU/UK launch with GDPR · sign-in required · **anonymous location records by default** (attribution is opt-in) · in-app viewing licence only · 16:9 or 1:1 images · Feed · Map · Profile + Camera navigation · native maps per platform · follows system theme · NAS-backed prototype first. See [the decision record](docs/phase-0/01-decision-record.md).
 
 ## Repository
 
-| Path              | What                                                                                     |
-| ----------------- | ---------------------------------------------------------------------------------------- |
-| `apps/mobile`     | Expo SDK 58 / React Native app (currently the camera spike)                              |
-| `services/api`    | Fastify API, PostgreSQL + PostGIS migrations                                             |
-| `services/worker` | Image validation and derivative generation (sharp)                                       |
-| `packages/shared` | Domain rules shared by every app and service: framing, geo, sun, scout schemas           |
-| `infra/local`     | Docker Compose for local PostGIS + SeaweedFS (S3)                                        |
-| `state/`          | [Windows ↔ macOS handoff](state/windows-macos-handoff.md) (iOS builds happen on the Mac) |
-| `docs/`           | Plan, Phase 0 decisions, ADRs, runbooks, threat model, [handwork](docs/HANDWORK.md)      |
+| Path                        | What                                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `apps/mobile`               | Expo SDK 58 / React Native app (currently the camera spike)                              |
+| `apps/admin`                | Next.js admin console: sign-in + TOTP, reports, moderation, uploads, users, audit        |
+| `services/api`              | Fastify API: Better Auth email codes, records, feed, projects, admin; PostGIS migrations |
+| `services/worker`           | pg-boss jobs: image validation and derivatives (sharp), data export, deletion sweep      |
+| `packages/shared`           | Domain rules and the API contract shared by every app and service                        |
+| `infra/local`               | Docker Compose for local PostGIS, SeaweedFS (S3) and Mailpit                             |
+| `infra/docker`, `infra/nas` | Container images and the memory-capped TrueNAS stack                                     |
+| `tools/`                    | App-icon generator, end-to-end smoke test                                                |
+| `state/`                    | [Windows ↔ macOS handoff](state/windows-macos-handoff.md) (iOS builds happen on the Mac) |
+| `docs/`                     | Plan, Phase 0 decisions, ADRs, runbooks, threat model, [handwork](docs/HANDWORK.md)      |
 
 Get started: [docs/runbooks/local-development.md](docs/runbooks/local-development.md).
 

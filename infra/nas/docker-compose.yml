@@ -1,0 +1,117 @@
+# ShootSpot on TrueNAS SCALE (prototype, ADR 0004).
+# Lives at /mnt/Gaia/04_DEV/_personal/shootspot/runtime/compose/ with .env next to it (root, 600).
+# Data goes on the ZFS datasets from docs/runbooks/server-folders.md. Every container has a memory
+# cap: other apps share this NAS and must never be starved.
+#
+# Ports bind to the NAS LAN address only. Phones on the home Wi-Fi reach the API directly; public
+# access comes later through the Cloudflare Tunnel (HANDWORK step 2), which needs no open ports.
+name: shootspot
+
+x-runtime: &runtime
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '3' }
+
+services:
+  db:
+    <<: *runtime
+    image: postgis/postgis:18-3.6
+    user: '568:568'
+    environment:
+      POSTGRES_USER: shootspot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: shootspot
+    command: >
+      postgres -c shared_buffers=128MB -c work_mem=4MB -c maintenance_work_mem=64MB
+               -c max_connections=40 -c effective_cache_size=256MB
+    volumes:
+      - /mnt/Gaia/04_DEV/_personal/shootspot/runtime/postgres:/var/lib/postgresql
+    mem_limit: 512m
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U shootspot -d shootspot']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  s3:
+    <<: *runtime
+    image: chrislusf/seaweedfs:4.48
+    user: '568:568'
+    command: server -dir=/data -s3 -s3.port=8333 -master.volumeSizeLimitMB=1024 -volume.max=0
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set in .env}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set in .env}
+    volumes:
+      - /mnt/Gaia/04_DEV/_personal/shootspot/runtime/seaweedfs:/data
+    ports:
+      # Phones PUT uploads and GET images here via presigned URLs.
+      - '${LAN_IP:?set in .env}:${S3_PORT:-4402}:8333'
+    mem_limit: 256m
+
+  migrate:
+    image: shootspot-api:${TAG:-latest}
+    command:
+      [
+        'node',
+        'node_modules/node-pg-migrate/bin/node-pg-migrate.js',
+        'up',
+        '--migrations-dir',
+        'migrations',
+      ]
+    environment:
+      DATABASE_URL: postgres://shootspot:${POSTGRES_PASSWORD}@db:5432/shootspot
+    depends_on:
+      db: { condition: service_healthy }
+    restart: 'no'
+    mem_limit: 256m
+
+  api:
+    <<: *runtime
+    image: shootspot-api:${TAG:-latest}
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://shootspot:${POSTGRES_PASSWORD}@db:5432/shootspot
+      S3_ENDPOINT: http://s3:8333
+      S3_PUBLIC_ENDPOINT: http://${LAN_IP}:${S3_PORT:-4402}
+      SMTP_URL: ${SMTP_URL:-smtp://mail:1025}
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    ports:
+      - '${LAN_IP}:${API_PORT:-4400}:4000'
+    mem_limit: 256m
+
+  worker:
+    <<: *runtime
+    image: shootspot-worker:${TAG:-latest}
+    environment:
+      DATABASE_URL: postgres://shootspot:${POSTGRES_PASSWORD}@db:5432/shootspot
+      S3_ENDPOINT: http://s3:8333
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET_QUARANTINE: ${S3_BUCKET_QUARANTINE:-shootspot-quarantine}
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-shootspot-public}
+      WORKER_CONCURRENCY: '1'
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 512m
+
+  admin:
+    <<: *runtime
+    image: shootspot-admin:${TAG:-latest}
+    depends_on: [api]
+    ports:
+      - '${LAN_IP}:${ADMIN_PORT:-4401}:3000'
+    mem_limit: 256m
+
+  # Until a real email sender exists (HANDWORK 3.2), sign-in codes land here: http://LAN_IP:4403
+  mail:
+    <<: *runtime
+    image: axllent/mailpit:v1.27
+    profiles: ['devmail']
+    ports:
+      - '${LAN_IP}:${MAIL_UI_PORT:-4403}:8025'
+    mem_limit: 64m

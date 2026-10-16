@@ -4,6 +4,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { adminRoutes } from './admin/routes';
+import { APP_ORIGIN, APP_ORIGIN_HEADER } from './auth';
 import { HttpError, sendError, type AppDeps } from './http/context';
 import { meRoutes } from './me/routes';
 import { projectRoutes } from './projects/routes';
@@ -82,10 +83,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     url: '/api/auth/*',
     async handler(req, reply) {
       const url = new URL(req.url, deps.config.PUBLIC_API_URL);
+      const headers = fromNodeHeaders(req.headers);
+      // The app identifies itself with expo-origin (see APP_ORIGIN_HEADER); only our own scheme
+      // is promoted to Origin, and never over an Origin a browser already sent.
+      if (!headers.has('origin') && headers.get(APP_ORIGIN_HEADER) === APP_ORIGIN) {
+        headers.set('origin', APP_ORIGIN);
+      }
       const response = await deps.auth.handler(
         new Request(url, {
           method: req.method,
-          headers: fromNodeHeaders(req.headers),
+          headers,
           ...(req.body ? { body: JSON.stringify(req.body) } : {}),
         }),
       );

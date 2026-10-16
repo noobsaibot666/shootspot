@@ -19,17 +19,19 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 
 ## Phase 2 — Backend and admin foundation
 
-| #   | Item                                                                                                             | Pri |
-| --- | ---------------------------------------------------------------------------------------------------------------- | --- |
-| 2.1 | Auth, sessions, roles (member/owner), age gate, consent versions                                                 | P0  |
-| 2.2 | Schema: locations (PostGIS), media, scout_notes (short and advanced), record_ownership, projects, reports, audit | P0  |
-| 2.3 | Signed upload, idempotency, processing queue, worker (decode, validate, crop check, EXIF strip, derivatives)     | P0  |
-| 2.4 | Feed/search API (radius, Good for, best light, cursor pagination) with the anonymity response contract           | P0  |
-| 2.5 | Projects API; My records API; attribution toggle                                                                 | P0  |
-| 2.6 | Sun azimuth/elevation at capture computed server-side                                                            | P1  |
-| 2.7 | Admin web: sign-in/MFA, role-gated shell, reports queue, hide/restore/remove, audit log                          | P0  |
-| 2.8 | Data export and deletion workflow (stateful job)                                                                 | P0  |
-| 2.9 | Logs, metrics, alerts, upload health view                                                                        | P1  |
+| #    | Item                                                                                        | Pri | Status                                                                                                                                  |
+| ---- | ------------------------------------------------------------------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.1  | Auth, sessions, roles (member/owner), age gate, consent versions                            | P0  | **Done**: email-code sign-in, bearer and cookie sessions, onboarding with versioned consents                                            |
+| 2.2  | Schema: locations (PostGIS), media, scout notes, record_ownership, projects, reports, audit | P0  | **Done**: scout notes folded into `locations` (1:1); see migration 0002                                                                 |
+| 2.3  | Signed upload, idempotency, processing queue, worker                                        | P0  | **Done**: presigned PUT, draftId idempotency, pg-boss, retry and failed states                                                          |
+| 2.4  | Feed/search API with the anonymity contract                                                 | P0  | **Done**: radius, tags, keyset cursor; key-set test                                                                                     |
+| 2.5  | Projects API; My records API; attribution toggle                                            | P0  | **Done**                                                                                                                                |
+| 2.6  | Sun azimuth/elevation at capture, server-side                                               | P1  | **Done** (stored on publish)                                                                                                            |
+| 2.7  | Admin web: sign-in/MFA, role-gated shell, reports queue, moderation, audit log              | P0  | **Done**, plus users, upload health and media retry                                                                                     |
+| 2.8  | Data export and deletion workflow                                                           | P0  | **Done**: export archive; deletion with grace period and a 15-minute sweep                                                              |
+| 2.9  | Logs, metrics, alerts, upload health view                                                   | P1  | Partial: admin summary and upload health done; **alerting moved to Phase 5**                                                            |
+| 2.10 | Docker images and NAS stack definition                                                      | P0  | **Done**: `infra/docker/Dockerfile`, `infra/nas/docker-compose.yml` (memory-capped). **First NAS deploy pending** (owner runs over SSH) |
+| 2.11 | CI integration tests (PostGIS and SeaweedFS service containers)                             | P0  | **Done**                                                                                                                                |
 
 ## Phase 3 — Mobile: capture and publish
 
