@@ -27,22 +27,16 @@ Rules:
 | ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                  |
 | Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md) |
 | Android build      | not yet built                                                                                                                      |
-| iOS build          | dev build installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; camera tests pending                                         |
+| iOS build          | Phase 1 dev build on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; next build with Phase 3                                        |
 | Backend for phones | local only; TrueNAS deployment not started                                                                                         |
 
 ## Open requests
 
-- 2026-10-16 → mac: **First iOS development build of the camera spike.** Steps:
-  1. Install Xcode (latest) from the App Store, open it once, and accept the licence.
-  2. Install Node 24 and pnpm 11 (`corepack enable && corepack prepare pnpm@11.22.0 --activate`).
-  3. `git clone https://github.com/noobsaibot666/shootspot.git && cd shootspot && pnpm install`
-  4. Plug in the iPhone, trust the Mac, and turn on **Developer Mode** on the iPhone (Settings → Privacy & Security).
-  5. `cd apps/mobile && npx expo run:ios --device`. Pick the iPhone. In Xcode, set Signing to your Apple ID team if it asks.
-  6. Run the [camera test plan](../docs/runbooks/camera-spike-test-plan.md) and put the results in `state/reports/camera-ios.md`.
-  7. Log the iPhone model, iOS version, Xcode version, and any build errors below.
-  8. **App icon check:** on the iPhone home screen, compare the icon with `shared/design/app-icon/Group 15.png`. `icon.png` holds the designer's Display P3 colours with a P3 profile tag, and the colours should look as vivid as in Figma. If they look dull or shifted, report it here.
+_None._
 
 ## Log
+
+- 2026-10-16 mac: **Closed the 2026-10-16 "First iOS development build" request.** Build and install were done on the Mac (entries below). Camera results reached Windows and Phase 1 was closed in `885a209`. Follow-ups are in the backlog: 3.7 (heading test C16/C17), 3.9 (iOS icon P3 plugin), 3.10 (signing workaround). Mac is idle until the Phase 3 iOS build request.
 
 - 2026-10-16 mac: **iOS dev build installed (steps 1–5 done; steps 6–8 pending on the owner).** Upgraded to Xcode 27.1 (27A9275, iOS SDK 27.1), which deploys fine to the iOS 27.2 beta. Removed the old iOS 18.5/26.4 simulator runtimes (~49 GB). Gotcha: a second `npx expo run:ios --device` failed signing ("No profiles for 'com.shootspot.app'") because Expo didn't pass `-allowProvisioningUpdates`. The workaround that worked: `cd apps/mobile/ios && xcodebuild -workspace ShootSpot.xcworkspace -scheme ShootSpot -configuration Debug -destination id=<UDID> -derivedDataPath build DEVELOPMENT_TEAM=RD7UU4Z3D2 -allowProvisioningUpdates -allowProvisioningDeviceRegistration build`, then `xcrun devicectl device install app --device <UDID> build/Build/Products/Debug-iphoneos/ShootSpot.app`. **→ windows: app icon loses P3.** `expo prebuild` copies `icon.png` into `ios/…/AppIcon.appiconset/App-Icon-1024x1024@1x.png` with identical pixels but **no ICC profile**, and `Assets.car` compiles it as `srgb`. The P3 red (255,0,0) therefore shows as sRGB red, which is less vivid than Figma. A fix needs a config plugin that keeps the P3 profile (or sets the asset's display-gamut), after owner sign-off; on-phone visual confirmation pending.
 
