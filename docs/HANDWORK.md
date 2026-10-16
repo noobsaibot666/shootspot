@@ -120,6 +120,7 @@ Claude uses the output to create the project folders in [server-folders.md](runb
 
 - [x] Output sent
 - [x] Project folders created (datasets `Gaia/04_DEV/shootspot-runtime` and `-backups`)
+- [x] ShootSpot deployed on the NAS (home network only); see [truenas-deployment.md](runbooks/truenas-deployment.md)
 
 ### 2.2 Use an SSH key instead of a password â± 5 min
 
@@ -159,7 +160,7 @@ Choose one: **Backblaze B2** (EU region) or **Hetzner Storage Box**. It costs a 
 
 - [ ] **3.1 Approve the login system.** Claude proposes Zitadel ([why](adr/0005-authentication.md)) and will ask before starting.
 - [ ] **3.2 Email sender** â± 15 min. Create an account with Postmark, Brevo or Scaleway, and verify your domain. It sends sign-up and account emails.
-- [ ] **3.3 Admin 2-factor.** Have an authenticator app or passkey ready for your admin login.
+- [x] **3.3 Admin 2-factor.** Done: owner `alanxalves@me.com` signed in on the NAS admin web (`http://192.168.178.146:4401`) with an authenticator.
 - [ ] **3.4 Google Maps key** ðŸ’¶ â± 20 min. Android maps need it. Claude will walk you through the Google Cloud setup, including a spending cap.
 - [x] **3.5 Logo / app icon.** Done. Generated from `shared/design/app-icon/Group 15@4x.png`; previews are in `shared/design/app-icon/generated/`. If the logo changes, drop the new export there and ask Claude to re-run `tools/make-icons.mjs`.
 - [ ] **3.6 Review the photo tags and note fields** in [02-v1-scope-and-flows.md Â§3](phase-0/02-v1-scope-and-flows.md#3-scout-record-fields).
