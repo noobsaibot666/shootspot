@@ -10,14 +10,15 @@ Key V1 decisions: EU/UK launch with GDPR · sign-in required · **anonymous loca
 
 ## Repository
 
-| Path              | What                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------- |
-| `apps/mobile`     | Expo SDK 58 / React Native app (currently the camera spike)                         |
-| `services/api`    | Fastify API, PostgreSQL + PostGIS migrations                                        |
-| `services/worker` | Image validation and derivative generation (sharp)                                  |
-| `packages/shared` | Domain rules shared by every app and service: framing, geo, sun, scout schemas      |
-| `infra/local`     | Docker Compose for local PostGIS + SeaweedFS (S3)                                   |
-| `docs/`           | Plan, Phase 0 decisions, ADRs, runbooks, threat model, [handwork](docs/HANDWORK.md) |
+| Path              | What                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| `apps/mobile`     | Expo SDK 58 / React Native app (currently the camera spike)                              |
+| `services/api`    | Fastify API, PostgreSQL + PostGIS migrations                                             |
+| `services/worker` | Image validation and derivative generation (sharp)                                       |
+| `packages/shared` | Domain rules shared by every app and service: framing, geo, sun, scout schemas           |
+| `infra/local`     | Docker Compose for local PostGIS + SeaweedFS (S3)                                        |
+| `state/`          | [Windows ↔ macOS handoff](state/windows-macos-handoff.md) (iOS builds happen on the Mac) |
+| `docs/`           | Plan, Phase 0 decisions, ADRs, runbooks, threat model, [handwork](docs/HANDWORK.md)      |
 
 Get started: [docs/runbooks/local-development.md](docs/runbooks/local-development.md).
 

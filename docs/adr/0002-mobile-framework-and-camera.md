@@ -29,4 +29,4 @@ We develop on Windows, so iOS binaries need a cloud build or a Mac.
 ## Consequences
 
 - The camera spike app runs only in a **development build**, not in Expo Go.
-- Testing needs an Expo account and, for iPhones, an Apple Developer membership. See [HANDWORK.md](../HANDWORK.md).
+- Android development builds come from EAS on the Windows machine. **iOS builds are made locally on the macOS machine** (`npx expo run:ios --device`; a free Apple ID is enough for on-device testing). The Apple Developer Program is needed only for TestFlight and the App Store. The two machines coordinate through [state/windows-macos-handoff.md](../../state/windows-macos-handoff.md).

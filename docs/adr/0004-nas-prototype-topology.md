@@ -27,4 +27,4 @@ Decision D-20 puts the prototype on a container-capable TrueNAS. We build and te
 
 ## Open inputs needed from you
 
-TrueNAS edition and version, CPU architecture, a dataset/pool for the app, a domain name, and a Cloudflare account. See [HANDWORK.md](../HANDWORK.md).
+Edition confirmed: **TrueNAS SCALE**, reached at `alan@172.16.1.1` on the LAN. Still needed: the version (Docker-based apps need 24.10 or later), CPU architecture, the pool for the app, a domain name, and a Cloudflare account. See [HANDWORK.md](../HANDWORK.md) Step 2.

@@ -4,7 +4,7 @@
 
 ## Setup
 
-1. Install the development build (see [HANDWORK.md](../HANDWORK.md) H3/H4).
+1. Install the development build (see [HANDWORK.md](../HANDWORK.md) 1.2 for Android, and 1.3 for iPhone on the Mac).
 2. On the PC: `pnpm --filter @shootspot/mobile start`, then open the project from the dev build.
 3. Do the tests **outdoors** so GPS and the compass behave as they do in the field.
 4. For the heading test, use a reference: a compass app with calibration done, or a landmark whose bearing you know from a map.

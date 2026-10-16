@@ -1,6 +1,6 @@
 # TrueNAS deployment (draft)
 
-**Status:** Outline. I'll turn each step into exact commands once [HANDWORK.md](../HANDWORK.md) H6–H10 are answered. You run them over SSH, one block at a time, and paste the output back to me.
+**Status:** Outline. I'll turn each step into exact commands once [HANDWORK.md](../HANDWORK.md) Step 2 is answered. Host: **TrueNAS SCALE at `alan@172.16.1.1`** (LAN only). You run them over SSH, one block at a time, and paste the output back to me.
 
 ## Rules
 
