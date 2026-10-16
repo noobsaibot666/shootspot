@@ -35,7 +35,7 @@ export default function Publish() {
   const t = useTheme();
   const { width } = useWindowDimensions();
   const { state: session } = useSession();
-  const { state, update, reset } = useCapture();
+  const { state, update } = useCapture();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { photo, pin } = state;
@@ -101,8 +101,11 @@ export default function Publish() {
       // Saved on the phone first: nothing is lost if the network drops from here on.
       await saveDraft(draft, photo!.uri, { width: photo!.width, height: photo!.height });
       const result = await submitDraft(draft.draftId);
-      reset();
-      router.dismissAll();
+      // Closing the capture modal discards its state (CaptureProvider unmounts). Resetting first
+      // would re-render the screens underneath with an empty capture (iOS console report #1).
+      // dismissAll() would only return to the camera (first screen of the capture stack);
+      // dismissTo('/home') closes the whole capture modal.
+      router.dismissTo('/home');
       if (result?.recordId && result.state === 'processing')
         router.push(`/records/${result.recordId}`);
     } catch (err) {

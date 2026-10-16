@@ -1,6 +1,6 @@
 import { MIN_SHORT_EDGE } from '@shootspot/shared';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCapture } from '../../capture/context';
@@ -12,10 +12,9 @@ export default function Review() {
   const { width } = useWindowDimensions();
   const { state } = useCapture();
   const photo = state.photo;
-  if (!photo) {
-    router.replace('/capture');
-    return null;
-  }
+  // No photo (e.g. state was reset after publishing while this screen was still mounted):
+  // redirect declaratively. Navigating during render is a React error.
+  if (!photo) return <Redirect href="/capture" />;
   const tooSmall = Math.min(photo.width, photo.height) < MIN_SHORT_EDGE;
   const h = width / (photo.width / photo.height);
 
