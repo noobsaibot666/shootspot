@@ -14,7 +14,17 @@ const auth = createAuth({ pool, config, mailer });
 const queue = await createJobQueue(config.DATABASE_URL);
 
 // Idempotent: creates the two buckets on a fresh store (first NAS start), otherwise no-op.
-await storage.ensureBuckets();
+// Storage may still be starting (container start order, NAS reboot): wait up to ~1 minute.
+for (let attempt = 1; ; attempt++) {
+  try {
+    await storage.ensureBuckets();
+    break;
+  } catch (err) {
+    if (attempt >= 30) throw err;
+    console.warn(`storage not ready (attempt ${attempt}), retrying in 2 s`);
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
 
 const app = await buildApp({ config, pool, auth, storage, queue, logger: true });
 
