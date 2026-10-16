@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHead } from '@/components/PageHead';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/ConfirmAction';
 import { api, fmtDate } from '@/lib/api';
@@ -26,7 +27,10 @@ export default function UploadsPage() {
 
   return (
     <>
-      <h1>Upload health</h1>
+      <PageHead
+        title="Uploads"
+        sub="Photos that failed processing or are stuck. Retry re-queues them; the error explains what went wrong."
+      />
       {!data ? (
         <p className="muted">Loading…</p>
       ) : (

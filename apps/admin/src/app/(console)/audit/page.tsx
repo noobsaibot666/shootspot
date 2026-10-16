@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHead } from '@/components/PageHead';
 import { useEffect, useState } from 'react';
 import { api, fmtDate } from '@/lib/api';
 
@@ -30,7 +31,7 @@ export default function AuditPage() {
 
   return (
     <>
-      <h1>Audit log</h1>
+      <PageHead title="Audit log" sub="Every admin action, who did it, and why. Read-only." />
       <p className="muted">Every admin action and every view of who created a record.</p>
       <table>
         <thead>

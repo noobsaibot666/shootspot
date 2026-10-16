@@ -47,7 +47,7 @@ export default function Mfa() {
   if (state === 'forbidden') {
     return (
       <main className="center">
-        <div className="card narrow">
+        <div className="auth-card narrow">
           <h1>No admin access</h1>
           <p className="muted">This account is not an administrator.</p>
         </div>
@@ -56,9 +56,11 @@ export default function Mfa() {
   }
   return (
     <main className="center">
-      <form className="card narrow" onSubmit={verify}>
+      <form className="auth-card narrow" onSubmit={verify}>
         <p className="label">Two-factor authentication</p>
-        <h1>{state === 'enrol' ? 'Set up your authenticator' : 'Enter your code'}</h1>
+        <h1 style={{ marginBottom: 20 }}>
+          {state === 'enrol' ? 'Set up your authenticator' : 'Enter your code'}
+        </h1>
         {state === 'enrol' && qr && (
           <>
             <p className="muted">

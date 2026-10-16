@@ -37,9 +37,9 @@ export default function SignIn() {
 
   return (
     <main className="center">
-      <form className="card narrow" onSubmit={submit}>
+      <form className="auth-card narrow" onSubmit={submit}>
         <p className="label">ShootSpot Admin</p>
-        <h1>Sign in</h1>
+        <h1 style={{ marginBottom: 20 }}>Sign in</h1>
         {step === 'email' ? (
           <label>
             Email

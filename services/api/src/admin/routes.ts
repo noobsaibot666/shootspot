@@ -124,6 +124,103 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
     return rows[0];
   });
 
+  /**
+   * Pilot metrics (plan Phase 6): aggregate numbers over a window, no per-person data. Upload
+   * success counts media created in the window that reached a final state.
+   */
+  app.get('/admin/v1/metrics', async (req) => {
+    await requireAdmin(deps, req);
+    const q = z
+      .object({ days: z.coerce.number().int().min(1).max(90).default(7) })
+      .parse(req.query);
+    const { rows } = await pool.query(
+      `with w as (select now() - make_interval(days => $1) as since)
+       select
+         (select count(*)::int from auth_users, w where "createdAt" >= w.since) as new_members,
+         (select count(distinct user_id)::int from record_ownership, w where created_at >= w.since) as active_creators,
+         (select count(*)::int from locations, w where created_at >= w.since) as records_created,
+         (select count(*)::int from locations, w where published_at >= w.since) as published,
+         (select count(*)::int from locations, w where created_at >= w.since and capture_origin = 'import') as imported,
+         (select count(*)::int from media, w where created_at >= w.since and state = 'ready') as media_ready,
+         (select count(*)::int from media, w where created_at >= w.since and state = 'failed') as media_failed,
+         (select count(*)::int from media, w where created_at >= w.since and state = 'rejected') as media_rejected,
+         (select percentile_cont(0.5) within group (order by extract(epoch from published_at - created_at))
+            from locations, w where published_at >= w.since) as median_publish_seconds,
+         (select count(*)::int from reports, w where created_at >= w.since) as reports_opened,
+         (select percentile_cont(0.5) within group (order by extract(epoch from resolved_at - created_at) / 3600)
+            from reports, w where resolved_at >= w.since) as median_report_hours,
+         (select count(*)::int from data_exports, w where created_at >= w.since) as exports,
+         (select count(*)::int from account_deletions, w where requested_at >= w.since) as deletions_requested`,
+      [q.days],
+    );
+    const r = rows[0];
+    const finished = r.media_ready + r.media_failed + r.media_rejected;
+    return {
+      days: q.days,
+      ...r,
+      median_publish_seconds:
+        r.median_publish_seconds == null ? null : Math.round(r.median_publish_seconds),
+      median_report_hours:
+        r.median_report_hours == null ? null : Math.round(r.median_report_hours * 10) / 10,
+      upload_success_rate: finished ? r.media_ready / finished : null,
+    };
+  });
+
+  /**
+   * Locations library for moderation browsing: newest first, filtered by status, as a photo grid.
+   * Deliberately no creator data here (D-06); the per-record view audits creator access.
+   */
+  app.get('/admin/v1/records', async (req) => {
+    await requireAdmin(deps, req);
+    const q = z
+      .object({
+        status: z
+          .enum(['published', 'hidden', 'processing', 'rejected', 'removed', 'all'])
+          .default('published'),
+        before: z.iso.datetime({ offset: true }).optional(),
+        limit: z.coerce.number().int().min(1).max(60).default(40),
+      })
+      .parse(req.query);
+    const statuses =
+      q.status === 'all'
+        ? ['pending_media', 'processing', 'published', 'rejected', 'hidden', 'removed']
+        : q.status === 'processing'
+          ? ['pending_media', 'processing']
+          : [q.status];
+    const { rows } = await pool.query(
+      `select l.id, l.label, l.status, l.created_at, l.capture_origin,
+              m.id as media_id, m.state as media_state, m.width, m.height,
+              (select count(*)::int from reports r where r.location_id = l.id and r.status = 'open') as open_reports
+       from locations l left join media m on m.location_id = l.id
+       where l.status = any($1::text[]) and ($2::timestamptz is null or l.created_at < $2)
+       order by l.created_at desc limit $3`,
+      [statuses, q.before ?? null, q.limit],
+    );
+    return {
+      items: await Promise.all(
+        rows.map(async (r) => ({
+          id: r.id,
+          label: r.label,
+          status: r.status,
+          origin: r.capture_origin,
+          createdAt: r.created_at.toISOString(),
+          openReports: r.open_reports,
+          width: r.width,
+          height: r.height,
+          image:
+            r.media_state === 'ready'
+              ? await storage.presignDownload(
+                  'public',
+                  objectKey.derivative(r.media_id, 'feed'),
+                  900,
+                )
+              : null,
+        })),
+      ),
+      nextBefore: rows.length === q.limit ? rows.at(-1)!.created_at.toISOString() : null,
+    };
+  });
+
   app.get('/admin/v1/reports', async (req) => {
     await requireAdmin(deps, req);
     const q = z

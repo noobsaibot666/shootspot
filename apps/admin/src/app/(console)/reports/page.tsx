@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ConfirmAction, StatusBadge } from '@/components/ConfirmAction';
+import { ConfirmAction, Segmented, StatusBadge } from '@/components/ConfirmAction';
+import { PageHead } from '@/components/PageHead';
 import { api, fmtDate } from '@/lib/api';
 
 interface Report {
@@ -34,21 +35,24 @@ export default function ReportsPage() {
 
   return (
     <>
-      <h1>Reports</h1>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <label style={{ margin: 0, maxWidth: 200 }}>
-          <span className="label">Status</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="open">Open</option>
-            <option value="actioned">Actioned</option>
-            <option value="dismissed">Dismissed</option>
-          </select>
-        </label>
-      </div>
+      <PageHead
+        title="Reports"
+        sub="Member reports, oldest first. Every action needs a reason and is written to the audit log. Target: within 72 hours."
+      >
+        <Segmented<typeof status>
+          value={status}
+          options={[
+            { key: 'open', label: 'Open' },
+            { key: 'actioned', label: 'Actioned' },
+            { key: 'dismissed', label: 'Dismissed' },
+          ]}
+          onChange={setStatus}
+        />
+      </PageHead>
       {!items ? (
         <p className="muted">Loading…</p>
       ) : items.length === 0 ? (
-        <div className="card muted">No {status} reports.</div>
+        <div className="empty">No {status} reports.</div>
       ) : (
         <table>
           <thead>

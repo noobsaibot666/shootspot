@@ -698,6 +698,53 @@ describe('admin (server-side role + MFA)', () => {
   });
 });
 
+describe('admin library and pilot metrics', () => {
+  it('lists records without creator data and reports aggregate metrics', async () => {
+    const { headers: adminHeaders } = await admin(env, 'library-admin@example.com');
+    const m = await member(env, 'library-member@example.com');
+    const created = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: m,
+      payload: draftBody({
+        capture: {
+          capturedAt: '2026-05-01T16:42:10.000Z',
+          altitudeM: null,
+          focalLength35mm: null,
+          headingDeg: null,
+          origin: 'import',
+        },
+      }),
+    });
+    const id = created.json().recordId;
+
+    const lib = await env.app.inject({
+      method: 'GET',
+      url: '/admin/v1/records?status=processing',
+      headers: adminHeaders,
+    });
+    expect(lib.statusCode).toBe(200);
+    const item = lib.json().items.find((r: { id: string }) => r.id === id);
+    expect(item).toMatchObject({ status: 'pending_media', origin: 'import', image: null });
+    // Anonymity (D-06): the library never carries who created a record.
+    expect(JSON.stringify(lib.json())).not.toMatch(/library-member|user_?id|creator/i);
+
+    const metrics = await env.app.inject({
+      method: 'GET',
+      url: '/admin/v1/metrics?days=7',
+      headers: adminHeaders,
+    });
+    expect(metrics.statusCode).toBe(200);
+    expect(metrics.json().records_created).toBeGreaterThanOrEqual(1);
+    expect(metrics.json().imported).toBeGreaterThanOrEqual(1);
+
+    // Members can't reach either.
+    for (const url of ['/admin/v1/records', '/admin/v1/metrics']) {
+      expect((await env.app.inject({ method: 'GET', url, headers: m })).statusCode).toBe(403);
+    }
+  });
+});
+
 describe('admin-managed tags (D-25)', () => {
   it('add, use, relabel and hide a tag without breaking existing records', async () => {
     const { headers: adminHeaders } = await admin(env, 'tags-admin@example.com');

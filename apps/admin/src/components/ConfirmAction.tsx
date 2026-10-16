@@ -85,6 +85,30 @@ export function StatusBadge({ value }: { value: string }) {
     ? 'bad'
     : ['ready', 'published', 'actioned'].includes(value)
       ? 'good'
-      : '';
-  return <span className={`badge ${tone}`}>{value.replace('_', ' ')}</span>;
+      : ['processing', 'pending_media', 'queued', 'awaiting_upload'].includes(value)
+        ? 'warn'
+        : '';
+  return <span className={`badge ${tone}`}>{value.replaceAll('_', ' ')}</span>;
+}
+
+/** Segmented filter (Savee-like pill switch) for status tabs. */
+export function Segmented<K extends string>(props: {
+  value: K;
+  options: { key: K; label: string }[];
+  onChange(k: K): void;
+}) {
+  return (
+    <div className="segmented" role="group">
+      {props.options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={o.key === props.value}
+          onClick={() => props.onChange(o.key)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHead } from '@/components/PageHead';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/ConfirmAction';
 import { api } from '@/lib/api';
@@ -51,7 +52,10 @@ export default function TagsPage() {
 
   return (
     <>
-      <h1>Tags</h1>
+      <PageHead
+        title="Tags"
+        sub="The Good for and Best light lists in the app. Rename, reorder or hide; keys are permanent (D-25)."
+      />
       <p className="muted">
         Labels, order and visibility update in the app immediately. A tag&apos;s key never changes,
         and hiding a tag keeps it on existing locations; it just can&apos;t be chosen for new ones.

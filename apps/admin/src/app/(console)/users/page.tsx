@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHead } from '@/components/PageHead';
 import { useCallback, useEffect, useState } from 'react';
 import { ConfirmAction } from '@/components/ConfirmAction';
 import { api, fmtDate } from '@/lib/api';
@@ -27,7 +28,10 @@ export default function UsersPage() {
 
   return (
     <>
-      <h1>Users</h1>
+      <PageHead
+        title="Users"
+        sub="Members and owners. Role changes and sign-out-everywhere need a reason and are audited."
+      />
       <label style={{ maxWidth: 320 }}>
         <span className="label">Search email</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} />
