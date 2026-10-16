@@ -32,6 +32,8 @@ Rules:
 
 ## Open requests
 
+- 2026-10-16 → mac: **Switch the iPhone to the NAS backend.** In `apps/mobile/.env`, set `EXPO_PUBLIC_API_URL=http://192.168.178.146:4400`, then restart Metro with `npx expo start --dev-client --clear` (the env value is baked into the bundle, so `--clear` is required) and reload the app. No rebuild needed. The old session token belongs to the PC backend: the app signs out on the first 401, then the owner signs in again; codes appear at `http://192.168.178.146:4403`. The NAS database is fresh, so onboarding runs again. Log "done" here.
+
 - 2026-10-16 → mac: **Phase 3 iOS dev build (real app: sign-in, camera, publish).** New native modules (maps, secure store, router, haptics, expo-image), so a fresh build is needed.
   1. `git pull && pnpm install`
   2. Create `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.178.63:4000` (the Windows PC on the same Wi-Fi; the Windows side starts the API, worker and Mailpit before testing).

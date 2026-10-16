@@ -1,4 +1,4 @@
-﻿# Your to-do list
+# Your to-do list
 
 These are the steps only you can do: accounts, phones, the NAS, payments and legal. Tick a box when a step is done, or just tell Claude, and the list will be kept up to date.
 
@@ -72,7 +72,7 @@ The app now has sign-in, the new camera, the map pin, notes and publishing. It c
 2. In `services/api/.env`, set `S3_PUBLIC_ENDPOINT=http://192.168.178.63:8333`.
 3. Copy `apps/mobile/.env.example` to `apps/mobile/.env`.
 
-**Each test session:** run `pnpm dev:infra`, `pnpm dev:api`, `pnpm dev:worker` and `pnpm --filter @shootspot/mobile start`. Sign-in codes appear in Mailpit on this PC: http://127.0.0.1:8025.
+**Each test session:** run `pnpm dev:infra`, `pnpm dev:api`, `pnpm dev:worker` and `pnpm --filter @shootspot/mobile start`. The app now uses the **NAS backend** (`http://192.168.178.146:4400`); sign-in codes appear at http://192.168.178.146:4403. To go back to the PC backend, set `apps/mobile/.env` to the PC address and run the local services.
 
 **Builds:**
 
