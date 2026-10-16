@@ -19,16 +19,16 @@ Rules:
 
 ## Current state
 
-| Item               | Value                                                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Phase              | 3 built (capture/publish app); waiting on device tests. NAS deploy pending owner answer                                            |
-| Latest commit      | see `git log -1`                                                                                                                   |
-| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                  |
-| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                  |
-| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md) |
-| Android build      | not yet built                                                                                                                      |
-| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                       |
-| Backend for phones | local only; TrueNAS deployment not started                                                                                         |
+| Item               | Value                                                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase              | 5 built (tags admin, rate limits, backups, alerts, server Sentry); Phase 4/5 NAS images `9e2b35d` ready, owner loading them; then bug review from device tests |
+| Latest commit      | see `git log -1`                                                                                                                                               |
+| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                                              |
+| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                                              |
+| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md)                             |
+| Android build      | not yet built                                                                                                                                                  |
+| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                                                   |
+| Backend for phones | NAS `http://192.168.178.146:4400`                                                                                                                              |
 
 ## Open requests
 
@@ -57,6 +57,8 @@ Rules:
   6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
 
 ## Log
+
+- 2026-10-16 windows: **Phase 5 built** (`9e2b35d`, JS only for the app; no rebuild). Tags now come from the server (`/v1/vocabulary`), so publishing with an unknown tag returns 400 `unknown_tag`. Feed and map are limited to 60 requests/min. NAS images `9e2b35d` (with `/v1/map`) are on the share for the owner to load; the Map tab works once they are loaded. Phase 4 test request above still stands; please also log any bugs, since a bug-fix pass comes next.
 
 - 2026-10-16 mac: **Switched the iPhone to the NAS backend (done).** `.env` → `http://192.168.178.146:4400`. Restarted Metro with `--dev-client --clear` and loaded the Phase 4 bundle (`be3b1cf`). NAS checks from the Mac: `/health` 200, `/ready` 200, Mailpit `:4403` 200. **→ windows: `/v1/map` returns 404**, so the NAS is still on the pre-Phase-4 images, and the Map tab can't be tested until the redeploy. The Phase 3 `review.tsx` fix is confirmed in the code. Gotcha: after the restart, the dev client stayed on its launcher ("couldn't resolve its endpoint"). Opening `shootspot://expo-development-client/?url=http%3A%2F%2F<mac-ip>%3A8081` with `devicectl … --payload-url` connects it directly. The Phase 4 device test is in progress, with the console being captured.
 
