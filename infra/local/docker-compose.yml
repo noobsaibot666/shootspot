@@ -1,0 +1,38 @@
+# Local development stack: PostGIS + S3-compatible object storage (SeaweedFS).
+# The API and worker run on the host with `pnpm dev:api` for fast reloads.
+# Credentials here are for local development only; never reuse them on the NAS.
+name: shootspot-dev
+
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_USER: shootspot
+      POSTGRES_PASSWORD: shootspot-dev
+      POSTGRES_DB: shootspot
+    ports:
+      # 55432 on the host: 5432 is often reserved by Windows (Hyper-V port exclusions).
+      - '127.0.0.1:55432:5432'
+    volumes:
+      # Postgres 18 images keep data under /var/lib/postgresql/<major>/docker
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U shootspot -d shootspot']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  s3:
+    image: chrislusf/seaweedfs:4.48
+    command: server -dir=/data -s3 -s3.port=8333 -master.volumeSizeLimitMB=1024
+    environment:
+      AWS_ACCESS_KEY_ID: shootspot-dev
+      AWS_SECRET_ACCESS_KEY: shootspot-dev-secret
+    ports:
+      - '127.0.0.1:8333:8333'
+    volumes:
+      - s3-data:/data
+
+volumes:
+  db-data:
+  s3-data:

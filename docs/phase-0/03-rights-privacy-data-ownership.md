@@ -19,49 +19,49 @@ ShootSpot publishes **places**, not people. Each record is anonymous unless its 
 
 ## 3. Attribution opt-in
 
-- Per-record toggle, default off (*Proposed*). It can be turned off at any time, and attribution then disappears immediately.
+- Per-record toggle, default off (_Proposed_). It can be turned off at any time, and attribution then disappears immediately.
 - When it is on, the record shows the display name, plus the optional portfolio link and social handle.
-- Responsibility notice (draft, *Counsel*): *"Showing your name links you to this place and the time you were here. You are responsible for this choice. We recommend keeping your locations anonymous."*
+- Responsibility notice (draft, _Counsel_): _"Showing your name links you to this place and the time you were here. You are responsible for this choice. We recommend keeping your locations anonymous."_
 - Store the acceptance with the notice version and a timestamp.
 
 ## 4. Image license (V1)
 
-- Members grant ShootSpot a **non-exclusive, worldwide, royalty-free license to host, process, resize, and display** the image inside the app to signed-in members. The license continues for records retained after account deletion (D-12). *Counsel* must confirm, and must check whether the future paid export (D-11) needs the license wording to cover it now.
+- Members grant ShootSpot a **non-exclusive, worldwide, royalty-free license to host, process, resize, and display** the image inside the app to signed-in members. The license continues for records retained after account deletion (D-12). _Counsel_ must confirm, and must check whether the future paid export (D-11) needs the license wording to cover it now.
 - Other members get **no** download, reuse, or redistribution rights. The app provides no download action. Screenshots cannot be prevented, and the terms should say so.
 - Members confirm they own the image or have the right to grant the license.
 - Each license version is stored. Every media record references the version accepted at upload.
 
 ## 5. Data ownership model
 
-| Data | Owner/controller | Visible to | On account deletion |
-|---|---|---|---|
-| Account (email, auth ids, sessions) | Member | Member, admins (limited) | Purged |
-| Profile (name, surname, bio, portfolio, social handle) | Member | Member only; on attributed records, the display name and links only | Purged |
-| Consents | Member/ShootSpot | Member, admins | Kept as minimal legal evidence, pseudonymized (*Counsel*) |
-| Location record + media + scouting data | Licensed to ShootSpot | All signed-in members (anonymous) | **Retained anonymously**; the creator link is destroyed |
-| Creator ↔ record link | ShootSpot (private) | Creator, admins (audited) | **Deleted** |
-| Projects + saved items | Member | Member only | Purged |
-| Reports filed | ShootSpot | Admins | Reporter identity removed |
-| Admin audit events | ShootSpot | Owner role | Retained; personal fields pseudonymized |
+| Data                                                   | Owner/controller      | Visible to                                                          | On account deletion                                       |
+| ------------------------------------------------------ | --------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| Account (email, auth ids, sessions)                    | Member                | Member, admins (limited)                                            | Purged                                                    |
+| Profile (name, surname, bio, portfolio, social handle) | Member                | Member only; on attributed records, the display name and links only | Purged                                                    |
+| Consents                                               | Member/ShootSpot      | Member, admins                                                      | Kept as minimal legal evidence, pseudonymized (_Counsel_) |
+| Location record + media + scouting data                | Licensed to ShootSpot | All signed-in members (anonymous)                                   | **Retained anonymously**; the creator link is destroyed   |
+| Creator ↔ record link                                  | ShootSpot (private)   | Creator, admins (audited)                                           | **Deleted**                                               |
+| Projects + saved items                                 | Member                | Member only                                                         | Purged                                                    |
+| Reports filed                                          | ShootSpot             | Admins                                                              | Reporter identity removed                                 |
+| Admin audit events                                     | ShootSpot             | Owner role                                                          | Retained; personal fields pseudonymized                   |
 
 **Model rule (plan §7):** creator identity sits in a separate `record_ownership` table and is not a column on `locations`. Deletion then removes that row and leaves the community record intact.
 
 ## 6. Account deletion workflow
 
-1. The member requests deletion. A 7-day grace period applies (*Proposed*) and is cancelled by signing in.
+1. The member requests deletion. A 7-day grace period applies (_Proposed_) and is cancelled by signing in.
 2. Access is disabled and all sessions and tokens are revoked.
 3. Data export is offered before final deletion.
 4. Personal data is purged: profile, projects, account, and ownership links. Attribution is removed from all records.
 5. Local drafts are cleared on next app launch.
-6. Completion is logged with no personal data. Backups expire on their normal retention cycle (*Proposed*: 35 days), and the privacy notice states this.
+6. Completion is logged with no personal data. Backups expire on their normal retention cycle (_Proposed_: 35 days), and the privacy notice states this.
 
 ## 7. Location safety policy
 
 - **Prohibited:** private residences and gardens, locations reachable only by trespassing, critical infrastructure and military sites, and places where photography is illegal.
 - Access type (advanced field) flags permission-needed and restricted places, with a reminder that access is the visitor's responsibility.
-- Pins are stored and shown at full precision, as scouting requires. Reports can lead to removal or hiding. Admins may blur a pin to about 500 m for sensitive categories (*Proposed*).
+- Pins are stored and shown at full precision, as scouting requires. Reports can lead to removal or hiding. Admins may blur a pin to about 500 m for sensitive categories (_Proposed_).
 - Report reasons: private property/residence · unsafe or illegal access · wrong location · inappropriate image · copyright · person identifiable · spam/duplicate · other.
-- Moderation response target for the pilot: 72 hours (*Proposed*). The affected member gets a contact path for appeals.
+- Moderation response target for the pilot: 72 hours (_Proposed_). The affected member gets a contact path for appeals.
 
 ## 8. GDPR baseline (D-01)
 

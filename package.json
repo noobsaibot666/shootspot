@@ -1,0 +1,21 @@
+{
+  "name": "shootspot",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev:infra": "docker compose -f infra/local/docker-compose.yml up -d",
+    "dev:infra:down": "docker compose -f infra/local/docker-compose.yml down",
+    "dev:api": "pnpm --filter @shootspot/api dev",
+    "db:migrate": "pnpm --filter @shootspot/api migrate up"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}

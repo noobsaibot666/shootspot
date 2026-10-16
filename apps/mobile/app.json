@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "ShootSpot",
+    "slug": "shootspot",
+    "scheme": "shootspot",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.shootspot.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "ShootSpot uses the camera to photograph locations you scout.",
+        "NSLocationWhenInUseUsageDescription": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."
+      }
+    },
+    "android": {
+      "package": "com.shootspot.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"],
+      "adaptiveIcon": {
+        "backgroundColor": "#111111",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."
+        }
+      ]
+    ]
+  }
+}
