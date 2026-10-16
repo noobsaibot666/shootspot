@@ -80,6 +80,15 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 | 5.13 | Compass/heading test (deferred 3.7)                    | P2  | Pending, owner: low priority                                                                                                            |
 | 5.14 | Real email (D-26) and HTTPS via tunnel                 | P0  | Needs domain + Brevo (HANDWORK 2.3, 3.2) and Cloudflare hostname                                                                        |
 
+## Design review (after the Phase 5/6 gaps are closed)
+
+The owner asked for this on 2026-10-16. It is collected here and done in one pass at the end.
+
+| #   | Item                                                                                                                                                                                                                                                                                                           | Status |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| R1  | **Feed like savee.com:** an image-first grid of thumbnails (two columns, rounded corners, no text under each tile, dark background). The details appear on tap. Photos are 16:9 or 1:1 (D-13), so a masonry layout gets some rhythm from mixing both. Reference screenshot from 2026-10-16 in the conversation | To do  |
+| R2  | Overall UI polish across capture, the detail screen, Profile and Settings (owner: "UI will be improved in the next steps")                                                                                                                                                                                     | To do  |
+
 ## Phase 6–7 (summarized)
 
 Closed pilot in one or two cities, metrics, tuning (Phase 6) · Cloud migration off the NAS before public launch · Paid tier: PDF location-timeline export (P2) · Localization (P2) · Offline maps (P2) · Sun-path prediction (P2)
