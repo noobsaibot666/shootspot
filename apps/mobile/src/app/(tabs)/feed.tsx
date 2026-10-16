@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { formatBearing, formatDistance, type Page, type PublicRecord } from '@shootspot/shared';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -55,11 +55,20 @@ export default function Feed() {
     }
   }, [base, waitingForLocation]);
 
-  useEffect(() => {
-    setState('loading');
-    void load();
-    show();
-  }, [load, show]);
+  // Reload on every focus too, so a record published from the capture flow shows up when the
+  // user comes back to the tab. Only a changed scope/filter shows the spinner.
+  const lastBase = useRef<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const b = base();
+      if (b !== lastBase.current) {
+        lastBase.current = b;
+        setState('loading');
+        show();
+      }
+      void load();
+    }, [base, load, show]),
+  );
 
   async function more() {
     if (!cursor || loadingMore.current) return;

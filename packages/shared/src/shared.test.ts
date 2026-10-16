@@ -10,9 +10,33 @@ import {
   formatCoordinates,
   formatDistance,
   lightAngle,
+  normalizeWebUrl,
+  profileUpdateSchema,
   sunAtCapture,
   toCardinal,
 } from './index';
+
+describe('portfolio link', () => {
+  it('adds https:// when the scheme is missing and keeps typed schemes', () => {
+    expect(normalizeWebUrl('example.com/me')).toBe('https://example.com/me');
+    expect(normalizeWebUrl('  www.example.com ')).toBe('https://www.example.com');
+    expect(normalizeWebUrl('http://example.com')).toBe('http://example.com');
+    expect(normalizeWebUrl('HTTPS://example.com')).toBe('HTTPS://example.com');
+    expect(normalizeWebUrl('  ')).toBeNull();
+    expect(normalizeWebUrl(null)).toBeNull();
+  });
+
+  it('profile update accepts a link without a scheme', () => {
+    const r = profileUpdateSchema.parse({ portfolioUrl: 'example.com/portfolio' });
+    expect(r.portfolioUrl).toBe('https://example.com/portfolio');
+    expect(profileUpdateSchema.parse({ portfolioUrl: null }).portfolioUrl).toBeNull();
+    expect(profileUpdateSchema.parse({}).portfolioUrl).toBeUndefined();
+    expect(profileUpdateSchema.safeParse({ portfolioUrl: 'not a link' }).success).toBe(false);
+    expect(profileUpdateSchema.safeParse({ portfolioUrl: 'ftp://example.com' }).success).toBe(
+      false,
+    );
+  });
+});
 
 describe('image rules', () => {
   it('classifies 16:9 and 1:1, rejects others', () => {

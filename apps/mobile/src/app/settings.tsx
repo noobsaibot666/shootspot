@@ -1,3 +1,4 @@
+import { normalizeWebUrl } from '@shootspot/shared';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Text, View } from 'react-native';
@@ -55,14 +56,14 @@ export default function Settings() {
           lastName: p.lastName.trim(),
           displayName: p.displayName.trim() || null,
           bio: p.bio.trim() || null,
-          portfolioUrl: p.portfolioUrl.trim() || null,
+          portfolioUrl: normalizeWebUrl(p.portfolioUrl),
           socialHandle: p.socialHandle.trim() || null,
         },
       });
       await refresh();
       setSaved(true);
     } catch {
-      setError('Could not save. Check the portfolio link starts with https://');
+      setError('Could not save. Check the portfolio link is a web address, like example.com');
     } finally {
       setSaving(false);
     }
@@ -122,7 +123,7 @@ export default function Settings() {
           onChangeText={(v) => setP({ ...p, portfolioUrl: v })}
           autoCapitalize="none"
           keyboardType="url"
-          placeholder="https://"
+          placeholder="example.com"
         />
         <Field
           label="Social handle (optional)"

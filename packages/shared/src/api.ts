@@ -116,15 +116,26 @@ export const MAP_PIN_LIMIT = 300;
 
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
+/** "example.com/me" → "https://example.com/me"; blank → null. Links don't need a typed scheme. */
+export function normalizeWebUrl(input: string | null | undefined): string | null {
+  const s = input?.trim();
+  if (!s) return null;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`;
+}
+
 export const profileUpdateSchema = z.object({
   firstName: z.string().trim().max(60).optional(),
   lastName: z.string().trim().max(60).optional(),
   displayName: optionalText(60),
   bio: optionalText(300),
   portfolioUrl: z
-    .url({ protocol: /^https?$/ })
-    .max(300)
-    .nullable()
+    .preprocess(
+      (v) => (typeof v === 'string' ? normalizeWebUrl(v) : v),
+      z
+        .url({ protocol: /^https?$/ })
+        .max(300)
+        .nullable(),
+    )
     .optional(),
   socialHandle: optionalText(60),
 });

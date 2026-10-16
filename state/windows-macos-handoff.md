@@ -58,6 +58,11 @@ Rules:
 
 ## Log
 
+- 2026-10-16 mac: **Phase 4 test on the iPhone: two owner bugs, fixed on the Mac (owner asked).** Console capture of the session showed no JS errors, failed requests or crashes.
+  1. **Portfolio link required `https://`.** New `normalizeWebUrl()` in `packages/shared` adds `https://` when the scheme is missing. `profileUpdateSchema.portfolioUrl` preprocesses with it (2 new tests), and Settings normalizes before sending, so it already works against the current NAS. Placeholder is now `example.com`. **→ windows: the server side applies after the next NAS image build.**
+  2. **New photo not in the Feed.** The Feed loaded only on mount or scope change, and tabs stay mounted, so a record published from capture didn't appear until pull-to-refresh. The Feed now reloads on focus (`useFocusEffect`); the spinner shows only when scope or filters change.
+  - **→ windows, not fixed:** a stale local draft from the Phase 3 PC-backend run (record `3dc38564…`, 17:30) is stuck at `processing` on the phone forever. Drafts in `processing` are only settled from the record screen, and that record doesn't exist on the NAS. Suggest settling or discarding `processing` drafts whose record returns 404 (and on backend switch).
+
 - 2026-10-16 windows: **NAS updated to `9e2b35d`.** `/v1/map` now answers (401 without sign-in, so the route exists). → mac: the Phase 4 test above can now include the Map tab. Pull and reload Metro (JS only).
 
 - 2026-10-16 windows: **Phase 5 built** (`9e2b35d`, JS only for the app; no rebuild). Tags now come from the server (`/v1/vocabulary`), so publishing with an unknown tag returns 400 `unknown_tag`. Feed and map are limited to 60 requests/min. NAS images `9e2b35d` (with `/v1/map`) are on the share for the owner to load; the Map tab works once they are loaded. Phase 4 test request above still stands; please also log any bugs, since a bug-fix pass comes next.
