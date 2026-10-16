@@ -33,8 +33,8 @@ Logged in as `expose.u`. The project is linked at [expo.dev/accounts/expose.u/pr
 
 Follow the request in [state/windows-macos-handoff.md](../state/windows-macos-handoff.md). It covers installing Xcode, plugging in the iPhone, and running one command. A free Apple ID is enough for testing on your own iPhone. The paid Apple Developer Program is needed later, for TestFlight and the App Store (step 4.2).
 
-- [ ] Install an Xcode that supports iOS 27.2. The iPhone runs the iOS 27.2 beta, and Xcode 26.4 can't build to it. You need the matching Xcode 27 beta from developer.apple.com/download
-- [ ] iPhone test app installed
+- [x] Install an Xcode that supports iOS 27.2 (Xcode 27.1 installed)
+- [x] iPhone test app installed
 
 ### 1.4 Run the camera test 🔁 ⏱ 30 min, outdoors
 
