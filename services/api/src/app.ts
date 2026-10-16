@@ -4,6 +4,7 @@ import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { adminRoutes } from './admin/routes';
 import { APP_ORIGIN, APP_ORIGIN_HEADER } from './auth';
+import { INTERNAL_IP_HEADER, clientIp } from './http/client-ip';
 import { HttpError, sendError, type AppDeps } from './http/context';
 import { meRoutes } from './me/routes';
 import { projectRoutes } from './projects/routes';
@@ -19,8 +20,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     logger: deps.logger ?? false,
     // Never log request bodies or query strings: they may carry coordinates.
     logController: new LogController({ disableRequestLogging: true }),
-    trustProxy: true,
+    // Forwarded headers are client-controlled; the client IP comes from clientIp() only.
+    trustProxy: false,
   });
+  const ipOf = (req: {
+    headers: Record<string, string | string[] | undefined>;
+    socket: { remoteAddress?: string };
+  }) => clientIp(req.headers, req.socket.remoteAddress, deps.config.CLIENT_IP_HEADER);
 
   // Clients often send `content-type: application/json` on body-less POSTs (upload-complete,
   // MFA enrol). Accept an empty body there; everything else still goes through Fastify's
@@ -36,7 +42,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // No CORS: the app is native (no CORS) and the admin web calls us through its own same-origin
   // proxy. Any browser page on another origin is therefore refused by the browser itself.
   if (deps.config.NODE_ENV !== 'test') {
-    await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+    await app.register(rateLimit, { max: 300, timeWindow: '1 minute', keyGenerator: ipOf });
   }
 
   // Security headers on every response; API data is private, so never cache it in between.
@@ -95,6 +101,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     async handler(req, reply) {
       const url = new URL(req.url, deps.config.PUBLIC_API_URL);
       const headers = fromNodeHeaders(req.headers);
+      // Better Auth rate-limits sign-in per IP; give it ours (overwriting any client value).
+      headers.set(INTERNAL_IP_HEADER, ipOf(req));
       // The app identifies itself with expo-origin (see APP_ORIGIN_HEADER); only our own scheme
       // is promoted to Origin, and never over an Origin a browser already sent.
       if (!headers.has('origin') && headers.get(APP_ORIGIN_HEADER) === APP_ORIGIN) {

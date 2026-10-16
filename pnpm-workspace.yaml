@@ -4,6 +4,9 @@ packages:
   - 'services/*'
 
 allowBuilds:
+  # Only used to upload source maps (off until Sentry is set up; platform binaries come as
+  # optional dependencies anyway). No install script needed.
+  '@sentry/cli': false
   esbuild: true
   sharp: true
 

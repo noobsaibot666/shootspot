@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
+    "@sentry/react-native": "~8.28.0",
     "@shootspot/shared": "workspace:*",
     "expo": "~58.0.13",
     "expo-constants": "~58.0.12",

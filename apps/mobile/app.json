@@ -47,6 +47,7 @@
           "microphonePermission": false
         }
       ],
+      ["@sentry/react-native/expo", { "url": "https://de.sentry.io/", "disableAutoUpload": true }],
       "expo-router",
       "expo-secure-store",
       "expo-image"

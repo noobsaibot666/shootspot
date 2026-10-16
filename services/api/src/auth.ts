@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { bearer, emailOTP } from 'better-auth/plugins';
 import type pg from 'pg';
 import type { Config } from './config';
+import { INTERNAL_IP_HEADER } from './http/client-ip';
 import type { Mailer } from './mailer';
 
 /** The mobile app's URL scheme (app.json "scheme"). */
@@ -52,9 +53,9 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
       // Better Auth silently skips origin/CSRF checks when NODE_ENV=test. Keep them on everywhere
       // so tests exercise exactly what production does.
       disableOriginCheck: false,
-      ...(config.CLIENT_IP_HEADER
-        ? { ipAddress: { ipAddressHeaders: [config.CLIENT_IP_HEADER] } }
-        : {}),
+      // Only the API's own resolved client IP (see http/client-ip.ts); Better Auth's default
+      // list includes x-forwarded-for, which any client can forge to dodge the sign-in limits.
+      ipAddress: { ipAddressHeaders: [INTERNAL_IP_HEADER] },
     },
     rateLimit: {
       enabled: config.NODE_ENV !== 'test',

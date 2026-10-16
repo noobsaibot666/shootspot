@@ -4,12 +4,15 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { resumeDrafts } from '../lib/drafts';
+import { initSentry, withSentry } from '../lib/sentry';
 import { ScopeProvider } from '../lib/scope';
 import { VocabularyProvider } from '../lib/vocabulary';
 import { SessionProvider, useSession } from '../lib/session';
 import { useTheme } from '../theme/tokens';
 
-export default function RootLayout() {
+initSentry();
+
+export default withSentry(function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
@@ -21,7 +24,7 @@ export default function RootLayout() {
       </SessionProvider>
     </SafeAreaProvider>
   );
-}
+});
 
 function Navigator() {
   const t = useTheme();
