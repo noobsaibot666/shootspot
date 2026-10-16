@@ -5,6 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { mediaSource } from '../../lib/images';
 import { api } from '../../lib/api';
 import {
   listDrafts,
@@ -296,7 +297,7 @@ export default function Profile() {
         >
           {item.thumb ? (
             <Image
-              source={item.thumb}
+              source={mediaSource(item.thumb)}
               style={{ width: 96, height: 54, borderRadius: 8, backgroundColor: '#000' }}
               contentFit="cover"
             />

@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import { mediaSource } from '../../lib/images';
 import { api } from '../../lib/api';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Field, Row } from '../../ui';
@@ -125,7 +126,7 @@ export default function ProjectScreen() {
             >
               {item.available ? (
                 <Image
-                  source={item.record.images.thumb}
+                  source={mediaSource(item.record.images.thumb)}
                   style={{ width: 96, height: 54, borderRadius: 8, backgroundColor: '#000' }}
                   contentFit="cover"
                 />

@@ -22,6 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { mediaSource } from '../../lib/images';
 import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
 import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
@@ -154,8 +155,8 @@ export default function RecordScreen() {
   return (
     <Screen scroll padded={false}>
       <Image
-        source={record.images.detail}
-        placeholder={record.images.thumb}
+        source={mediaSource(record.images.detail)}
+        placeholder={mediaSource(record.images.thumb)}
         style={{
           width,
           height: width / (record.images.width / record.images.height),

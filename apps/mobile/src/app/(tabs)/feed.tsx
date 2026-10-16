@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { mediaSource } from '../../lib/images';
 import { ApiError, api } from '../../lib/api';
 import { useVocabulary } from '../../lib/vocabulary';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
@@ -182,8 +183,8 @@ function Card({ record, width }: { record: PublicRecord; width: number }) {
       onPress={() => router.push(`/records/${record.id}`)}
     >
       <Image
-        source={record.images.feed}
-        placeholder={record.images.thumb}
+        source={mediaSource(record.images.feed)}
+        placeholder={mediaSource(record.images.thumb)}
         style={{ width, height: h, backgroundColor: '#000' }}
         contentFit="cover"
         transition={150}
