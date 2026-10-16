@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -126,7 +126,7 @@ export default function ImportBatch() {
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="checkmark-circle" size={28} color={t.ink} />
+                <Icon name="done.fill" size={28} color={t.ink} />
               </View>
             ) : (
               <Image
@@ -136,13 +136,12 @@ export default function ImportBatch() {
               />
             )}
             {item.state !== 'done' && !item.meta.gps ? (
-              <View style={{ position: 'absolute', left: 6, bottom: 6 }}>
-                <Ionicons
-                  name="location-outline"
-                  size={18}
-                  color="#FFFFFF"
-                  accessibilityLabel="No location in photo"
-                />
+              <View
+                accessible
+                accessibilityLabel="No location in photo"
+                style={{ position: 'absolute', left: 6, bottom: 6 }}
+              >
+                <Icon name="pin" size={18} color="#FFFFFF" />
               </View>
             ) : null}
           </Pressable>

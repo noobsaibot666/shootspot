@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../ui/icon';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Switch, Text, View } from 'react-native';
@@ -69,14 +69,14 @@ export default function Onboarding() {
       <Title sub="Before you start, three things.">Welcome to ShootSpot</Title>
 
       <Card>
-        <Row icon="eye-off-outline" title="Your locations are anonymous">
+        <Row icon="hidden" title="Your locations are anonymous">
           Nobody can see who took a photo or where you go, unless you choose to show your name on a
           location.
         </Row>
-        <Row icon="images-outline" title="Photos you publish">
+        <Row icon="gallery" title="Photos you publish">
           Other members can view them in the app. They can't download or reuse them.
         </Row>
-        <Row icon="location-outline" title="Location is optional">
+        <Row icon="pin" title="Location is optional">
           We ask for your location only when you capture or browse nearby. You can always place a
           pin by hand.
         </Row>
@@ -120,14 +120,10 @@ export default function Onboarding() {
     </Screen>
   );
 
-  function Row(props: {
-    icon: keyof typeof Ionicons.glyphMap;
-    title: string;
-    children: React.ReactNode;
-  }) {
+  function Row(props: { icon: IconName; title: string; children: React.ReactNode }) {
     return (
       <View style={{ flexDirection: 'row', gap: space.md }}>
-        <Ionicons name={props.icon} size={22} color={t.ink} style={{ marginTop: 2 }} />
+        <Icon name={props.icon} size={22} color={t.ink} style={{ marginTop: 2 }} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{props.title}</Text>
           <Body muted>{props.children}</Body>

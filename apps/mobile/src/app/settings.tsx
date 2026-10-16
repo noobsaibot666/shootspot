@@ -140,7 +140,7 @@ export default function Settings() {
           </View>
         </View>
 
-        <ListRow icon="person-outline" label="Edit profile" onPress={() => setEditing((e) => !e)} />
+        <ListRow icon="person" label="Edit profile" onPress={() => setEditing((e) => !e)} />
         {editing ? (
           <View style={{ paddingHorizontal: space.lg, gap: space.lg, paddingBottom: space.lg }}>
             <Field
@@ -190,9 +190,9 @@ export default function Settings() {
           </View>
         ) : null}
 
-        <ListRow icon="images-outline" label="Import photos" onPress={() => void importPhotos()} />
+        <ListRow icon="gallery" label="Import photos" onPress={() => void importPhotos()} />
         <ListRow
-          icon="download-outline"
+          icon="download"
           label="Request my data"
           value={ready ? 'Ready' : preparing ? 'Preparing…' : undefined}
           onPress={() => (ready ? void Linking.openURL(ready.downloadUrl!) : void requestExport())}
@@ -214,7 +214,7 @@ export default function Settings() {
           </Card>
         ) : (
           <ListRow
-            icon="trash-outline"
+            icon="trash"
             label="Delete account"
             danger
             onPress={() =>
@@ -237,7 +237,7 @@ export default function Settings() {
           />
         )}
         <ListRow
-          icon="log-out-outline"
+          icon="signOut"
           label="Sign out"
           trailing={<View />}
           onPress={async () => {

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
@@ -90,11 +90,7 @@ export default function SaveSheet() {
                 onPress={() => void toggle(p.id)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 52 }}
               >
-                <Ionicons
-                  name={on ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={24}
-                  color={on ? t.ink : t.muted}
-                />
+                <Icon name={on ? 'done.fill' : 'circle'} size={24} color={on ? t.ink : t.muted} />
                 <Text style={{ color: t.ink, fontSize: 16, flex: 1 }} numberOfLines={1}>
                   {p.name}
                 </Text>

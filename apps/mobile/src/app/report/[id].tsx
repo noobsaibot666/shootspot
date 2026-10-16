@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import { REPORT_REASONS } from '@shootspot/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -55,7 +55,7 @@ export default function Report() {
     return (
       <Screen>
         <View style={{ alignItems: 'center', gap: space.md, paddingTop: space.xxl }}>
-          <Ionicons name="checkmark-circle-outline" size={44} color={t.signalGreen} />
+          <Icon name="done" size={44} color={t.signalGreen} />
           <Text style={{ color: t.ink, fontSize: 18, fontWeight: '600' }}>Thanks, report sent</Text>
           <Body muted>A moderator will review it. Your report is private.</Body>
           <Button label="Done" onPress={() => router.back()} />
@@ -76,8 +76,8 @@ export default function Report() {
             onPress={() => setReason(r)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 48 }}
           >
-            <Ionicons
-              name={reason === r ? 'radio-button-on' : 'radio-button-off'}
+            <Icon
+              name={reason === r ? 'done.fill' : 'circle'}
               size={22}
               color={reason === r ? t.ink : t.muted}
             />

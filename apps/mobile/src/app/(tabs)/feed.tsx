@@ -1,8 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import type { Page, PublicRecord } from '@shootspot/shared';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, RefreshControl, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  RefreshControl,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
@@ -25,6 +33,7 @@ export default function Feed() {
   const [state, setState] = useState<'loading' | 'ready' | 'offline' | 'error'>('loading');
   const [refreshing, setRefreshing] = useState(false);
   const loadingMore = useRef(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const waitingForLocation = scope.mode === 'nearby' && !center && !locationDenied;
   const base = useCallback(() => {
@@ -79,12 +88,16 @@ export default function Feed() {
   return (
     <View style={{ flex: 1, backgroundColor: t.canvas }}>
       <Animated.ScrollView
-        onScroll={(e) => {
-          onScroll(e);
-          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-          if (contentOffset.y + layoutMeasurement.height > contentSize.height - 800) void more();
-        }}
-        scrollEventThrottle={32}
+        // Native scroll offset drives the tiles' reveal; the listener handles chrome and paging.
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+          listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            onScroll(e);
+            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+            if (contentOffset.y + layoutMeasurement.height > contentSize.height - 800) void more();
+          },
+        })}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: top, paddingBottom: insets.bottom + 120 }}
         refreshControl={
           <RefreshControl
@@ -100,6 +113,8 @@ export default function Feed() {
       >
         {items.length ? (
           <Masonry
+            scrollY={scrollY}
+            offsetTop={top}
             tiles={items.map((r) => ({
               id: r.id,
               label: r.label,
@@ -148,13 +163,13 @@ export default function Feed() {
             minHeight: 40,
           }}
         >
-          <Ionicons
+          <Icon
             name={
               scope.mode === 'nearby'
-                ? 'navigate'
+                ? 'navigate.fill'
                 : scope.mode === 'place'
-                  ? 'location'
-                  : 'globe-outline'
+                  ? 'pin.fill'
+                  : 'globe'
             }
             size={16}
             color={t.ink}
@@ -162,7 +177,7 @@ export default function Feed() {
           <Text style={[type.bodyStrong, { color: t.ink, maxWidth: 240 }]} numberOfLines={1}>
             {scopeLabel(scope, Boolean(center))}
           </Text>
-          <Ionicons name="options-outline" size={16} color={t.muted} />
+          <Icon name="filters" size={16} color={t.muted} />
         </Tap>
       </Animated.View>
     </View>
@@ -175,33 +190,33 @@ function Empty(props: { state: string; denied: boolean; waiting: boolean; onRetr
     return <ActivityIndicator style={{ marginTop: space.xxl }} color={t.muted} />;
   }
   const [icon, title, body, action]: [
-    keyof typeof Ionicons.glyphMap,
+    IconName,
     string,
     string,
     { label: string; onPress(): void } | null,
   ] = props.denied
     ? [
-        'navigate-outline',
+        'navigate',
         'Location is off',
         'Choose a place to browse instead, or allow location in Settings.',
         { label: 'Choose a place', onPress: () => router.push('/filters') },
       ]
     : props.state === 'offline'
       ? [
-          'cloud-offline-outline',
+          'offline',
           "You're offline",
           'Check your connection and try again.',
           { label: 'Try again', onPress: props.onRetry },
         ]
       : props.state === 'error'
         ? [
-            'alert-circle-outline',
+            'alert',
             'Something went wrong',
             'The feed could not be loaded.',
             { label: 'Try again', onPress: props.onRetry },
           ]
         : [
-            'images-outline',
+            'gallery',
             'No locations here yet',
             'Widen the area, clear filters, or be the first to scout one.',
             { label: 'Change area', onPress: () => router.push('/filters') },
@@ -215,7 +230,7 @@ function Empty(props: { state: string; denied: boolean; waiting: boolean; onRetr
         paddingTop: space.xxl * 2,
       }}
     >
-      <Ionicons name={icon} size={40} color={t.muted} />
+      <Icon name={icon} size={40} color={t.muted} />
       <Text style={[type.headline, { color: t.ink }]}>{title}</Text>
       <View style={{ alignItems: 'center' }}>
         <Body muted>{body}</Body>

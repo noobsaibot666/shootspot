@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import { formatBearing, type AdvancedInput } from '@shootspot/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -119,7 +119,7 @@ export default function Details() {
           onPress={() => setOpen((o) => !o)}
           style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 44 }}
         >
-          <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={18} color={t.ink} />
+          <Icon name={open ? 'down' : 'forward'} size={18} color={t.ink} />
           <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600' }}>
             More details (optional)
           </Text>

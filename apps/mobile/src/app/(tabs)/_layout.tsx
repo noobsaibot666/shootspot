@@ -1,24 +1,25 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useReduceMotion } from '../../lib/motion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listImports, pickPhotos } from '../../lib/imports';
-import { Sheet, SheetAction, Tap } from '../../ui';
+import { Tap } from '../../ui';
 import { ChromeProvider, useChrome } from '../../ui/chrome';
+import { Icon, type IconName } from '../../ui/icon';
 
 type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-const TABS: Record<
-  string,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; active: keyof typeof Ionicons.glyphMap }
-> = {
-  feed: { label: 'Feed', icon: 'home-outline', active: 'home' },
-  map: { label: 'Map', icon: 'map-outline', active: 'map' },
-  profile: { label: 'Profile', icon: 'person-circle-outline', active: 'person-circle' },
+/** Tab width and the distance between tab origins (width + pill gap). */
+const TAB_W = 64;
+const STEP = TAB_W + 4;
+
+const TABS: Record<string, { label: string; icon: IconName; active: IconName }> = {
+  feed: { label: 'Feed', icon: 'feed', active: 'feed.fill' },
+  map: { label: 'Map', icon: 'map', active: 'map.fill' },
+  profile: { label: 'Profile', icon: 'profile', active: 'profile.fill' },
 };
 
-/** Feed · Map · + · Profile in one floating icon pill (Savee-style; D-17 updated 2026-10-16). */
+/** Feed · Map · Profile in a floating icon pill, plus the round Camera button (D-17). */
 export default function TabsLayout() {
   return (
     <ChromeProvider>
@@ -36,92 +37,121 @@ export default function TabsLayout() {
 
 /**
  * Dark pill with single-weight icons; the selected tab gets a soft backplate and a filled icon
- * (never colour alone). "+" opens a small sheet: take a photo, or import from the gallery.
+ * (never colour alone). The camera button sits beside it. While the feed scrolls down, the pill
+ * drops first and the camera follows (staggered spring, see ui/chrome). Gallery import lives in
+ * the camera (bottom-left) and in the Profile menu.
  */
 function FloatingBar({ state, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { hidden } = useChrome();
-  const [sheet, setSheet] = useState(false);
-  const translateY = hidden.interpolate({ inputRange: [0, 1], outputRange: [0, 120] });
+  const { hidden, hiddenLate } = useChrome();
+  const drop = (v: Animated.Value) => ({
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, 130] }) }],
+  });
   const routes = state.routes.filter((r) => TABS[r.name]);
-  const button = (route: (typeof routes)[number]) => {
-    const tab = TABS[route.name]!;
-    const focused = state.routes[state.index]?.key === route.key;
-    return (
-      <Tap
-        key={route.key}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: focused }}
-        accessibilityLabel={tab.label}
-        onPress={() => {
-          if (!focused) navigateToTab(route.key);
-        }}
-        scaleTo={0.9}
-        style={[styles.tab, focused && styles.tabActive]}
-      >
-        <Ionicons name={focused ? tab.active : tab.icon} size={24} color="#FFFFFF" />
-      </Tap>
-    );
-  };
 
-  async function importPhotos() {
-    const pending = (await listImports()).some((i) => i.state === 'todo');
-    if ((await pickPhotos().catch(() => 0)) > 0 || pending) router.push('/capture/import');
-  }
+  // The selected backplate slides to the tapped tab (spring), instead of jumping.
+  const activeIndex = Math.max(
+    0,
+    routes.findIndex((r) => r.key === state.routes[state.index]?.key),
+  );
+  const reduce = useReduceMotion();
+  const slide = useRef(new Animated.Value(activeIndex * STEP)).current;
+  useEffect(() => {
+    if (reduce) slide.setValue(activeIndex * STEP);
+    else
+      Animated.spring(slide, {
+        toValue: activeIndex * STEP,
+        tension: 170,
+        friction: 18,
+        useNativeDriver: true,
+      }).start();
+  }, [activeIndex, reduce, slide]);
 
   return (
-    <>
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.wrap, { bottom: insets.bottom + 12, transform: [{ translateY }] }]}
-      >
-        <View style={styles.pill} accessibilityRole="tablist">
-          {routes.slice(0, 2).map(button)}
-          <Tap
-            accessibilityRole="button"
-            accessibilityLabel="Add a location"
-            onPress={() => setSheet(true)}
-            scaleTo={0.9}
-            style={styles.tab}
-          >
-            <Ionicons name="add" size={30} color="#FFFFFF" />
-          </Tap>
-          {routes.slice(2).map(button)}
-        </View>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 12 }]}>
+      <Animated.View style={[styles.pill, drop(hidden)]} accessibilityRole="tablist">
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.indicator, { transform: [{ translateX: slide }] }]}
+        />
+        {routes.map((route) => {
+          const tab = TABS[route.name]!;
+          const focused = state.routes[state.index]?.key === route.key;
+          return (
+            <Tap
+              key={route.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={tab.label}
+              onPress={() => {
+                if (!focused) navigateToTab(route.key);
+              }}
+              scaleTo={0.9}
+              style={styles.tab}
+            >
+              <Icon name={focused ? tab.active : tab.icon} size={24} color="#FFFFFF" />
+            </Tap>
+          );
+        })}
       </Animated.View>
-      <Sheet visible={sheet} onClose={() => setSheet(false)}>
-        <SheetAction
-          icon="camera-outline"
-          label="Take a photo"
+      <Animated.View style={drop(hiddenLate)}>
+        <Tap
+          accessibilityRole="button"
+          accessibilityLabel="Capture a location"
           onPress={() => router.push('/capture')}
-        />
-        <SheetAction
-          icon="images-outline"
-          label="Import from gallery"
-          onPress={() => void importPhotos()}
-        />
-      </Sheet>
-    </>
+          scaleTo={0.92}
+          style={styles.camera}
+        >
+          <Icon name="camera.fill" size={28} color="#111111" />
+        </Tap>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  wrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
   pill: {
     flexDirection: 'row',
     backgroundColor: 'rgba(24,24,24,0.94)',
     borderRadius: 999,
     padding: 6,
-    gap: 6,
+    gap: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
   tab: {
-    width: 60,
+    width: TAB_W,
     height: 52,
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabActive: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  indicator: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    width: TAB_W,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  camera: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.2)',
+  },
 });

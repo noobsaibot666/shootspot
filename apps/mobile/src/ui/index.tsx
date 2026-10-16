@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from './icon';
 import { createContext, useContext, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
@@ -136,7 +136,7 @@ export function Button(props: {
   label: string;
   onPress(): void;
   kind?: 'primary' | 'secondary' | 'danger' | 'ghost';
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   size?: 'regular' | 'small';
   busy?: boolean;
   disabled?: boolean;
@@ -173,7 +173,7 @@ export function Button(props: {
         <ActivityIndicator color={fg} />
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-          {props.icon ? <Ionicons name={props.icon} size={small ? 16 : 18} color={fg} /> : null}
+          {props.icon ? <Icon name={props.icon} size={small ? 16 : 18} color={fg} /> : null}
           <Text style={[small ? type.bodyStrong : type.headline, { color: fg }]}>
             {props.label}
           </Text>
@@ -185,7 +185,7 @@ export function Button(props: {
 
 /** Round icon button; `overlay` for use on top of photos. */
 export function IconButton(props: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   label: string;
   onPress(): void;
   overlay?: boolean;
@@ -213,7 +213,7 @@ export function IconButton(props: {
         props.style ?? {},
       ]}
     >
-      <Ionicons
+      <Icon
         name={props.icon}
         size={Math.round(size * 0.5)}
         color={props.overlay ? '#FFFFFF' : t.ink}
@@ -313,7 +313,7 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
 
 /** A settings/menu row: icon, label, optional value or trailing control, chevron. */
 export function ListRow(props: {
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   label: string;
   value?: string;
   danger?: boolean;
@@ -324,11 +324,10 @@ export function ListRow(props: {
   const color = props.danger ? t.signalRed : t.ink;
   const content = (
     <View style={styles.listRow}>
-      {props.icon ? <Ionicons name={props.icon} size={22} color={color} /> : null}
+      {props.icon ? <Icon name={props.icon} size={22} color={color} /> : null}
       <Text style={[type.headline, { color, flex: 1, fontWeight: '500' }]}>{props.label}</Text>
       {props.value ? <Text style={[type.body, { color: t.muted }]}>{props.value}</Text> : null}
-      {props.trailing ??
-        (props.onPress ? <Ionicons name="chevron-forward" size={18} color={t.muted} /> : null)}
+      {props.trailing ?? (props.onPress ? <Icon name="forward" size={18} color={t.muted} /> : null)}
     </View>
   );
   return props.onPress ? (
@@ -479,11 +478,7 @@ function SheetContext({ close, children }: { close(): void; children: React.Reac
   return <SheetCtx.Provider value={close}>{children}</SheetCtx.Provider>;
 }
 /** A sheet action: closes the sheet, then runs. */
-export function SheetAction(props: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress(): void;
-}) {
+export function SheetAction(props: { icon: IconName; label: string; onPress(): void }) {
   const close = useContext(SheetCtx);
   return (
     <View style={{ paddingHorizontal: space.sm }}>

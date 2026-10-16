@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import { Stack, router } from 'expo-router';
 import { Pressable } from 'react-native';
 import { CaptureProvider } from '../../capture/context';
@@ -41,7 +41,7 @@ export default function CaptureLayout() {
                 hitSlop={12}
                 onPress={() => router.dismissTo('/profile')}
               >
-                <Ionicons name="close" size={26} color={t.ink} />
+                <Icon name="close" size={26} color={t.ink} />
               </Pressable>
             ),
           }}

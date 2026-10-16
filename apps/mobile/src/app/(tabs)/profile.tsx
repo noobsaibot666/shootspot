@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import type { ImageSet, MediaState, RecordStatus } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
@@ -195,11 +195,11 @@ export default function Profile() {
               backgroundColor: t.surface,
             }}
           >
-            <Ionicons name="images-outline" size={22} color={t.ink} />
+            <Icon name="gallery" size={22} color={t.ink} />
             <Text style={[type.bodyStrong, { flex: 1, color: t.ink }]}>
               {pendingImports} imported photo{pendingImports === 1 ? '' : 's'} to review
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={t.muted} />
+            <Icon name="forward" size={18} color={t.muted} />
           </Tap>
         ) : null}
       </View>
@@ -216,7 +216,7 @@ export default function Profile() {
             </View>
           </>
         ) : (
-          <EmptyState icon="camera-outline" text="Locations you capture or import appear here." />
+          <EmptyState icon="camera" text="Locations you capture or import appear here." />
         )
       ) : (
         <View style={{ gap: space.lg }}>
@@ -287,7 +287,7 @@ export default function Profile() {
                         contentFit="cover"
                       />
                     ) : (
-                      <Ionicons name="albums-outline" size={28} color={t.muted} />
+                      <Icon name="boards" size={28} color={t.muted} />
                     )}
                   </View>
                   <View style={{ paddingHorizontal: 4, paddingBottom: space.sm }}>
@@ -303,7 +303,7 @@ export default function Profile() {
             </View>
           ) : (
             <EmptyState
-              icon="albums-outline"
+              icon="boards"
               text="No projects yet. Create one, then save locations into it from the feed."
             />
           )}
@@ -313,11 +313,11 @@ export default function Profile() {
   );
 }
 
-function EmptyState({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+function EmptyState({ icon, text }: { icon: IconName; text: string }) {
   const t = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: space.md, padding: space.xl, paddingTop: space.xxl }}>
-      <Ionicons name={icon} size={36} color={t.muted} />
+      <Icon name={icon} size={36} color={t.muted} />
       <View style={{ alignItems: 'center' }}>
         <Body muted>{text}</Body>
       </View>

@@ -1,9 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import {
   formatBearing,
   formatCoordinates,
   formatDistance,
-  formatSun,
   lightAngle,
   type Page,
   type PublicRecord,
@@ -34,7 +33,18 @@ import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
 import { getOrigin, useReduceMotion, type Origin } from '../../lib/motion';
 import { useVocabulary } from '../../lib/vocabulary';
 import { grid, motion, radius, space, type, useTheme } from '../../theme/tokens';
-import { Body, Button, Card, IconButton, Label, Mono, Row, Sheet, SheetAction } from '../../ui';
+import {
+  Body,
+  Button,
+  Card,
+  IconButton,
+  Label,
+  Mono,
+  Row,
+  Sheet,
+  SheetAction,
+  Tap,
+} from '../../ui';
 import { Masonry, aspectOf } from '../../ui/masonry';
 
 const LIGHT = {
@@ -45,6 +55,8 @@ const LIGHT = {
 } as const;
 
 const HERO_RADIUS = 24;
+/** Height of the top bar holding the back button. */
+const BAR = 52;
 
 /**
  * Location detail (plan journey 5), Savee-style: the photo grows out of the tapped tile, then
@@ -167,12 +179,26 @@ export default function RecordScreen() {
     transform: [{ translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [32, 0] }) }],
   };
 
+  // Top bar of its own: the back button never sits on the photo, and content scrolls under it.
   const backButton = (
-    <View style={{ position: 'absolute', top: insets.top + 8, left: space.md }}>
-      <Animated.View style={fade}>
-        <IconButton icon="chevron-back" label="Back" overlay onPress={close} />
-      </Animated.View>
-    </View>
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top + BAR,
+          paddingTop: insets.top,
+          paddingHorizontal: space.sm,
+          justifyContent: 'center',
+          backgroundColor: t.canvas,
+        },
+        fade,
+      ]}
+    >
+      <IconButton icon="back" label="Back" onPress={close} />
+    </Animated.View>
   );
 
   // No photo to show yet (opened from a list or the capture flow, not a tile), or gone.
@@ -195,7 +221,7 @@ export default function RecordScreen() {
         >
           {missing ? (
             <>
-              <Ionicons name="eye-off-outline" size={40} color={t.muted} />
+              <Icon name="hidden" size={40} color={t.muted} />
               <Text style={[type.headline, { color: t.ink }]}>No longer available</Text>
               <Body muted>This location was removed or hidden.</Body>
             </>
@@ -204,7 +230,7 @@ export default function RecordScreen() {
           ) : (
             <>
               {rejected ? (
-                <Ionicons name="close-circle-outline" size={44} color={t.signalRed} />
+                <Icon name="rejected" size={44} color={t.signalRed} />
               ) : (
                 <ActivityIndicator color={t.ink} />
               )}
@@ -226,7 +252,7 @@ export default function RecordScreen() {
   }
 
   const heroH = width / (record ? aspectOf(record.images) : origin!.aspect);
-  const heroTop = insets.top + space.sm;
+  const heroTop = insets.top + BAR;
   // Grow out of the tile: same centre and scale at progress 0, in place at 1.
   const heroAnim =
     origin && !reduce
@@ -333,9 +359,9 @@ export default function RecordScreen() {
           {/* Actions: Savee's row of quiet icons with one strong Save pill. */}
           <Row style={{ justifyContent: 'space-between' }}>
             <Row style={{ gap: space.xs }}>
-              <IconButton icon="navigate-outline" label="Open in Maps" onPress={openInMaps} />
+              <IconButton icon="navigate" label="Open in Maps" onPress={openInMaps} />
               <IconButton
-                icon="share-outline"
+                icon="share"
                 label="Share"
                 onPress={() =>
                   void Share.share({
@@ -343,11 +369,11 @@ export default function RecordScreen() {
                   })
                 }
               />
-              <IconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenu(true)} />
+              <IconButton icon="more" label="More" onPress={() => setMenu(true)} />
             </Row>
             <Button
               label="Save"
-              icon="bookmark-outline"
+              icon="bookmark"
               size="small"
               onPress={() => router.push(`/save/${record.id}`)}
             />
@@ -365,6 +391,7 @@ export default function RecordScreen() {
           </View>
 
           <Row wrap style={{ gap: space.sm }}>
+            <Icon name="aperture" size={18} color={t.muted} />
             {record.goodFor.map((g) => (
               <View
                 key={g}
@@ -383,43 +410,139 @@ export default function RecordScreen() {
           </Row>
           {record.goodForNote ? <Body muted>{record.goodForNote}</Body> : null}
 
-          {/* Light & direction: the scouting essentials as a compact fact grid. */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            <Fact
-              title="Best light"
-              value={record.bestLight.map((b) => label('best_light', b)).join(', ')}
-            />
-            <Fact
-              title="Camera points"
-              value={`${formatBearing(record.bearingDeg)}${record.sun ? ` · ${LIGHT[lightAngle(record.bearingDeg, record.sun)]}` : ''}`}
-            />
-            {record.sun ? <Fact title="Sun at capture" value={formatSun(record.sun)} /> : null}
-            <Fact
-              title="Captured"
-              value={new Date(record.capturedAt).toLocaleDateString(undefined, {
-                dateStyle: 'medium',
-              })}
-            />
+          {/* Light & direction: what a scout needs to plan the shot, each with its meaning. */}
+          <View style={{ gap: space.md }}>
+            <Label>Light & direction</Label>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              <Fact
+                icon="sunset"
+                title="Best light"
+                value={record.bestLight.map((b) => label('best_light', b)).join(', ')}
+                sub={record.bestLightNote ?? undefined}
+              />
+              <Fact
+                icon="compass"
+                title="Camera faces"
+                value={formatBearing(record.bearingDeg)}
+                sub={
+                  record.sun
+                    ? `${LIGHT[lightAngle(record.bearingDeg, record.sun)]} at capture`
+                    : undefined
+                }
+              />
+              {record.sun ? (
+                <Fact
+                  icon="sun"
+                  title="Sun at capture"
+                  value={
+                    record.sun.elevationDeg >= 0
+                      ? `${Math.round(record.sun.elevationDeg)}° above the horizon`
+                      : `${Math.round(-record.sun.elevationDeg)}° below the horizon`
+                  }
+                  sub={`From the ${formatBearing(record.sun.azimuthDeg).split(' ')[1]} · ${Math.round(record.sun.azimuthDeg)}°`}
+                />
+              ) : null}
+              <Fact
+                icon="camera"
+                title="Captured"
+                value={new Date(record.capturedAt).toLocaleDateString(undefined, {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+                sub={new Date(record.capturedAt).toLocaleTimeString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              />
+            </View>
           </View>
-          {record.bestLightNote ? <Body muted>{record.bestLightNote}</Body> : null}
+
+          {/* Where: coordinates with what they mean, and a way to use them. */}
+          <View style={{ gap: space.md }}>
+            <Label>Location</Label>
+            <Tap
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${record.label} in Maps`}
+              onPress={openInMaps}
+              scaleTo={0.98}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                backgroundColor: t.surface,
+                borderRadius: radius.card,
+                padding: space.lg,
+              }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: t.raised,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="pin.fill" size={20} color={t.ink} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Mono style={{ fontSize: 14, color: t.ink }}>
+                  {formatCoordinates(record.lat, record.lon, 5)}
+                </Mono>
+                <Text style={[type.caption, { color: t.muted }]}>
+                  {[
+                    record.accuracyM != null
+                      ? `Accurate to ±${Math.round(record.accuracyM)} m`
+                      : 'Placed by hand',
+                    record.distanceM != null
+                      ? `${formatDistance(record.distanceM)} from you`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </View>
+              <Text style={[type.bodyStrong, { color: t.ink }]}>Directions</Text>
+              <Icon name="forward" size={16} color={t.muted} />
+            </Tap>
+          </View>
 
           {shownFacts.length ? (
-            <Card style={{ gap: space.sm }}>
-              {shownFacts.map(([k, v]) => (
-                <Row key={k} style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Text style={[type.body, { color: t.muted }]}>{k}</Text>
-                  <Text style={[type.body, { color: t.ink, flexShrink: 1, textAlign: 'right' }]}>
-                    {v}
-                  </Text>
-                </Row>
-              ))}
-            </Card>
+            <View style={{ gap: space.md }}>
+              <Label>Access & practical</Label>
+              <Card style={{ gap: 0, paddingVertical: space.xs }}>
+                {shownFacts.map(([k, v], i) => (
+                  <Row
+                    key={k}
+                    style={{
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      paddingVertical: space.md,
+                      borderTopWidth: i ? StyleSheet.hairlineWidth : 0,
+                      borderColor: t.divider,
+                    }}
+                  >
+                    <Text style={[type.body, { color: t.muted }]}>{k}</Text>
+                    <Text
+                      style={[
+                        type.bodyStrong,
+                        {
+                          color: t.ink,
+                          flexShrink: 1,
+                          textAlign: 'right',
+                          textTransform: 'capitalize',
+                        },
+                      ]}
+                    >
+                      {v}
+                    </Text>
+                  </Row>
+                ))}
+              </Card>
+            </View>
           ) : null}
-
-          <Mono>
-            {formatCoordinates(record.lat, record.lon, 5)}
-            {record.accuracyM != null ? ` ±${Math.round(record.accuracyM)} m` : ''}
-          </Mono>
 
           {own && status ? (
             <OwnerControls
@@ -458,15 +581,15 @@ export default function RecordScreen() {
       {backButton}
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>
-        <SheetAction icon="navigate-outline" label="Open in Maps" onPress={openInMaps} />
+        <SheetAction icon="navigate" label="Open in Maps" onPress={openInMaps} />
         <SheetAction
-          icon="bookmark-outline"
+          icon="bookmark"
           label="Save to a project"
           onPress={() => router.push(`/save/${record.id}`)}
         />
         {!own ? (
           <SheetAction
-            icon="flag-outline"
+            icon="flag"
             label="Report this location"
             onPress={() => router.push(`/report/${record.id}`)}
           />
@@ -476,7 +599,18 @@ export default function RecordScreen() {
   );
 }
 
-function Fact({ title, value }: { title: string; value: string }) {
+/** A photo-data card: icon and label on top, the value as the headline, its meaning below. */
+function Fact({
+  icon,
+  title,
+  value,
+  sub,
+}: {
+  icon: IconName;
+  title: string;
+  value: string;
+  sub?: string;
+}) {
   const t = useTheme();
   return (
     <View
@@ -484,13 +618,17 @@ function Fact({ title, value }: { title: string; value: string }) {
         flexGrow: 1,
         flexBasis: '45%',
         backgroundColor: t.surface,
-        borderRadius: radius.control,
-        padding: space.md,
-        gap: 4,
+        borderRadius: radius.card,
+        padding: space.lg,
+        gap: space.sm,
       }}
     >
-      <Label>{title}</Label>
-      <Text style={[type.bodyStrong, { color: t.ink }]}>{value}</Text>
+      <Row style={{ gap: 6 }}>
+        <Icon name={icon} size={18} color={t.muted} />
+        <Text style={[type.label, { color: t.muted, textTransform: 'uppercase' }]}>{title}</Text>
+      </Row>
+      <Text style={[type.headline, { color: t.ink }]}>{value}</Text>
+      {sub ? <Text style={[type.caption, { color: t.muted }]}>{sub}</Text> : null}
     </View>
   );
 }

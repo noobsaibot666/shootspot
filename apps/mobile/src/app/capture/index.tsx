@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import type { Framing } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -34,10 +34,10 @@ import { useFieldSensors } from '../../capture/sensors';
 import { camera as c } from '../../theme/tokens';
 
 const EV_PER_POINT = 1 / 120; // drag 120 pt for one stop, as on iOS
-const FLASH_ICON: Record<FlashMode, keyof typeof Ionicons.glyphMap> = {
-  off: 'flash-off',
-  auto: 'flash-outline',
-  on: 'flash',
+const FLASH_ICON: Record<FlashMode, IconName> = {
+  off: 'flashOff',
+  auto: 'flashAuto',
+  on: 'flash.fill',
 };
 
 /**
@@ -196,7 +196,7 @@ export default function CameraScreen() {
   if (!hasPermission) {
     return (
       <View style={[styles.root, styles.center, { padding: 32 }]}>
-        <Ionicons name="camera-outline" size={44} color={c.controlMuted} />
+        <Icon name="camera" size={44} color={c.controlMuted} />
         <Text style={styles.title}>Camera access</Text>
         <Text style={styles.body}>
           ShootSpot uses the camera to photograph the locations you scout.
@@ -302,7 +302,7 @@ export default function CameraScreen() {
         {focus ? <FocusSquare at={focus} exposure={exposure} /> : null}
         {showRotateCue ? (
           <View pointerEvents="none" style={styles.rotateCue}>
-            <Ionicons name="phone-landscape-outline" size={18} color={c.control} />
+            <Icon name="rotate" size={18} color={c.control} />
           </View>
         ) : null}
         {lenses.length > 1 && started ? (
@@ -338,7 +338,7 @@ export default function CameraScreen() {
             style={[styles.gallery, rotate]}
             hitSlop={8}
           >
-            <Ionicons name="images-outline" size={22} color={c.control} />
+            <Icon name="gallery" size={22} color={c.control} />
           </Pressable>
         </View>
         <Pressable
@@ -355,7 +355,7 @@ export default function CameraScreen() {
         </Pressable>
         <View style={[styles.side, { alignItems: 'flex-end' }]}>
           <IconButton
-            icon="camera-reverse-outline"
+            icon="flip"
             label="Switch camera"
             style={rotate}
             onPress={() => setPosition((p) => (p === 'back' ? 'front' : 'back'))}
@@ -368,7 +368,7 @@ export default function CameraScreen() {
 }
 
 function IconButton(props: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   label: string;
   onPress(): void;
   tint?: string;
@@ -382,7 +382,7 @@ function IconButton(props: {
       hitSlop={12}
       style={styles.iconButton}
     >
-      <Ionicons name={props.icon} size={24} color={props.tint ?? c.control} style={props.style} />
+      <Icon name={props.icon} size={24} color={props.tint ?? c.control} style={props.style} />
     </Pressable>
   );
 }
@@ -430,8 +430,8 @@ function FocusSquare({ at, exposure }: { at: { x: number; y: number }; exposure:
     >
       <View style={{ width: size, height: size, borderWidth: 1, borderColor: c.accent }} />
       <View style={{ marginLeft: 6, height: size, justifyContent: 'center' }}>
-        <Ionicons
-          name="sunny"
+        <Icon
+          name="sun.fill"
           size={16}
           color={c.accent}
           style={{

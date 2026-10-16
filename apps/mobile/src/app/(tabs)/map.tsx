@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Icon, type IconName } from '../../ui/icon';
 import type { MapPin } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
@@ -124,7 +124,7 @@ export default function MapTab() {
           gap: space.md,
         }}
       >
-        <Ionicons name="map-outline" size={40} color={t.muted} />
+        <Icon name="map" size={40} color={t.muted} />
         <Text style={{ color: t.ink, fontSize: 17, fontWeight: '600' }}>Map coming soon</Text>
         <Text style={{ color: t.muted, fontSize: 15, textAlign: 'center' }}>
           The map isn't available in this build yet. Browse locations in the Feed.
@@ -205,7 +205,7 @@ export default function MapTab() {
           onPress={() => router.push('/filters')}
           style={[styles.chip, { backgroundColor: t.scrim }]}
         >
-          <Ionicons name="options-outline" size={16} color={t.ink} />
+          <Icon name="filters" size={16} color={t.ink} />
           <Text style={{ color: t.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
             {scope.goodFor.length + scope.bestLight.length
               ? scopeLabel(scope, Boolean(center)).split(' · ').slice(-1)[0]
@@ -237,7 +237,7 @@ export default function MapTab() {
         }}
         style={[styles.locate, { top: insets.top + 8, backgroundColor: t.scrim }]}
       >
-        <Ionicons name="locate" size={22} color={t.ink} />
+        <Icon name="locate" size={22} color={t.ink} />
       </Pressable>
 
       {selected ? (
@@ -261,7 +261,7 @@ export default function MapTab() {
             </Text>
             <Text style={{ color: t.muted, fontSize: 13 }}>View location</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={t.muted} />
+          <Icon name="forward" size={20} color={t.muted} />
         </Pressable>
       ) : null}
     </View>
