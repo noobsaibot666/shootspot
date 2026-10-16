@@ -29,8 +29,9 @@
 
 ```powershell
 $sha = (git rev-parse --short HEAD).Trim()
-foreach ($t in 'api','worker','admin') { docker build -f infra/docker/Dockerfile --target $t -t "shootspot-${t}:latest" -t "shootspot-${t}:$sha" . }
-docker save -o "X:\04_DEV\_personal\shootspot\shared\builds\shootspot-images-$sha.tar" shootspot-api:latest shootspot-api:$sha shootspot-worker:latest shootspot-worker:$sha shootspot-admin:latest shootspot-admin:$sha
+$ts = 'api','worker','admin','backup'
+foreach ($t in $ts) { docker build -f infra/docker/Dockerfile --target $t -t "shootspot-${t}:latest" -t "shootspot-${t}:$sha" . }
+docker save -o "X:\04_DEV\_personal\shootspot\shared\builds\shootspot-images-$sha.tar" ($ts | ForEach-Object { "shootspot-${_}:latest"; "shootspot-${_}:$sha" })
 Copy-Item infra/nas/docker-compose.yml X:\04_DEV\_personal\shootspot\shared\builds\docker-compose.yml -Force
 Copy-Item infra/nas/.env.example X:\04_DEV\_personal\shootspot\shared\builds\env.example -Force
 ```
