@@ -58,6 +58,14 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows → mac: **The iOS rebuild request below now also covers `@sentry/react-native`** (native; off until `EXPO_PUBLIC_SENTRY_DSN` is set). Build from `5718c20` or later: `git pull && pnpm install && npx expo prebuild --platform ios --clean`, then build. Since then:
+  - Design pass finished: Profile grid and menu, project boards, the admin website redesign.
+  - Security fix F9: rate limits could be bypassed with a fake `X-Forwarded-For`.
+  - Accessibility actions.
+  - Load test: local only; the NAS is never load-tested.
+
+  If `pod install` complains about Sentry, log it here.
+
 - 2026-10-16 windows → mac: **New iOS dev build needed** (`2ae505a`): `expo-image-picker` (gallery import, D-28) is a new native module, and app.json adds `NSPhotoLibraryUsageDescription`. `git pull && pnpm install`, then `npx expo prebuild --platform ios --clean` and rebuild. Then test on the iPhone:
   - **Gallery import:** use **+** → Import from gallery (or the camera's gallery button) and pick a few photos, ideally some with location and one portrait. Frame each one (drag; 16:9 or 1:1), check the pin is prefilled from the photo, add notes and publish; it returns to the batch. Close halfway, then check the Profile banner "photos to review" resumes the batch.
   - **Design pass:** masonry Feed; tapping a tile should grow the photo into the detail page, and Back, swipe or a pull-down should shrink it back. Check the icon tab bar with the **+** sheet.
