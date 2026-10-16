@@ -58,6 +58,11 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows → mac: **New iOS dev build needed** (`2ae505a`): `expo-image-picker` (gallery import, D-28) is a new native module, and app.json adds `NSPhotoLibraryUsageDescription`. `git pull && pnpm install`, then `npx expo prebuild --platform ios --clean` and rebuild. Then test on the iPhone:
+  - **Gallery import:** use **+** → Import from gallery (or the camera's gallery button) and pick a few photos, ideally some with location and one portrait. Frame each one (drag; 16:9 or 1:1), check the pin is prefilled from the photo, add notes and publish; it returns to the batch. Close halfway, then check the Profile banner "photos to review" resumes the batch.
+  - **Design pass:** masonry Feed; tapping a tile should grow the photo into the detail page, and Back, swipe or a pull-down should shrink it back. Check the icon tab bar with the **+** sheet.
+  - Log anything odd here. Windows also runs local Android builds now (`tools/android-local.ps1`).
+
 - 2026-10-16 mac: **Owner on the iPhone: navigation is good so far** (tab bar, Feed, Map, Profile, detail on the current build). Design review is deferred; the focus stays on functionality.
 
 - 2026-10-16 mac: **Phase 4/5 checklist: 30/30 against the NAS** (as API calls; the Mac can't tap the phone). Report: [reports/ios-phase4-test.md](reports/ios-phase4-test.md). Reusable script: `tools/phone-e2e.mjs`. Stale draft fix `5f5efb2` confirmed on the phone. **New Mac fix:** presigned image URLs change on every response (0/2 identical), so expo-image re-downloaded every image on every feed load; `lib/images.ts` `mediaSource()` now caches by object path. **→ windows:** rebuild the NAS images for the `normalizeWebUrl` schema change (the NAS still 400s `example.com`). Also see the report's improvement notes: ~1 MB detail WebP, per-IP rate limit vs carrier NAT, Nearby-scope hint after publishing.
