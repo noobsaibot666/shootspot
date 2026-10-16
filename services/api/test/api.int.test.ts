@@ -331,7 +331,85 @@ describe('anonymity contract (D-06)', () => {
   });
 });
 
+describe('map pins', () => {
+  it('returns anonymous pins inside the box only, with filters', async () => {
+    const creator = await member(env, 'map-creator@example.com');
+    const viewer = await member(env, 'map-viewer@example.com');
+    const inside = await publishDirect(creator, {
+      pin: { lat: 37.0194, lon: -7.9304, accuracyM: 5, source: 'gps' },
+      short: {
+        label: 'Faro marina',
+        goodFor: ['seascape'],
+        bestLight: ['golden_pm'],
+        bearingDeg: 200,
+      },
+    });
+    await publishDirect(creator, {
+      pin: { lat: 40.2033, lon: -8.4103, accuracyM: 5, source: 'gps' },
+    });
+    const box = 'minLat=36.9&minLon=-8.1&maxLat=37.1&maxLon=-7.8';
+    const res = await env.app.inject({ method: 'GET', url: `/v1/map?${box}`, headers: viewer });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.items.map((p: { id: string }) => p.id)).toEqual([inside]);
+    expect(Object.keys(body.items[0]).sort()).toEqual(['id', 'label', 'lat', 'lon', 'thumb']);
+    expect(JSON.stringify(body)).not.toContain('map-creator@example.com');
+    const filtered = await env.app.inject({
+      method: 'GET',
+      url: `/v1/map?${box}&goodFor=portrait`,
+      headers: viewer,
+    });
+    expect(filtered.json().items).toEqual([]);
+    const bad = await env.app.inject({
+      method: 'GET',
+      url: '/v1/map?minLat=1&minLon=1&maxLat=0&maxLon=2',
+      headers: viewer,
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});
+
 describe('projects are private (D-09)', () => {
+  it('the save sheet lists only my projects that contain the record', async () => {
+    const me = await member(env, 'saver@example.com');
+    const other = await member(env, 'other-saver@example.com');
+    const rec = await publishDirect(me);
+    const mine = (
+      await env.app.inject({
+        method: 'POST',
+        url: '/v1/projects',
+        headers: me,
+        payload: { name: 'Mine' },
+      })
+    ).json();
+    const theirs = (
+      await env.app.inject({
+        method: 'POST',
+        url: '/v1/projects',
+        headers: other,
+        payload: { name: 'Theirs' },
+      })
+    ).json();
+    await env.app.inject({
+      method: 'POST',
+      url: `/v1/projects/${mine.id}/items`,
+      headers: me,
+      payload: { recordId: rec },
+    });
+    await env.app.inject({
+      method: 'POST',
+      url: `/v1/projects/${theirs.id}/items`,
+      headers: other,
+      payload: { recordId: rec },
+    });
+    const res = await env.app.inject({
+      method: 'GET',
+      url: `/v1/records/${rec}/projects`,
+      headers: me,
+    });
+    expect(res.json()).toEqual({ projectIds: [mine.id] });
+  });
+
   it('only the owner can see or change a project', async () => {
     const owner = await member(env, 'kika@example.com');
     const stranger = await member(env, 'luis@example.com');

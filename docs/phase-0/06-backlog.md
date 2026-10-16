@@ -51,14 +51,15 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 
 ## Phase 4 — Mobile: discover and organize
 
-| #   | Item                                                    | Pri |
-| --- | ------------------------------------------------------- | --- |
-| 4.1 | Floating nav: Feed · Map · Profile + Camera             | P0  |
-| 4.2 | Feed with scope chip, filter sheet, chrome hide/reveal  | P0  |
-| 4.3 | Map tab with clustering and preview card                | P0  |
-| 4.4 | Location detail, Open in Maps, save to project, report  | P0  |
-| 4.5 | Profile: My records, Projects, Settings, export, delete | P0  |
-| 4.6 | Empty, error, and offline states                        | P0  |
+| #   | Item                                                    | Pri | Status                                                                                                                           |
+| --- | ------------------------------------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 | Floating nav: Feed · Map · Profile + Camera             | P0  | Built: dark pill Feed · Map · Profile + round camera; hides while scrolling, Reduce Motion aware                                 |
+| 4.2 | Feed with scope chip, filter sheet, chrome hide/reveal  | P0  | Built: image-first cards, scope chip (everywhere/nearby/place + radius), filter sheet (persisted), paging                        |
+| 4.3 | Map tab with clustering and preview card                | P0  | Built: /v1/map pins in view, grid clustering, preview card. **Android map needs the Google key**                                 |
+| 4.4 | Location detail, Open in Maps, save to project, report  | P0  | Built: detail with notes, sun, advanced facts, Open in Maps, save sheet, report sheet, owner controls                            |
+| 4.5 | Profile: My records, Projects, Settings, export, delete | P0  | Built: My locations + drafts, private projects (rename/delete, unavailable items), settings: profile, export, deletion, sign out |
+| 4.6 | Empty, error, and offline states                        | P0  | Built: empty/offline/error/location-off states                                                                                   |
+| 4.7 | Device test of Phase 4 on iOS and Android               | P0  | **Pending**                                                                                                                      |
 
 ## Phase 5+ (summarized)
 

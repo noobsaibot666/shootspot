@@ -104,8 +104,8 @@ export default function Publish() {
       // Closing the capture modal discards its state (CaptureProvider unmounts). Resetting first
       // would re-render the screens underneath with an empty capture (iOS console report #1).
       // dismissAll() would only return to the camera (first screen of the capture stack);
-      // dismissTo('/home') closes the whole capture modal.
-      router.dismissTo('/home');
+      // dismissTo('/profile') closes the whole capture modal (the new location appears in My locations).
+      router.dismissTo('/profile');
       if (result?.recordId && result.state === 'processing')
         router.push(`/records/${result.recordId}`);
     } catch (err) {

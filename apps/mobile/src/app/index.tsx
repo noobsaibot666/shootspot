@@ -35,5 +35,5 @@ export default function Gate() {
   }
   if (state.status === 'signed-out') return <Redirect href="/sign-in" />;
   if (!state.me.onboarded) return <Redirect href="/onboarding" />;
-  return <Redirect href="/home" />;
+  return <Redirect href="/feed" />;
 }

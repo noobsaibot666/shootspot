@@ -50,7 +50,7 @@ export default function Onboarding() {
         },
       });
       await refresh();
-      router.replace('/home');
+      router.replace('/feed');
     } catch (err) {
       setError(
         err instanceof ApiError && err.code === 'legal_version_outdated'

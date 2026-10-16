@@ -90,6 +90,30 @@ export const feedQuerySchema = z.object({
 });
 export type FeedQuery = z.infer<typeof feedQuerySchema>;
 
+/** Map tab: pins inside the visible bounding box (anonymous, like PublicRecord). */
+export const mapQuerySchema = z
+  .object({
+    minLat: z.coerce.number().min(-90).max(90),
+    minLon: z.coerce.number().min(-180).max(180),
+    maxLat: z.coerce.number().min(-90).max(90),
+    maxLon: z.coerce.number().min(-180).max(180),
+    goodFor: feedQuerySchema.shape.goodFor,
+    bestLight: feedQuerySchema.shape.bestLight,
+  })
+  .refine((q) => q.minLat < q.maxLat && q.minLon < q.maxLon, 'empty box');
+export type MapQuery = z.infer<typeof mapQuerySchema>;
+
+export interface MapPin {
+  id: string;
+  lat: number;
+  lon: number;
+  label: string;
+  thumb: string;
+}
+
+/** Upper bound of pins per map request; the client clusters them. */
+export const MAP_PIN_LIMIT = 300;
+
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
 export const profileUpdateSchema = z.object({

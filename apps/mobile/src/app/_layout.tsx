@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { resumeDrafts } from '../lib/drafts';
+import { ScopeProvider } from '../lib/scope';
 import { SessionProvider, useSession } from '../lib/session';
 import { useTheme } from '../theme/tokens';
 
@@ -11,7 +12,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <Navigator />
+        <ScopeProvider>
+          <Navigator />
+        </ScopeProvider>
       </SessionProvider>
     </SafeAreaProvider>
   );
@@ -47,12 +50,20 @@ function Navigator() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="home" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="capture"
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
-        <Stack.Screen name="records/[id]" options={{ title: 'Location' }} />
+        <Stack.Screen
+          name="records/[id]"
+          options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
+        />
+        <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
+        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="filters" options={{ title: 'Area & filters', presentation: 'modal' }} />
+        <Stack.Screen name="save/[id]" options={{ title: '', presentation: 'modal' }} />
+        <Stack.Screen name="report/[id]" options={{ title: '', presentation: 'modal' }} />
       </Stack>
     </>
   );

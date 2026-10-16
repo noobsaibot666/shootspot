@@ -173,6 +173,18 @@ export function projectRoutes(app: FastifyInstance, deps: AppDeps) {
     return reply.code(201).send({ status: 'received' });
   });
 
+  /** For the save sheet: which of MY projects already contain this record. */
+  app.get('/v1/records/:id/projects', async (req) => {
+    const viewer = await requireOnboarded(deps, req);
+    const { id } = idParam.parse(req.params);
+    const { rows } = await pool.query(
+      `select i.project_id from project_items i join projects p on p.id = i.project_id
+       where i.location_id = $1 and p.user_id = $2`,
+      [id, viewer.userId],
+    );
+    return { projectIds: rows.map((r) => r.project_id as string) };
+  });
+
   async function ownProject(id: string, userId: string) {
     const { rowCount } = await pool.query('select 1 from projects where id = $1 and user_id = $2', [
       id,

@@ -1,4 +1,12 @@
-import { feedQuerySchema, type Page, type PublicRecord } from '@shootspot/shared';
+import {
+  MAP_PIN_LIMIT,
+  feedQuerySchema,
+  mapQuerySchema,
+  objectKey,
+  type MapPin,
+  type Page,
+  type PublicRecord,
+} from '@shootspot/shared';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, requireViewer, type AppDeps } from '../http/context';
 import { ATTRIBUTION_JOIN, PUBLIC_COLUMNS, toPublicRecord, type PublicRow } from './dto';
@@ -66,5 +74,49 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
           : null,
     };
     return reply.send(body);
+  });
+
+  /**
+   * Map tab: published records inside the visible box, newest first, capped. Lightweight pins
+   * (the detail screen fetches the full record). No creator data, same as the feed.
+   */
+  app.get('/v1/map', async (req, reply) => {
+    await requireViewer(deps, req);
+    const q = mapQuerySchema.parse(req.query);
+    const params: unknown[] = [q.minLon, q.minLat, q.maxLon, q.maxLat];
+    const where = [
+      `l.status = 'published'`,
+      `l.point && st_makeenvelope($1, $2, $3, $4, 4326)::geography`,
+    ];
+    if (q.goodFor?.length) {
+      params.push(q.goodFor);
+      where.push(`l.good_for && $${params.length}::text[]`);
+    }
+    if (q.bestLight?.length) {
+      params.push(q.bestLight);
+      where.push(`l.best_light && $${params.length}::text[]`);
+    }
+    params.push(MAP_PIN_LIMIT);
+    const { rows } = await pool.query(
+      `select l.id, l.label, st_y(l.point::geometry) as lat, st_x(l.point::geometry) as lon, m.id as media_id
+       from locations l join media m on m.location_id = l.id and m.state = 'ready'
+       where ${where.join(' and ')}
+       order by l.published_at desc limit $${params.length}`,
+      params,
+    );
+    const items: MapPin[] = await Promise.all(
+      rows.map(async (r) => ({
+        id: r.id,
+        lat: r.lat,
+        lon: r.lon,
+        label: r.label,
+        thumb: await storage.presignDownload(
+          'public',
+          objectKey.derivative(r.media_id, 'thumb'),
+          3600,
+        ),
+      })),
+    );
+    return reply.send({ items, truncated: rows.length === MAP_PIN_LIMIT });
   });
 }

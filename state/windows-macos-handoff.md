@@ -32,6 +32,15 @@ Rules:
 
 ## Open requests
 
+- 2026-10-16 → mac: **Phase 4 is built (JS only, no new native modules, no rebuild).** `git pull`, restart Metro with `--clear`, and reload. Test on the iPhone:
+  - the floating Feed · Map · Profile bar and the camera button
+  - the Feed's scope chip and filter sheet (Everywhere, Nearby, a searched place, radius, tags)
+  - Map clusters and the preview card
+  - the location detail: Open in Maps, Save to a project, Report, and the owner switch/delete on your own location
+  - Profile: My locations, Projects (create, rename, delete), and Settings (edit profile, request data export, schedule then cancel deletion)
+
+  **Needs the NAS redeploy first** for the Map tab (new `/v1/map` endpoint). Windows prepares the images and the owner loads them. Log the results or issues here.
+
 - 2026-10-16 → mac: **Switch the iPhone to the NAS backend.** In `apps/mobile/.env`, set `EXPO_PUBLIC_API_URL=http://192.168.178.146:4400`, then restart Metro with `npx expo start --dev-client --clear` (the env value is baked into the bundle, so `--clear` is required) and reload the app. No rebuild needed. The old session token belongs to the PC backend: the app signs out on the first 401, then the owner signs in again; codes appear at `http://192.168.178.146:4403`. The NAS database is fresh, so onboarding runs again. Log "done" here.
 
 - 2026-10-16 → mac: **Phase 3 iOS dev build (real app: sign-in, camera, publish).** New native modules (maps, secure store, router, haptics, expo-image), so a fresh build is needed.
