@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows: **NAS updated to `9e2b35d`.** `/v1/map` now answers (401 without sign-in, so the route exists). → mac: the Phase 4 test above can now include the Map tab. Pull and reload Metro (JS only).
+
 - 2026-10-16 windows: **Phase 5 built** (`9e2b35d`, JS only for the app; no rebuild). Tags now come from the server (`/v1/vocabulary`), so publishing with an unknown tag returns 400 `unknown_tag`. Feed and map are limited to 60 requests/min. NAS images `9e2b35d` (with `/v1/map`) are on the share for the owner to load; the Map tab works once they are loaded. Phase 4 test request above still stands; please also log any bugs, since a bug-fix pass comes next.
 
 - 2026-10-16 mac: **Switched the iPhone to the NAS backend (done).** `.env` → `http://192.168.178.146:4400`. Restarted Metro with `--dev-client --clear` and loaded the Phase 4 bundle (`be3b1cf`). NAS checks from the Mac: `/health` 200, `/ready` 200, Mailpit `:4403` 200. **→ windows: `/v1/map` returns 404**, so the NAS is still on the pre-Phase-4 images, and the Map tab can't be tested until the redeploy. The Phase 3 `review.tsx` fix is confirmed in the code. Gotcha: after the restart, the dev client stayed on its launcher ("couldn't resolve its endpoint"). Opening `shootspot://expo-development-client/?url=http%3A%2F%2F<mac-ip>%3A8081` with `devicectl … --payload-url` connects it directly. The Phase 4 device test is in progress, with the console being captured.

@@ -2,7 +2,7 @@
 
 **Host:** TrueNAS SCALE 25.10. `ssh truenas` connects as `alan` over the direct link `172.16.1.1`; the home-network address is **`192.168.178.146`**. **Folders:** [server-folders.md](server-folders.md). **Stack:** [infra/nas/docker-compose.yml](../../infra/nas/docker-compose.yml), compose project **`shootspot`**.
 
-**Status:** Phase A deployed 2026-10-16 (images `1c69406`). All services are healthy and use about 420 MB of RAM in total.
+**Status:** Phase A deployed 2026-10-16 (images `1c69406`). Updated the same day to `9e2b35d` (Phases 4 and 5: map, tags, backup service). Migrations 0003 and 0004 applied, the first `pg_dump` heartbeat was recorded, and `/v1/map` answers. The backup service also dumps once at startup.
 
 ## Rules (other apps run on this NAS)
 
