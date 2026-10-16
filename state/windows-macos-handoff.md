@@ -45,7 +45,7 @@ Rules:
      - notes
      - publish
      - the status screen shows **Published**
-  6. **Heading test C16/C17** on the iPhone (camera-spike-test-plan): log the error in degrees at N/E/S/W, upright and sideways.
+  6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
 
 ## Log
 

@@ -79,12 +79,12 @@ The app now has sign-in, the new camera, the map pin, notes and publishing. It c
 - **Android:** run `pnpm --filter @shootspot/mobile build:dev:android` and install the new APK. The map on the pin screen stays grey until you have a Google Maps key (3.4). Everything else works without it.
 - **iPhone:** the Mac follows the request in the handoff file.
 
-**Test:** sign in â†’ onboarding â†’ capture (sideways and upright) â†’ pin â†’ notes â†’ publish, and check the status screen shows **Published**. Then run the compass test C16/C17 outdoors. Send Claude the results.
+**Test:** sign in â†’ onboarding â†’ capture (sideways and upright) â†’ pin â†’ notes â†’ publish, and check the status screen shows **Published**. Send Claude the results.
 
 - [ ] Firewall rule added
 - [ ] Android: published a location
 - [ ] iPhone: published a location
-- [ ] Compass test results sent
+- [ ] Compass test results sent (deferred to the end, Phase 5)
 
 ---
 
