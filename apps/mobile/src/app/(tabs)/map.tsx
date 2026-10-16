@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { MapPin } from '@shootspot/shared';
 import { Image } from 'expo-image';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -41,13 +42,35 @@ export default function MapTab() {
   const insets = useSafeAreaInsets();
   const { scope, center, here, refreshHere } = useScope();
   const map = useRef<MapView>(null);
-  const start = center ?? here ?? { lat: 38.7223, lon: -9.1393 };
-  const [region, setRegion] = useState<Region>({
-    latitude: start.lat,
-    longitude: start.lon,
-    latitudeDelta: 0.3,
-    longitudeDelta: 0.3,
-  });
+  const start = center ?? here;
+  // Without a place, start Europe-wide rather than on an arbitrary city.
+  const [region, setRegion] = useState<Region>(
+    start
+      ? { latitude: start.lat, longitude: start.lon, latitudeDelta: 0.3, longitudeDelta: 0.3 }
+      : { latitude: 50, longitude: 10, latitudeDelta: 30, longitudeDelta: 30 },
+  );
+
+  // If location access was already granted (e.g. for capture), start where the member is,
+  // without prompting: the prompt stays tied to choosing "Nearby".
+  useEffect(() => {
+    if (start) return;
+    void (async () => {
+      try {
+        if (!(await Location.getForegroundPermissionsAsync()).granted) return;
+        const last = await Location.getLastKnownPositionAsync();
+        if (last)
+          map.current?.animateToRegion(
+            {
+              latitude: last.coords.latitude,
+              longitude: last.coords.longitude,
+              latitudeDelta: 0.3,
+              longitudeDelta: 0.3,
+            },
+            0,
+          );
+      } catch {}
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [pins, setPins] = useState<MapPin[]>([]);
   const [selected, setSelected] = useState<MapPin | null>(null);
   const [truncated, setTruncated] = useState(false);
