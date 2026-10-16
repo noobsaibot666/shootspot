@@ -1,81 +1,84 @@
 # TrueNAS deployment
 
-**Host:** TrueNAS SCALE 25.10 at `ssh truenas` (`alan@172.16.1.1`, LAN only). **Folders:** [server-folders.md](server-folders.md). **Stack:** [infra/nas/docker-compose.yml](../../infra/nas/docker-compose.yml).
+**Host:** TrueNAS SCALE 25.10. `ssh truenas` connects as `alan` over the direct link `172.16.1.1`; the home-network address is **`192.168.178.146`**. **Folders:** [server-folders.md](server-folders.md). **Stack:** [infra/nas/docker-compose.yml](../../infra/nas/docker-compose.yml), compose project **`shootspot`**.
+
+**Status:** Phase A deployed 2026-10-16 (images `1c69406`). All services are healthy and use about 420 MB of RAM in total.
 
 ## Rules (other apps run on this NAS)
 
-- Read-only check first, then guarded change blocks. Touch only `Gaia/04_DEV/shootspot-*` and `/mnt/Gaia/04_DEV/_personal/shootspot`.
-- Never restart Docker, never touch other apps, shares or datasets.
-- Every container has a `mem_limit` (about 1.8 GB in total).
-- No router port forwards. Ports bind to the LAN IP only. Public access later goes through the Cloudflare Tunnel.
-- Secrets are generated on the NAS and stored in `runtime/compose/.env` (root, 600). Never in git, chat or the handoff file.
-- Take a ZFS snapshot before each deploy so it can be rolled back.
+- Read-only check first, then guarded change blocks. Touch only the `shootspot` compose project, the `Gaia/04_DEV/shootspot-*` datasets and `/mnt/Gaia/04_DEV/_personal/shootspot`.
+- Never restart Docker, never touch other apps, shares or datasets. Every command uses `-p shootspot`.
+- Every container has a `mem_limit` (about 1.9 GB of caps).
+- No router port forwards. Ports bind to `192.168.178.146` only. Public access later goes through the **existing** `cloudflared`, by adding a hostname in the Cloudflare dashboard; that container is never touched.
+- Secrets are generated on the NAS in `runtime/compose/.env` (root, 600). Never in git, chat or the handoff file.
+- `runtime/` is root-only, so **never `cd` into it**. Address the file instead: `F=/mnt/Gaia/04_DEV/_personal/shootspot/runtime/compose/docker-compose.yml` and `sudo docker compose -p shootspot -f $F …`.
+- Take a ZFS snapshot before each deploy.
 
-## Phase A: first deploy, LAN only (no domain needed)
+## Endpoints (home network)
 
-Phones on the home Wi-Fi use `http://172.16.1.1:4400`. Sign-in codes go to a Mailpit inbox on the NAS (`:4403`) until a real email sender exists (HANDWORK 3.2).
+| What                                                    | URL                           |
+| ------------------------------------------------------- | ----------------------------- |
+| API (phones)                                            | `http://192.168.178.146:4400` |
+| Admin web                                               | `http://192.168.178.146:4401` |
+| S3 (presigned URLs only)                                | `http://192.168.178.146:4402` |
+| Mailpit, sign-in codes (until real email, HANDWORK 3.2) | `http://192.168.178.146:4403` |
 
-### A1. Check (read-only, on the NAS)
+## Deploy or update
 
-```sh
-sudo docker ps --format '{{.Names}}\t{{.Ports}}' | head -50
-sudo ss -ltnp | grep -E ':(4400|4401|4402|4403)\b' || echo "ports 4400-4403 free"
-free -h; zfs list -o name,used,avail Gaia/04_DEV/shootspot-runtime
-```
-
-### A2. Images (on Windows): build, then stream to the NAS
-
-`alan` is in the `docker` group, so `docker load` needs no sudo. Nothing goes through a registry.
+**1. On Windows:** build the images and put them on the share. Nothing goes through a registry.
 
 ```powershell
-foreach ($t in 'api','worker','admin') { docker build -f infra/docker/Dockerfile --target $t -t "shootspot-${t}:latest" . }
-docker save shootspot-api:latest shootspot-worker:latest shootspot-admin:latest | ssh truenas docker load
+$sha = (git rev-parse --short HEAD).Trim()
+foreach ($t in 'api','worker','admin') { docker build -f infra/docker/Dockerfile --target $t -t "shootspot-${t}:latest" -t "shootspot-${t}:$sha" . }
+docker save -o "X:\04_DEV\_personal\shootspot\shared\builds\shootspot-images-$sha.tar" shootspot-api:latest shootspot-api:$sha shootspot-worker:latest shootspot-worker:$sha shootspot-admin:latest shootspot-admin:$sha
+Copy-Item infra/nas/docker-compose.yml X:\04_DEV\_personal\shootspot\shared\builds\docker-compose.yml -Force
+Copy-Item infra/nas/.env.example X:\04_DEV\_personal\shootspot\shared\builds\env.example -Force
 ```
 
-### A3. Stack files (on Windows, then on the NAS)
-
-```powershell
-scp infra/nas/docker-compose.yml truenas:/tmp/shootspot-compose.yml
-```
-
-Then on the NAS:
+**2. On the NAS:** load the images and install the stack file. `.env` is generated once, on first deploy, and kept afterwards.
 
 ```sh
-# runtime/ is root-only, so the file is installed with sudo and the temporary copy removed
-sudo install -m 600 -o root -g root /tmp/shootspot-compose.yml \
-  /mnt/Gaia/04_DEV/_personal/shootspot/runtime/compose/docker-compose.yml && rm /tmp/shootspot-compose.yml
+S=/mnt/Gaia/04_DEV/_personal/shootspot; B=$S/shared/builds; R=$S/runtime/compose; F=$R/docker-compose.yml
+sha256sum $B/shootspot-images-<sha>.tar        # compare with the Windows hash
+sudo docker load -i $B/shootspot-images-<sha>.tar
+sudo install -m 600 -o root -g root $B/docker-compose.yml $F
+# first deploy only:
+if sudo test -e $R/.env; then echo ".env kept"; else
+  gen() { openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-40; }
+  sed -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(gen)|" -e "s|^S3_SECRET_ACCESS_KEY=.*|S3_SECRET_ACCESS_KEY=$(gen)|" \
+      -e "s|^AUTH_SECRET=.*|AUTH_SECRET=$(gen)|" $B/env.example | sudo install -m 600 -o root -g root /dev/stdin $R/.env; fi
 ```
 
-### A4. Secrets (on the NAS; values never leave it)
-
-The exact block is given at deploy time. It writes `.env` from [infra/nas/.env.example](../../infra/nas/.env.example) with `openssl rand` values for `POSTGRES_PASSWORD`, `S3_SECRET_ACCESS_KEY` and `AUTH_SECRET`.
-
-### A5. Start (on the NAS)
+**3. Snapshot, start and verify:**
 
 ```sh
 sudo zfs snapshot -r Gaia/04_DEV/shootspot-runtime@pre-deploy-$(date +%Y%m%d-%H%M)
-cd /mnt/Gaia/04_DEV/_personal/shootspot/runtime/compose
-sudo docker compose --profile devmail up -d
-sudo docker compose ps
-curl -s http://172.16.1.1:4400/ready
+sudo docker compose -p shootspot -f $F --profile devmail up -d
+sudo docker compose -p shootspot -f $F ps -a
+curl -s http://192.168.178.146:4400/ready
+sudo docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' | grep shootspot
 ```
 
-### A6. First owner
-
-1. Run `sudo docker compose exec api node --import tsx scripts/grant-owner.ts you@…`. This creates the owner account; `DATABASE_URL` is already set in the container.
-2. Open `http://172.16.1.1:4401` and sign in. Read the code at `http://172.16.1.1:4403`.
-3. Scan the TOTP QR code.
-
-### Rollback
+## Owner account
 
 ```sh
-sudo docker compose down          # stops only the shootspot project
-sudo zfs rollback -r Gaia/04_DEV/shootspot-runtime@pre-deploy-<stamp>
+sudo docker compose -p shootspot -f $F exec api node --import tsx scripts/grant-owner.ts you@example.com
 ```
 
-## Phase B: public through a Cloudflare Tunnel (after HANDWORK 2.3–2.4)
+Then sign in at `http://192.168.178.146:4401`, read the code in Mailpit (`:4403`), and scan the TOTP QR code.
 
-Add `cloudflared` with the tunnel token. Route `api.<domain>` to `http://api:4000` and the S3 hostname to `http://s3:8333`. Then set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `TRUSTED_ORIGINS` and `CLIENT_IP_HEADER=cf-connecting-ip`, and remove the LAN port bindings for anything that doesn't need them.
+## Rollback
+
+```sh
+sudo docker compose -p shootspot -f $F down     # stops only the shootspot project
+sudo zfs rollback -r Gaia/04_DEV/shootspot-runtime@pre-deploy-<stamp>
+# then start the previous images: set TAG=<old sha> in .env and run `up -d` again
+```
+
+## Phase B: public through the existing Cloudflare Tunnel (after HANDWORK 2.3–2.4)
+
+1. In the Cloudflare dashboard, under the existing tunnel, add `api.<domain>` → `http://192.168.178.146:4400` and `media.<domain>` → `http://192.168.178.146:4402`.
+2. Set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `TRUSTED_ORIGINS` and `CLIENT_IP_HEADER=cf-connecting-ip` in `.env`, then run `up -d`.
 
 ## Phase C: backups (before any external tester)
 
