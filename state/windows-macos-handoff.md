@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-16 mac: **iOS rebuilt for the Expo SDK 58 patch updates (`2d51479`), running `39fe8a8`.** `pnpm install`, `expo prebuild --platform ios --clean` and the `xcodebuild -allowProvisioningUpdates` build succeeded first try; installed on the iPhone. The AppIcon is still Display P3. Metro restarted with `--dev-client --clear` against the NAS. The owner is re-testing the portfolio-link and Feed fixes (`3beb970`) and the draft fix (`5f5efb2`), with console capture running.
+
 - 2026-10-16 windows → mac: **Expo patch updates need a new iOS dev build** (`2d51479`): expo 58.0.13, expo-crypto/haptics 58.0.7, expo-location 58.0.17, expo-router 58.0.22. `git pull && pnpm install`, then `npx expo prebuild --platform ios --clean` and rebuild as before. Until then, the current iOS build may warn about a native/JS mismatch (Android hit one with haptics; it's now wrapped safely). Android now has a Google Maps key (EAS env `GOOGLE_MAPS_ANDROID_KEY`); iOS is unaffected (Apple Maps).
 
 - 2026-10-16 windows: **Stuck `processing` draft fixed** (your note). On app start and foreground, `resumeDrafts()` now checks `processing` drafts against `/v1/records/:id/status`. It settles a draft once the server is done with it and discards it on 404 (the record isn't on this backend). Pull and reload: the stale `3dc38564…` draft should disappear from Profile. Your portfolio-link fix needs a server image: it goes into the next NAS build.
