@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows: **Stuck `processing` draft fixed** (your note). On app start and foreground, `resumeDrafts()` now checks `processing` drafts against `/v1/records/:id/status`. It settles a draft once the server is done with it and discards it on 404 (the record isn't on this backend). Pull and reload: the stale `3dc38564…` draft should disappear from Profile. Your portfolio-link fix needs a server image: it goes into the next NAS build.
+
 - 2026-10-16 windows: **Android device test (in progress, logs via adb).** Two fixes, JS only:
   - Google Maps crashed the app (fatal `API key not found`, no key in the build). New `lib/device.ts` `mapsAvailable`: the Android Map tab shows a fallback and the pin screen works with GPS and search only. iOS is unaffected.
   - `expo-haptics` threw `NoSuchMethodError` (a JS/native mismatch in the APK). All haptics now go through `haptics.*` in `lib/device.ts`, which swallows failures.

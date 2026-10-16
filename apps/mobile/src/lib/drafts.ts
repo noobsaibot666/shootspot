@@ -144,10 +144,24 @@ export async function submitDraft(id: string): Promise<LocalDraft | null> {
   }
 }
 
-/** Retry everything that hasn't reached the server yet. */
+/**
+ * Retry everything that hasn't reached the server yet, and settle drafts the server has finished
+ * with. A 404 means the record isn't on this server (deleted, or made against another backend
+ * during testing), so the local copy can't progress and is dropped instead of spinning forever.
+ */
 export async function resumeDrafts() {
   for (const d of await listDrafts()) {
-    if (d.state !== 'done' && d.state !== 'processing') await submitDraft(d.draft.draftId);
+    if (d.state === 'processing' && d.recordId) {
+      try {
+        const s = await api<RecordStatusResponse>(`/v1/records/${d.recordId}/status`);
+        if (s.status !== 'processing' && s.status !== 'pending_media')
+          await settleDraft(d.draft.draftId);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) discardDraft(d.draft.draftId);
+      }
+    } else if (d.state !== 'done' && d.state !== 'processing') {
+      await submitDraft(d.draft.draftId);
+    }
   }
 }
 
