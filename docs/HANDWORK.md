@@ -95,7 +95,15 @@ Claude uses the output to create the project folders in [server-folders.md](runb
 
 ### 2.2 Use an SSH key instead of a password ⏱ 5 min
 
-If `ssh alan@172.16.1.1` asks for a password, tell Claude, and you'll get the steps to set up a key.
+The NAS only accepts SSH keys, and the PC's key isn't on it yet. The SSH config is already set to use the key `~/.ssh/truenas_windows`.
+
+1. Open the TrueNAS web UI → **Credentials → Users** → **alan** → **Edit**.
+2. In **Authorized Keys**, add this line (it's the _public_ key, safe to share) and **Save**:
+   ```
+   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDitzoteVttiTIcY5gso5kaqnOFSgx9zrxxFQ3j0qC7B cyrus@Alan
+   ```
+3. Check that **SSH** is enabled in **System → Services**.
+4. On the PC, run `ssh truenas`. You should land on the NAS prompt without a password.
 
 - [ ] SSH key works
 
@@ -125,7 +133,7 @@ Choose one: **Backblaze B2** (EU region) or **Hetzner Storage Box**. It costs a 
 - [ ] **3.2 Email sender** ⏱ 15 min. Create an account with Postmark, Brevo or Scaleway, and verify your domain. It sends sign-up and account emails.
 - [ ] **3.3 Admin 2-factor.** Have an authenticator app or passkey ready for your admin login.
 - [ ] **3.4 Google Maps key** 💶 ⏱ 20 min. Android maps need it. Claude will walk you through the Google Cloud setup, including a spending cap.
-- [ ] **3.5 Logo / app icon.** Send yours, or approve one Claude proposes.
+- [x] **3.5 Logo / app icon.** Done. Generated from `shared/design/app-icon/Group 15@4x.png`; previews are in `shared/design/app-icon/generated/`. If the logo changes, drop the new export there and ask Claude to re-run `tools/make-icons.mjs`.
 - [ ] **3.6 Review the photo tags and note fields** in [02-v1-scope-and-flows.md §3](phase-0/02-v1-scope-and-flows.md#3-scout-record-fields).
 
 ---

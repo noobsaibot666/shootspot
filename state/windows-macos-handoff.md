@@ -40,6 +40,7 @@ Rules:
   5. `cd apps/mobile && npx expo run:ios --device`. Pick the iPhone. In Xcode, set Signing to your Apple ID team if it asks.
   6. Run the [camera test plan](../docs/runbooks/camera-spike-test-plan.md) and put the results in `state/reports/camera-ios.md`.
   7. Log the iPhone model, iOS version, Xcode version, and any build errors below.
+  8. **App icon check:** on the iPhone home screen, compare the icon with `shared/design/app-icon/Group 15.png`. `icon.png` holds the designer's Display P3 colours with a P3 profile tag, and the colours should look as vivid as in Figma. If they look dull or shifted, report it here.
 
 ## Log
 
