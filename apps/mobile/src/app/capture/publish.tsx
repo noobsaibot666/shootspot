@@ -104,6 +104,15 @@ export default function Publish() {
       // Saved on the phone first: nothing is lost if the network drops from here on.
       await saveDraft(draft, photo!.uri, { width: photo!.width, height: photo!.height });
       const result = await submitDraft(draft.draftId);
+      // Not sent yet: say so. The draft stays on the phone and is retried automatically.
+      if (result?.state === 'failed') {
+        Alert.alert(
+          result.error === 'daily_limit' ? 'Daily limit reached' : 'Saved on your phone',
+          result.error === 'daily_limit'
+            ? 'You can publish 30 locations a day. This one is saved and sent automatically later.'
+            : 'It could not be sent right now. It is sent automatically when you are online.',
+        );
+      }
       // Import batch (D-28): back to the batch for the next photo; the draft uploads meanwhile.
       if (state.importId) {
         await markImported(state.importId, draft.draftId);
@@ -158,6 +167,11 @@ export default function Publish() {
           <Mono>
             {formatCoordinates(pin.lat, pin.lon, 5)} · {new Date(state.capturedAt).toLocaleString()}
           </Mono>
+          {state.timeEstimated ? (
+            <Body muted>
+              This photo has no capture time, so the current time is used for the sun data.
+            </Body>
+          ) : null}
         </View>
 
         <Card>

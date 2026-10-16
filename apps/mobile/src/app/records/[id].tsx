@@ -5,50 +5,115 @@ import {
   formatDistance,
   formatSun,
   lightAngle,
+  type Page,
   type PublicRecord,
   type RecordStatusResponse,
 } from '@shootspot/shared';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Linking,
   Platform,
-  Pressable,
+  Share,
+  StyleSheet,
   Switch,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
-import { mediaSource } from '../../lib/images';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
+import { mediaSource } from '../../lib/images';
 import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
+import { getOrigin, useReduceMotion, type Origin } from '../../lib/motion';
 import { useVocabulary } from '../../lib/vocabulary';
-import { space, useTheme } from '../../theme/tokens';
-import { Body, Button, Card, Label, Mono, Row, Screen } from '../../ui';
+import { grid, motion, radius, space, type, useTheme } from '../../theme/tokens';
+import { Body, Button, Card, IconButton, Label, Mono, Row, Sheet, SheetAction } from '../../ui';
+import { Masonry, aspectOf } from '../../ui/masonry';
 
 const LIGHT = {
-  backlit: 'backlit',
-  side_lit: 'side-lit',
-  front_lit: 'front-lit',
-  sun_down: 'sun below horizon',
+  backlit: 'Backlit',
+  side_lit: 'Side-lit',
+  front_lit: 'Front-lit',
+  sun_down: 'Sun below horizon',
 } as const;
 
+const HERO_RADIUS = 24;
+
 /**
- * Location detail (plan journey 5): larger image, pin, scouting notes, technical data,
- * attribution, Open in Maps, save to project, report. The owner also sees status and controls.
+ * Location detail (plan journey 5), Savee-style: the photo grows out of the tapped tile, then
+ * actions (Save pill, Maps, share, more), the scouting notes, technical data, and more
+ * locations nearby. Close reverses the animation. The owner also sees status and controls.
  */
 export default function RecordScreen() {
   const { label } = useVocabulary();
   const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const reduce = useReduceMotion();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [record, setRecord] = useState<PublicRecord | null>(null);
   const [status, setStatus] = useState<RecordStatusResponse | null>(null);
   const [missing, setMissing] = useState(false);
+  const [nearby, setNearby] = useState<PublicRecord[]>([]);
+  const [menu, setMenu] = useState(false);
+
+  // --- Card-open transition -------------------------------------------------------------
+  // The tile hands over its image and size, so the photo grows out of it immediately while the
+  // record loads; the details rise in once they arrive.
+  const [origin] = useState<Origin | null>(() => getOrigin(id));
+  const progress = useRef(new Animated.Value(0)).current;
+  const contentIn = useRef(new Animated.Value(0)).current;
+  const scroll = useRef<React.ComponentRef<typeof Animated.ScrollView>>(null);
+  const closing = useRef(false);
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: reduce ? 0 : motion.slow,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [progress, reduce]);
+
+  const loaded = record !== null;
+  useEffect(() => {
+    if (!loaded) return;
+    Animated.timing(contentIn, {
+      toValue: 1,
+      duration: reduce ? 0 : motion.base,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [loaded, contentIn, reduce]);
+
+  // Every way of leaving (button, Android back, pull-down) first plays the close animation.
+  const [closed, setClosed] = useState(false);
+  const pending = useRef<(() => void) | null>(null);
+  usePreventRemove(!closed && !reduce, ({ repeat }) => {
+    if (closing.current) return;
+    closing.current = true;
+    // Return to the top first so the photo shrinks back into its tile from where it opened.
+    scroll.current?.scrollTo({ y: 0, animated: false });
+    Animated.timing(progress, {
+      toValue: 0,
+      duration: motion.base,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      pending.current = repeat;
+      setClosed(true);
+    });
+  });
+  useEffect(() => {
+    if (closed) pending.current?.();
+  }, [closed]);
 
   const load = useCallback(async () => {
     const [pub, own] = await Promise.allSettled([
@@ -83,41 +148,135 @@ export default function RecordScreen() {
     };
   }, [id, load]);
 
-  if (missing) {
+  // More locations around this one (Savee's "more like this").
+  useEffect(() => {
+    if (!record) return;
+    void api<Page<PublicRecord>>(
+      `/v1/feed?lat=${record.lat}&lon=${record.lon}&radiusKm=25&limit=13`,
+    )
+      .then((p) => setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 12)))
+      .catch(() => {});
+  }, [record]);
+
+  const close = () => router.back();
+  const fade = { opacity: progress };
+  // Details: in when loaded, out with the page on close.
+  const shown = Animated.multiply(progress, contentIn);
+  const rise = {
+    opacity: shown,
+    transform: [{ translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [32, 0] }) }],
+  };
+
+  const backButton = (
+    <View style={{ position: 'absolute', top: insets.top + 8, left: space.md }}>
+      <Animated.View style={fade}>
+        <IconButton icon="chevron-back" label="Back" overlay onPress={close} />
+      </Animated.View>
+    </View>
+  );
+
+  // No photo to show yet (opened from a list or the capture flow, not a tile), or gone.
+  if (missing || (!record && !origin)) {
+    const rejected = status?.status === 'rejected';
     return (
-      <Screen>
-        <View style={{ alignItems: 'center', gap: space.md, paddingTop: space.xxl }}>
-          <Ionicons name="eye-off-outline" size={40} color={t.muted} />
-          <Text style={{ color: t.ink, fontSize: 17, fontWeight: '600' }}>No longer available</Text>
-          <Body muted>This location was removed or hidden.</Body>
-        </View>
-      </Screen>
+      <View style={{ flex: 1 }}>
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
+        <Animated.View
+          style={[
+            {
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: space.md,
+              padding: space.xl,
+            },
+            rise,
+          ]}
+        >
+          {missing ? (
+            <>
+              <Ionicons name="eye-off-outline" size={40} color={t.muted} />
+              <Text style={[type.headline, { color: t.ink }]}>No longer available</Text>
+              <Body muted>This location was removed or hidden.</Body>
+            </>
+          ) : !status ? (
+            <ActivityIndicator color={t.ink} />
+          ) : (
+            <>
+              {rejected ? (
+                <Ionicons name="close-circle-outline" size={44} color={t.signalRed} />
+              ) : (
+                <ActivityIndicator color={t.ink} />
+              )}
+              <Text style={[type.headline, { color: t.ink }]}>{STATUS_LABEL[status.status]}</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Body muted>
+                  {rejected
+                    ? (REJECT_LABEL[status.media.rejectReason ?? ''] ??
+                      'The photo could not be accepted.')
+                    : 'Checking the photo and preparing it for the feed. This usually takes a few seconds.'}
+                </Body>
+              </View>
+            </>
+          )}
+        </Animated.View>
+        {backButton}
+      </View>
     );
   }
 
+  const heroH = width / (record ? aspectOf(record.images) : origin!.aspect);
+  const heroTop = insets.top + space.sm;
+  // Grow out of the tile: same centre and scale at progress 0, in place at 1.
+  const heroAnim =
+    origin && !reduce
+      ? {
+          transform: [
+            {
+              translateX: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [origin.x + origin.width / 2 - width / 2, 0],
+              }),
+            },
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [origin.y + origin.height / 2 - (heroTop + heroH / 2), 0],
+              }),
+            },
+            {
+              scale: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [origin.width / width, 1],
+              }),
+            },
+          ],
+        }
+      : fade;
+
+  const heroImage = (
+    <Animated.View style={heroAnim}>
+      <Image
+        source={mediaSource(record ? record.images.detail : origin!.image)}
+        placeholder={mediaSource(origin?.image ?? record!.images.feed)}
+        style={{ width, height: heroH, borderRadius: HERO_RADIUS, backgroundColor: t.surface }}
+        contentFit="cover"
+        accessibilityLabel={record?.label}
+      />
+    </Animated.View>
+  );
+
   if (!record) {
-    if (!status)
-      return <ActivityIndicator style={{ flex: 1, backgroundColor: t.canvas }} color={t.ink} />;
-    const rejected = status.status === 'rejected';
+    // The photo is already in place; the details are on their way.
     return (
-      <Screen>
-        <View style={{ alignItems: 'center', gap: space.md, paddingTop: space.xxl }}>
-          {rejected ? (
-            <Ionicons name="close-circle-outline" size={44} color={t.signalRed} />
-          ) : (
-            <ActivityIndicator color={t.ink} />
-          )}
-          <Text style={{ color: t.ink, fontSize: 18, fontWeight: '600' }}>
-            {STATUS_LABEL[status.status]}
-          </Text>
-          <Body muted>
-            {rejected
-              ? (REJECT_LABEL[status.media.rejectReason ?? ''] ??
-                'The photo could not be accepted.')
-              : 'Checking the photo and preparing it for the feed. This usually takes a few seconds.'}
-          </Body>
+      <View style={{ flex: 1 }}>
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
+        <View style={{ paddingTop: heroTop }}>
+          {heroImage}
+          <ActivityIndicator style={{ marginTop: space.xl }} color={t.muted} />
         </View>
-      </Screen>
+        {backButton}
+      </View>
     );
   }
 
@@ -143,115 +302,196 @@ export default function RecordScreen() {
   const shownFacts = facts.filter((f): f is [string, string] => Boolean(f[1]));
 
   function openInMaps() {
-    const { lat, lon, label } = record!;
-    const q = encodeURIComponent(label);
-    const url =
+    const { lat, lon, label: name } = record!;
+    const q = encodeURIComponent(name);
+    void Linking.openURL(
       Platform.OS === 'ios'
         ? `http://maps.apple.com/?ll=${lat},${lon}&q=${q}`
-        : `geo:${lat},${lon}?q=${lat},${lon}(${q})`;
-    void Linking.openURL(url);
+        : `geo:${lat},${lon}?q=${lat},${lon}(${q})`,
+    );
   }
 
   return (
-    <Screen scroll padded={false}>
-      <Image
-        source={mediaSource(record.images.detail)}
-        placeholder={mediaSource(record.images.thumb)}
-        style={{
-          width,
-          height: width / (record.images.width / record.images.height),
-          backgroundColor: '#000',
+    <View style={{ flex: 1 }}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
+      <Animated.ScrollView
+        ref={scroll}
+        // Pull down at the top to close, like dismissing a card.
+        onScrollEndDrag={(e) => {
+          if (e.nativeEvent.contentOffset.y < -90) close();
         }}
-        contentFit="cover"
-        accessibilityLabel={record.label}
-      />
-      <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
-        <View style={{ gap: 4 }}>
-          <Text
-            accessibilityRole="header"
-            style={{ color: t.ink, fontSize: 22, fontWeight: '700' }}
-          >
-            {record.label}
-          </Text>
-          <Text style={{ color: t.muted, fontSize: 13 }}>
-            {record.attribution ? `by ${record.attribution.name}` : 'Anonymous'}
-            {record.attribution?.socialHandle ? ` · ${record.attribution.socialHandle}` : ''}
-          </Text>
-        </View>
+        contentContainerStyle={{
+          paddingTop: heroTop,
+          paddingBottom: insets.bottom + space.xxl * 2,
+        }}
+      >
+        {heroImage}
 
-        <Row>
-          <Button label="Open in Maps" kind="secondary" style={{ flex: 1 }} onPress={openInMaps} />
-          <Button
-            label="Save"
-            kind="secondary"
-            style={{ flex: 1 }}
-            onPress={() => router.push(`/save/${record.id}`)}
-          />
-        </Row>
+        <Animated.View
+          style={[{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.xl }, rise]}
+        >
+          {/* Actions: Savee's row of quiet icons with one strong Save pill. */}
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Row style={{ gap: space.xs }}>
+              <IconButton icon="navigate-outline" label="Open in Maps" onPress={openInMaps} />
+              <IconButton
+                icon="share-outline"
+                label="Share"
+                onPress={() =>
+                  void Share.share({
+                    message: `${record.label}: ${formatCoordinates(record.lat, record.lon, 5)}`,
+                  })
+                }
+              />
+              <IconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenu(true)} />
+            </Row>
+            <Button
+              label="Save"
+              icon="bookmark-outline"
+              size="small"
+              onPress={() => router.push(`/save/${record.id}`)}
+            />
+          </Row>
 
-        <Body>{record.goodFor.map((g) => label('good_for', g)).join(' · ')}</Body>
-        {record.goodForNote ? <Body muted>{record.goodForNote}</Body> : null}
+          <View style={{ gap: space.xs }}>
+            <Text accessibilityRole="header" style={[type.title, { color: t.ink }]}>
+              {record.label}
+            </Text>
+            <Text style={[type.caption, { color: t.muted }]}>
+              {record.attribution ? `by ${record.attribution.name}` : 'Anonymous'}
+              {record.attribution?.socialHandle ? ` · ${record.attribution.socialHandle}` : ''}
+              {record.distanceM != null ? ` · ${formatDistance(record.distanceM)} away` : ''}
+            </Text>
+          </View>
 
-        <View style={{ gap: 4 }}>
-          <Label>Best light</Label>
-          <Body>{record.bestLight.map((b) => label('best_light', b)).join(', ')}</Body>
+          <Row wrap style={{ gap: space.sm }}>
+            {record.goodFor.map((g) => (
+              <View
+                key={g}
+                style={{
+                  backgroundColor: t.surface,
+                  borderRadius: radius.pill,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>
+                  {label('good_for', g)}
+                </Text>
+              </View>
+            ))}
+          </Row>
+          {record.goodForNote ? <Body muted>{record.goodForNote}</Body> : null}
+
+          {/* Light & direction: the scouting essentials as a compact fact grid. */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            <Fact
+              title="Best light"
+              value={record.bestLight.map((b) => label('best_light', b)).join(', ')}
+            />
+            <Fact
+              title="Camera points"
+              value={`${formatBearing(record.bearingDeg)}${record.sun ? ` · ${LIGHT[lightAngle(record.bearingDeg, record.sun)]}` : ''}`}
+            />
+            {record.sun ? <Fact title="Sun at capture" value={formatSun(record.sun)} /> : null}
+            <Fact
+              title="Captured"
+              value={new Date(record.capturedAt).toLocaleDateString(undefined, {
+                dateStyle: 'medium',
+              })}
+            />
+          </View>
           {record.bestLightNote ? <Body muted>{record.bestLightNote}</Body> : null}
-        </View>
 
-        <View style={{ gap: 4 }}>
-          <Label>Camera points toward</Label>
-          <Mono style={{ fontSize: 14 }}>
-            {formatBearing(record.bearingDeg)}
-            {record.sun ? ` · ${LIGHT[lightAngle(record.bearingDeg, record.sun)]} at capture` : ''}
-          </Mono>
-          {record.sun ? <Mono>{formatSun(record.sun)}</Mono> : null}
+          {shownFacts.length ? (
+            <Card style={{ gap: space.sm }}>
+              {shownFacts.map(([k, v]) => (
+                <Row key={k} style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Text style={[type.body, { color: t.muted }]}>{k}</Text>
+                  <Text style={[type.body, { color: t.ink, flexShrink: 1, textAlign: 'right' }]}>
+                    {v}
+                  </Text>
+                </Row>
+              ))}
+            </Card>
+          ) : null}
+
           <Mono>
             {formatCoordinates(record.lat, record.lon, 5)}
             {record.accuracyM != null ? ` ±${Math.round(record.accuracyM)} m` : ''}
-            {record.distanceM != null ? ` · ${formatDistance(record.distanceM)} away` : ''}
           </Mono>
-          <Mono>Captured {new Date(record.capturedAt).toLocaleString()}</Mono>
-        </View>
 
-        {shownFacts.length ? (
-          <Card>
-            {shownFacts.map(([k, v]) => (
-              <Row key={k} style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={{ color: t.muted, fontSize: 14 }}>{k}</Text>
-                <Text style={{ color: t.ink, fontSize: 14, flexShrink: 1, textAlign: 'right' }}>
-                  {v}
-                </Text>
-              </Row>
-            ))}
-          </Card>
+          {own && status ? (
+            <OwnerControls
+              id={record.id}
+              status={status}
+              attributed={Boolean(record.attribution)}
+              onChanged={() => void load()}
+            />
+          ) : null}
+
+          <Body muted>
+            Access, light and conditions are shared by the community and may change. Always check
+            before you go.
+          </Body>
+        </Animated.View>
+
+        {nearby.length ? (
+          <Animated.View style={[{ paddingTop: space.xl, gap: space.md }, rise]}>
+            <View style={{ paddingHorizontal: space.lg }}>
+              <Label>More nearby</Label>
+            </View>
+            <Masonry
+              edge={grid.edge}
+              tiles={nearby.map((r) => ({
+                id: r.id,
+                label: r.label,
+                image: r.images.feed,
+                placeholder: r.images.thumb,
+                width: r.images.width,
+                height: r.images.height,
+              }))}
+            />
+          </Animated.View>
         ) : null}
+      </Animated.ScrollView>
+      {backButton}
 
-        {own && status ? (
-          <OwnerControls
-            id={record.id}
-            status={status}
-            attributed={Boolean(record.attribution)}
-            onChanged={() => void load()}
+      <Sheet visible={menu} onClose={() => setMenu(false)}>
+        <SheetAction icon="navigate-outline" label="Open in Maps" onPress={openInMaps} />
+        <SheetAction
+          icon="bookmark-outline"
+          label="Save to a project"
+          onPress={() => router.push(`/save/${record.id}`)}
+        />
+        {!own ? (
+          <SheetAction
+            icon="flag-outline"
+            label="Report this location"
+            onPress={() => router.push(`/report/${record.id}`)}
           />
         ) : null}
+      </Sheet>
+    </View>
+  );
+}
 
-        {!own ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/report/${record.id}`)}
-            style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}
-          >
-            <Text style={{ color: t.muted, fontSize: 14, textDecorationLine: 'underline' }}>
-              Report this location
-            </Text>
-          </Pressable>
-        ) : null}
-        <Body muted>
-          Access, light and conditions are shared by the community and may change. Always check
-          before you go.
-        </Body>
-      </View>
-    </Screen>
+function Fact({ title, value }: { title: string; value: string }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexGrow: 1,
+        flexBasis: '45%',
+        backgroundColor: t.surface,
+        borderRadius: radius.control,
+        padding: space.md,
+        gap: 4,
+      }}
+    >
+      <Label>{title}</Label>
+      <Text style={[type.bodyStrong, { color: t.ink }]}>{value}</Text>
+    </View>
   );
 }
 
@@ -282,7 +522,7 @@ function OwnerControls(props: {
 
   return (
     <Card>
-      <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>
+      <Text style={[type.headline, { color: t.ink }]}>
         Your location · {STATUS_LABEL[props.status.status]}
       </Text>
       <Row style={{ justifyContent: 'space-between' }}>
@@ -307,6 +547,7 @@ function OwnerControls(props: {
       <Button
         label="Delete location"
         kind="danger"
+        size="small"
         onPress={() =>
           Alert.alert(
             'Delete this location?',

@@ -85,37 +85,44 @@ export async function pickPhotos(): Promise<number> {
     }
     added.push({ id, uri: target.uri, meta: photoMeta(asset.exif), state: 'todo', draftId: null });
   }
-  await save([...existing.filter((i) => i.state === 'todo'), ...added]);
+  await save([...existing, ...added]);
   return added.length;
 }
 
+/**
+ * Published: the original (which still carries GPS metadata and sits in backed-up app storage)
+ * is deleted right away; the draft keeps its own re-encoded, metadata-free copy.
+ */
 export async function markImported(id: string, draftId: string) {
   const items = await listImports();
   const item = items.find((i) => i.id === id);
   if (!item) return;
+  deleteFile(item.uri);
   item.state = 'done';
   item.draftId = draftId;
+  item.uri = '';
   await save(items);
+}
+
+function deleteFile(uri: string) {
+  if (!uri) return;
+  try {
+    const f = new File(uri);
+    if (f.exists) f.delete();
+  } catch {}
 }
 
 export async function removeImport(id: string) {
   const items = await listImports();
   const item = items.find((i) => i.id === id);
-  if (item) {
-    try {
-      new File(item.uri).delete();
-    } catch {}
-  }
+  if (item) deleteFile(item.uri);
   await save(items.filter((i) => i.id !== id));
 }
 
-/** Drops finished items and their files (the published draft keeps its own copy). */
+/** Drops finished items (their originals are already deleted). No-op when nothing is done. */
 export async function clearFinishedImports() {
   const items = await listImports();
-  for (const i of items.filter((x) => x.state === 'done')) {
-    try {
-      new File(i.uri).delete();
-    } catch {}
-  }
+  if (!items.some((i) => i.state === 'done')) return;
+  for (const i of items.filter((x) => x.state === 'done')) deleteFile(i.uri);
   await save(items.filter((i) => i.state === 'todo'));
 }

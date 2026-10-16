@@ -23,7 +23,8 @@ if (-not $env:ANDROID_SERIAL) {
   $env:ANDROID_SERIAL = (adb devices | Select-String '^(\S+)\s+device$' | Where-Object { $_ -notmatch '^emulator' } |
     Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
 }
-if (-not $env:ANDROID_SERIAL) { throw 'No phone found: connect it and allow USB debugging.' }
+$phone = [bool]$env:ANDROID_SERIAL
+if (-not $phone) { Write-Host 'No phone connected: building only (install skipped).' }
 
 Set-Location $mobile
 if ($Clean -or -not (Test-Path 'android')) {
@@ -46,7 +47,7 @@ Set-Content -Encoding ascii 'android\local.properties' @(
 Push-Location android
 try {
   # Only the connected phone's ABI: about half the native compile time of all four.
-  $abi = (adb shell getprop ro.product.cpu.abi 2>$null | Out-String).Trim()
+  $abi = if ($phone) { (adb shell getprop ro.product.cpu.abi 2>$null | Out-String).Trim() } else { '' }
   if (-not $abi) { $abi = 'arm64-v8a' }
   .\gradlew.bat assembleDebug --console=plain "-PreactNativeArchitectures=$abi"
   if ($LASTEXITCODE) { throw "Gradle failed ($LASTEXITCODE)" }
@@ -55,6 +56,10 @@ try {
 # adb reports install failures on stderr; handle them here instead of stopping.
 $ErrorActionPreference = 'Continue'
 $apk = 'android\app\build\outputs\apk\debug\app-debug.apk'
+if (-not $phone) {
+  Write-Host "Built: $mobile\$apk. Connect the phone and run again (no -Clean) to install."
+  exit 0
+}
 $out = adb install -r $apk 2>&1 | Out-String
 if ($out -match 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match') {
   Write-Host 'Installed app has a different signature (EAS build): reinstalling. Sign in again afterwards.'

@@ -14,7 +14,7 @@ import {
   submitDraft,
   type LocalDraft,
 } from '../../lib/drafts';
-import { listImports, subscribeImports } from '../../lib/imports';
+import { clearFinishedImports, listImports, subscribeImports } from '../../lib/imports';
 import { STATUS_LABEL } from '../../lib/labels';
 import { useSession } from '../../lib/session';
 import { radius, space, useTheme } from '../../theme/tokens';
@@ -74,7 +74,10 @@ export default function Profile() {
 
   const load = useCallback(async () => {
     setDrafts(await listDrafts());
-    setPendingImports((await listImports()).filter((i) => i.state === 'todo').length);
+    const pending = (await listImports()).filter((i) => i.state === 'todo').length;
+    setPendingImports(pending);
+    // A fully reviewed batch is tidied up here even if "Done" was never tapped.
+    if (pending === 0) await clearFinishedImports();
     const [r, p] = await Promise.allSettled([
       api<{ items: MyRecord[] }>('/v1/me/records'),
       api<{ items: Project[] }>('/v1/projects'),

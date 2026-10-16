@@ -1,32 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { formatBearing, formatDistance, type Page, type PublicRecord } from '@shootspot/shared';
-import { Image } from 'expo-image';
+import type { Page, PublicRecord } from '@shootspot/shared';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Animated, RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { mediaSource } from '../../lib/images';
 import { ApiError, api } from '../../lib/api';
-import { useVocabulary } from '../../lib/vocabulary';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
-import { font, radius, space, useTheme } from '../../theme/tokens';
-import { Body, Button } from '../../ui';
+import { radius, space, type, useTheme } from '../../theme/tokens';
+import { Body, Button, Tap } from '../../ui';
 import { useChrome } from '../../ui/chrome';
+import { Masonry } from '../../ui/masonry';
 
-/** Image-first discovery (plan journey 2). The active scope is always visible at the top. */
+/**
+ * Image-first discovery (plan journey 2), Savee-style: a two-column masonry of photos with no
+ * text; details open on tap. The active scope stays visible in a small floating chip.
+ */
 export default function Feed() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const { scope, center, locationDenied } = useScope();
   const { onScroll, hidden, show } = useChrome();
   const [items, setItems] = useState<PublicRecord[]>([]);
@@ -37,7 +28,7 @@ export default function Feed() {
 
   const waitingForLocation = scope.mode === 'nearby' && !center && !locationDenied;
   const base = useCallback(() => {
-    const parts = ['limit=12'];
+    const parts = ['limit=24'];
     if (center) parts.push(`lat=${center.lat}`, `lon=${center.lon}`, `radiusKm=${scope.radiusKm}`);
     const f = filterQuery(scope);
     if (f) parts.push(f);
@@ -83,24 +74,21 @@ export default function Feed() {
   }
 
   const headerY = hidden.interpolate({ inputRange: [0, 1], outputRange: [0, -(insets.top + 70)] });
+  const top = insets.top + 60;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.canvas }}>
-      <FlatList
-        data={items}
-        keyExtractor={(r) => r.id}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
-        onEndReached={() => void more()}
-        onEndReachedThreshold={0.6}
-        contentContainerStyle={{
-          paddingTop: insets.top + 64,
-          paddingBottom: insets.bottom + 120,
-          gap: space.xl,
+      <Animated.ScrollView
+        onScroll={(e) => {
+          onScroll(e);
+          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+          if (contentOffset.y + layoutMeasurement.height > contentSize.height - 800) void more();
         }}
+        scrollEventThrottle={32}
+        contentContainerStyle={{ paddingTop: top, paddingBottom: insets.bottom + 120 }}
         refreshControl={
           <RefreshControl
-            progressViewOffset={insets.top + 64}
+            progressViewOffset={top}
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
@@ -109,45 +97,54 @@ export default function Feed() {
             }}
           />
         }
-        ListEmptyComponent={
+      >
+        {items.length ? (
+          <Masonry
+            tiles={items.map((r) => ({
+              id: r.id,
+              label: r.label,
+              image: r.images.feed,
+              placeholder: r.images.thumb,
+              width: r.images.width,
+              height: r.images.height,
+            }))}
+          />
+        ) : (
           <Empty
             state={state}
             denied={scope.mode === 'nearby' && locationDenied}
             waiting={waitingForLocation}
             onRetry={() => void load()}
           />
-        }
-        ListFooterComponent={
-          cursor ? <ActivityIndicator style={{ margin: space.lg }} color={t.muted} /> : undefined
-        }
-        renderItem={({ item }) => <Card record={item} width={width} />}
-      />
-      {/* Scope chip: the active location scope is always visible (plan §6). */}
+        )}
+        {cursor && items.length ? (
+          <ActivityIndicator style={{ margin: space.xl }} color={t.muted} />
+        ) : null}
+      </Animated.ScrollView>
+
+      {/* Scope chip: the active area is always visible (plan §6); tap for area and filters. */}
       <Animated.View
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          paddingTop: insets.top + 8,
-          paddingHorizontal: space.lg,
+          top: insets.top + 8,
+          left: space.md,
+          right: space.md,
+          flexDirection: 'row',
           transform: [{ translateY: headerY }],
         }}
       >
-        <Pressable
+        <Tap
           accessibilityRole="button"
           accessibilityLabel={`Showing ${scopeLabel(scope, Boolean(center))}. Change area and filters`}
           onPress={() => router.push('/filters')}
+          scaleTo={0.95}
           style={{
-            alignSelf: 'flex-start',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 6,
-            backgroundColor: t.raised,
-            borderColor: t.divider,
-            borderWidth: 1,
+            gap: space.sm,
+            backgroundColor: t.scrim,
             borderRadius: radius.pill,
-            paddingHorizontal: space.md,
+            paddingHorizontal: 14,
             minHeight: 40,
           }}
         >
@@ -162,70 +159,13 @@ export default function Feed() {
             size={16}
             color={t.ink}
           />
-          <Text style={{ color: t.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+          <Text style={[type.bodyStrong, { color: t.ink, maxWidth: 240 }]} numberOfLines={1}>
             {scopeLabel(scope, Boolean(center))}
           </Text>
           <Ionicons name="options-outline" size={16} color={t.muted} />
-        </Pressable>
+        </Tap>
       </Animated.View>
     </View>
-  );
-}
-
-function Card({ record, width }: { record: PublicRecord; width: number }) {
-  const { label } = useVocabulary();
-  const t = useTheme();
-  const h = width / (record.images.width / record.images.height);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={record.label}
-      onPress={() => router.push(`/records/${record.id}`)}
-    >
-      <Image
-        source={mediaSource(record.images.feed)}
-        placeholder={mediaSource(record.images.thumb)}
-        style={{ width, height: h, backgroundColor: '#000' }}
-        contentFit="cover"
-        transition={150}
-        recyclingKey={record.id}
-      />
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          paddingHorizontal: space.lg,
-          paddingTop: space.md,
-          gap: space.md,
-        }}
-      >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
-            {record.label}
-          </Text>
-          <Text style={{ color: t.inkSecondary, fontFamily: font.mono, fontSize: 12 }}>
-            {[
-              record.distanceM != null ? formatDistance(record.distanceM) : null,
-              formatBearing(record.bearingDeg),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-          <Text style={{ color: t.muted, fontSize: 13 }} numberOfLines={1}>
-            {record.goodFor.map((g) => label('good_for', g)).join(' · ')}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Save ${record.label} to a project`}
-          hitSlop={12}
-          onPress={() => router.push(`/save/${record.id}`)}
-          style={{ padding: 4 }}
-        >
-          <Ionicons name="bookmark-outline" size={22} color={t.ink} />
-        </Pressable>
-      </View>
-    </Pressable>
   );
 }
 
@@ -272,13 +212,17 @@ function Empty(props: { state: string; denied: boolean; waiting: boolean; onRetr
         alignItems: 'center',
         gap: space.md,
         paddingHorizontal: space.xl,
-        paddingTop: space.xxl,
+        paddingTop: space.xxl * 2,
       }}
     >
       <Ionicons name={icon} size={40} color={t.muted} />
-      <Text style={{ color: t.ink, fontSize: 17, fontWeight: '600' }}>{title}</Text>
-      <Body muted>{body}</Body>
-      {action ? <Button label={action.label} kind="secondary" onPress={action.onPress} /> : null}
+      <Text style={[type.headline, { color: t.ink }]}>{title}</Text>
+      <View style={{ alignItems: 'center' }}>
+        <Body muted>{body}</Body>
+      </View>
+      {action ? (
+        <Button label={action.label} kind="secondary" size="small" onPress={action.onPress} />
+      ) : null}
     </View>
   );
 }

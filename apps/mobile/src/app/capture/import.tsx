@@ -58,6 +58,7 @@ export default function ImportBatch() {
       origin: 'import',
       importId: item.id,
       capturedAt: m.capturedAt ?? new Date().toISOString(),
+      timeEstimated: m.capturedAt == null,
       altitudeM: m.altitudeM,
       headingDeg: m.headingDeg,
       bearingDeg: m.headingDeg == null ? null : Math.round(m.headingDeg) % 360,
@@ -107,21 +108,28 @@ export default function ImportBatch() {
               ])
             }
           >
-            <Image
-              source={item.uri}
-              style={{
-                width: tile,
-                height: tile,
-                borderRadius: radius.control,
-                opacity: item.state === 'done' ? 0.4 : 1,
-              }}
-              contentFit="cover"
-            />
             {item.state === 'done' ? (
-              <View style={{ position: 'absolute', right: 6, bottom: 6 }}>
-                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+              // The original is already deleted after publishing; show a quiet "done" tile.
+              <View
+                style={{
+                  width: tile,
+                  height: tile,
+                  borderRadius: radius.control,
+                  backgroundColor: t.surface,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={28} color={t.ink} />
               </View>
-            ) : !item.meta.gps ? (
+            ) : (
+              <Image
+                source={item.uri}
+                style={{ width: tile, height: tile, borderRadius: radius.control }}
+                contentFit="cover"
+              />
+            )}
+            {item.state !== 'done' && !item.meta.gps ? (
               <View style={{ position: 'absolute', left: 6, bottom: 6 }}>
                 <Ionicons
                   name="location-outline"

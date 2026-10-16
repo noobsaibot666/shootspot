@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatCoordinates, distanceMeters } from '@shootspot/shared';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -49,6 +49,19 @@ export default function PinScreen() {
       350,
     );
   };
+
+  // No GPS (imported photo without location, or none at capture): start near the member when
+  // location access was already granted, instead of a fixed city. Never prompts.
+  useEffect(() => {
+    if (state.pin || gps) return;
+    void (async () => {
+      try {
+        if (!(await Location.getForegroundPermissionsAsync()).granted) return;
+        const last = await Location.getLastKnownPositionAsync();
+        if (last) moveTo(last.coords.latitude, last.coords.longitude);
+      } catch {}
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onRegionChangeComplete(r: Region) {
     const next = { lat: r.latitude, lon: r.longitude };

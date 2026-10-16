@@ -59,5 +59,8 @@ describe('photoMeta (gallery import, D-28)', () => {
     expect(m.gps).toBeNull();
     expect(m.capturedAt).toBeNull();
     expect(photoMeta({ DateTimeOriginal: 'garbage' }, now).capturedAt).toBeNull();
+    // Unset camera clocks.
+    expect(photoMeta({ DateTimeOriginal: '1970:01:01 00:00:00' }, now).capturedAt).toBeNull();
+    expect(photoMeta({ DateTimeOriginal: '2000:01:01 00:00:00' }, now).capturedAt).toBeNull();
   });
 });

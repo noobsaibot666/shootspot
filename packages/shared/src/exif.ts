@@ -104,8 +104,10 @@ export function photoMeta(exif: Dict | null | undefined, now = new Date()): Phot
     pick(exif, 'DateTimeOriginal', 'DateTimeDigitized', 'DateTime'),
     pick(exif, 'OffsetTimeOriginal', 'OffsetTime'),
   );
-  // A capture time in the future (wrong camera clock) is not trusted.
-  if (capturedAt && Date.parse(capturedAt) > now.getTime() + 60_000) capturedAt = null;
+  // A capture time in the future, or before 2000 (an unset camera clock, often 1970 or 2000-01-01
+  // 00:00), is not trusted: it would give wrong sun data.
+  const at = capturedAt ? Date.parse(capturedAt) : NaN;
+  if (at > now.getTime() + 60_000 || at < Date.UTC(2000, 0, 2)) capturedAt = null;
 
   const altitude = rational(pick(exif, 'GPSAltitude', 'Altitude'));
   const altRef = pick(exif, 'GPSAltitudeRef', 'AltitudeRef');

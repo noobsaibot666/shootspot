@@ -23,6 +23,8 @@ export interface CaptureState {
   /** The import queue item being reviewed. */
   importId: string | null;
   focalLength35mm: number | null;
+  /** Imported photo without a usable capture time: "now" stands in, and the preview says so. */
+  timeEstimated: boolean;
 }
 
 export const initialCapture: CaptureState = {
@@ -43,6 +45,7 @@ export const initialCapture: CaptureState = {
   origin: 'camera',
   importId: null,
   focalLength35mm: null,
+  timeEstimated: false,
 };
 const initial = initialCapture;
 

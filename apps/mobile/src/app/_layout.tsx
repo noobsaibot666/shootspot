@@ -47,7 +47,11 @@ function Navigator() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: t.canvas },
           headerTintColor: t.ink,
+          headerTitleStyle: { fontSize: 17, fontWeight: '600' },
+          headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: t.canvas },
+          // One consistent push transition on both platforms.
+          animation: 'ios_from_right',
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -58,15 +62,24 @@ function Navigator() {
           name="capture"
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
+        {/* Opens over the grid; the screen animates its own photo out of the tapped tile. */}
         <Stack.Screen
           name="records/[id]"
-          options={{ title: '', headerBackButtonDisplayMode: 'minimal' }}
+          options={{
+            headerShown: false,
+            presentation: 'transparentModal',
+            animation: 'none',
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
         />
         <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         <Stack.Screen name="filters" options={{ title: 'Area & filters', presentation: 'modal' }} />
-        <Stack.Screen name="save/[id]" options={{ title: '', presentation: 'modal' }} />
-        <Stack.Screen name="report/[id]" options={{ title: '', presentation: 'modal' }} />
+        <Stack.Screen
+          name="save/[id]"
+          options={{ title: 'Save to project', presentation: 'modal' }}
+        />
+        <Stack.Screen name="report/[id]" options={{ title: 'Report', presentation: 'modal' }} />
       </Stack>
     </>
   );

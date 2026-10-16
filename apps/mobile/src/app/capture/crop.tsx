@@ -68,24 +68,28 @@ export default function ImportCrop() {
     if (geo) setOffset({ x: (geo.dw - geo.fw) / 2, y: (geo.dh - geo.fh) / 2 });
   }, [geo]);
 
+  // Created once: rebuilding the responder mid-drag would reset the gesture (dx/dy) and make the
+  // frame jump. Current values are read through refs instead.
   const start = useRef({ x: 0, y: 0 });
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
-          start.current = offset;
-        },
-        onPanResponderMove: (_, g) => {
-          if (!geo) return;
-          setOffset({
-            x: Math.max(0, Math.min(geo.dw - geo.fw, start.current.x + g.dx)),
-            y: Math.max(0, Math.min(geo.dh - geo.fh, start.current.y + g.dy)),
-          });
-        },
-      }),
-    [geo, offset],
-  );
+  const live = useRef({ geo, offset });
+  live.current = { geo, offset };
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        start.current = live.current.offset;
+      },
+      onPanResponderMove: (_, g) => {
+        const geo = live.current.geo;
+        if (!geo) return;
+        setOffset({
+          x: Math.max(0, Math.min(geo.dw - geo.fw, start.current.x + g.dx)),
+          y: Math.max(0, Math.min(geo.dh - geo.fh, start.current.y + g.dy)),
+        });
+      },
+    }),
+  ).current;
 
   const source = geo && {
     left: Math.round(offset.x / geo.scale),
