@@ -30,13 +30,36 @@ shootspot/
     └── ai-memory/       Shared ai-memory server data (Windows and Mac point here)
 ```
 
+## NAS facts (checked 2026-10-16)
+
+TrueNAS SCALE 25.10.3 · x86_64 · 12 cores · 14 GiB RAM · Docker 28.3.1 · Compose 2.38.1. `Gaia/04_DEV` is an NFSv4-ACL dataset and `_personal` is a plain folder inside it. The `Gaia` SMB share exposes all of `/mnt/Gaia`. `alan` is uid 951, has primary group `root` (gid 0), and is in the `docker` group. The `apps` user is uid/gid 568.
+
+## Datasets
+
+The same pattern as the existing `Gaia/04_DEV/exposeu-delivery`: datasets with custom mountpoints.
+
+| Dataset                                   | Mountpoint                       | Properties                  |
+| ----------------------------------------- | -------------------------------- | --------------------------- |
+| `Gaia/04_DEV/shootspot-runtime`           | `…/_personal/shootspot/runtime`  | `acltype=posix`, `xattr=sa` |
+| `Gaia/04_DEV/shootspot-runtime/postgres`  | `…/runtime/postgres` (inherited) | `recordsize=16K` (DB pages) |
+| `Gaia/04_DEV/shootspot-runtime/seaweedfs` | `…/runtime/seaweedfs`            | `recordsize=1M` (photos)    |
+| `Gaia/04_DEV/shootspot-runtime/ai-memory` | `…/runtime/ai-memory`            | defaults                    |
+| `Gaia/04_DEV/shootspot-backups`           | `…/_personal/shootspot/backups`  | `acltype=posix`, `xattr=sa` |
+
+Separate datasets give each part its own snapshots and rollback, and POSIX permissions that Postgres accepts. `shared/` stays a plain folder in `Gaia/04_DEV`.
+
 ## Permissions
 
-| Folder                | Owner                   | Mode  | Why                                                                                                  |
-| --------------------- | ----------------------- | ----- | ---------------------------------------------------------------------------------------------------- |
-| `shared/`             | `alan` (your SMB user)  | `775` | You work in it from Windows and the Mac                                                              |
-| `backups/`            | `root`, read for `alan` | `750` | Jobs write; you can copy a backup out but not damage one                                             |
-| `runtime/`            | `apps` (uid 568)        | `700` | Containers run as TrueNAS's built-in `apps` user. An SMB client must never touch live database files |
-| `runtime/config/.env` | `root`                  | `600` | Secrets                                                                                              |
+| Folder                                       | Owner:group | Mode  | Effect                                                                     |
+| -------------------------------------------- | ----------- | ----- | -------------------------------------------------------------------------- |
+| `shared/`                                    | `alan:root` | `775` | You work in it from Windows and the Mac                                    |
+| `backups/` and subfolders                    | `root:root` | `750` | Jobs write; `alan` (group root) can read and copy out, but not change      |
+| `runtime/`                                   | `root:root` | `700` | Invisible over SMB; only root and the containers                           |
+| `runtime/postgres`, `seaweedfs`, `ai-memory` | `568:568`   | `700` | Each container runs as the `apps` user and owns only its own data          |
+| `runtime/config`, `runtime/compose`          | `root:root` | `700` | Secrets (`.env` is `600`) and the stack definition, read by Docker as root |
 
-**`runtime/` should be its own ZFS dataset** with POSIX ACLs, its own snapshot schedule, and SMB access off. Postgres refuses to start when it can't set `700` on its folder, and SMB-style (NFSv4) ACLs often block that `chmod`. Whether this works depends on how `04_DEV/_personal` was created. The inspection step in [HANDWORK](../HANDWORK.md) 2.1 checks that before anything is created.
+Containers reach their data through bind mounts, so they don't need access to the parent `runtime/` folder.
+
+## Memory
+
+At inspection, 1.9 GiB was free of 14 GiB. Part of the used memory is the ZFS cache (ARC), which shrinks under pressure. Every container in the NAS compose file still gets a `mem_limit` (planned: postgres 512M, seaweedfs 256M, api 256M, worker 512M, ai-memory 256M).
