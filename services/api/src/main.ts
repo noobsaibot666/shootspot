@@ -4,9 +4,11 @@ import { loadConfig } from './config';
 import { createPool } from './db';
 import { createSmtpMailer } from './mailer';
 import { createJobQueue } from './queue';
+import { initSentry } from './sentry';
 import { createStorage } from './storage';
 
 const config = loadConfig();
+initSentry(config.SENTRY_DSN, 'api');
 const pool = createPool(config.DATABASE_URL);
 const storage = createStorage(config);
 const mailer = createSmtpMailer(config.SMTP_URL, config.MAIL_FROM);

@@ -2,10 +2,14 @@ import { QUEUE, type DataExportJob, type ProcessMediaJob } from '@shootspot/shar
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
 import { loadWorkerConfig } from './config';
+import nodemailer from 'nodemailer';
 import { dataExportJob, deletionSweep, processMediaJob } from './jobs';
+import { alertText, dueAlerts, findProblems, ownerEmails } from './ops';
+import { initSentry } from './sentry';
 import { createWorkerStorage } from './storage';
 
 const config = loadWorkerConfig();
+initSentry(config.SENTRY_DSN, 'worker');
 const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 4 });
 const storage = createWorkerStorage(config);
 const deps = { pool, storage };
@@ -37,6 +41,20 @@ await boss.schedule(QUEUE.deletionSweep, '*/15 * * * *');
 await boss.work(QUEUE.deletionSweep, async () => {
   const n = await deletionSweep(deps);
   if (n) console.log(`[worker] completed ${n} account deletion(s)`);
+});
+
+const mailer = config.SMTP_URL ? nodemailer.createTransport(config.SMTP_URL) : null;
+await boss.schedule(QUEUE.opsCheck, '*/30 * * * *');
+await boss.work(QUEUE.opsCheck, async () => {
+  const problems = await findProblems(pool);
+  const due = await dueAlerts(pool, problems);
+  if (!due.length) return;
+  console.warn(`[worker] alert: ${due.map((p) => p.key).join(', ')}`);
+  const to = await ownerEmails(pool);
+  if (mailer && to.length) {
+    const { subject, text } = alertText(due);
+    await mailer.sendMail({ from: config.MAIL_FROM, to, subject, text });
+  }
 });
 
 console.log('[worker] ready');

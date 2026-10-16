@@ -118,7 +118,9 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
         (select count(*)::int from reports where status = 'open') as open_reports,
         (select count(*)::int from media where state = 'failed') as failed_media,
         (select count(*)::int from media where state = 'rejected') as rejected_media,
-        (select count(*)::int from account_deletions where status = 'scheduled') as scheduled_deletions`);
+        (select count(*)::int from account_deletions where status = 'scheduled') as scheduled_deletions,
+        (select ok_at from ops_heartbeats where name = 'pg_dump') as last_backup,
+        (select ok_at from ops_heartbeats where name = 'offsite') as last_offsite_backup`);
     return rows[0];
   });
 

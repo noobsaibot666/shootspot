@@ -61,6 +61,25 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 | 4.6 | Empty, error, and offline states                        | P0  | Built: empty/offline/error/location-off states                                                                                   |
 | 4.7 | Device test of Phase 4 on iOS and Android               | P0  | **Pending**                                                                                                                      |
 
-## Phase 5+ (summarized)
+## Phase 5 — Admin operations, safety, launch hardening
 
-Moderation hardening, rate limits, security/privacy review, counsel sign-off, restore rehearsal, store listings (P1) · Cloud migration off the NAS before public launch (P1) · Paid tier: PDF location-timeline export (P2) · Localization (P2) · Offline maps (P2) · Sun-path prediction (P2)
+| #    | Item                                                   | Pri | Status                                                                                                                                  |
+| ---- | ------------------------------------------------------ | --- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.1  | Moderation queue, audit trail, account/content actions | P0  | Done in Phase 2 (reports, hide/restore/remove, revoke sessions, roles, audit)                                                           |
+| 5.2  | Controlled tags (D-25)                                 | P0  | **Done**: vocabulary table, admin Tags page, app loads live lists                                                                       |
+| 5.3  | Abuse and rate limits                                  | P0  | **Done**: per-IP global 300/min, feed/map 60/min, daily caps on records/reports/exports, sign-in limits                                 |
+| 5.4  | Security review                                        | P0  | **Done (internal)**: docs/security-review.md; F1 (Mailpit) and F2 (HTTPS) block external testers; external pentest before public launch |
+| 5.5  | Privacy and rights review                              | P0  | Drafts ready (docs/phase-0/03, docs/store); **counsel review** (HANDWORK 4.1)                                                           |
+| 5.6  | Backups and restore rehearsal (D-27)                   | P0  | **Done locally**; NAS service ships with the Phase 5 deploy; off-site after HANDWORK 2.5; NAS rehearsal pending                         |
+| 5.7  | Alerting (from 2.9)                                    | P0  | **Done**: worker ops-check emails owners (backups, failed/stuck uploads, overdue reports/deletions)                                     |
+| 5.8  | Crash reporting (D-24)                                 | P1  | Server done (inactive until DSN); **mobile with the next native build** (plus Expo patch updates)                                       |
+| 5.9  | Load and upload testing                                | P1  | Pending: run against the NAS after the deploy                                                                                           |
+| 5.10 | Accessibility review                                   | P1  | Labels/roles/touch targets done in code; device check with VoiceOver/TalkBack and large text pending                                    |
+| 5.11 | Store listings and privacy declarations                | P1  | Privacy answers drafted (docs/store); listing copy/screens later                                                                        |
+| 5.12 | Support and incident runbooks                          | P0  | **Done**: docs/runbooks/incident-response.md                                                                                            |
+| 5.13 | Compass/heading test (deferred 3.7)                    | P2  | Pending, owner: low priority                                                                                                            |
+| 5.14 | Real email (D-26) and HTTPS via tunnel                 | P0  | Needs domain + Brevo (HANDWORK 2.3, 3.2) and Cloudflare hostname                                                                        |
+
+## Phase 6–7 (summarized)
+
+Closed pilot in one or two cities, metrics, tuning (Phase 6) · Cloud migration off the NAS before public launch · Paid tier: PDF location-timeline export (P2) · Localization (P2) · Offline maps (P2) · Sun-path prediction (P2)

@@ -1,0 +1,38 @@
+# Security review (Phase 5, 2026-10-16)
+
+Scope: API, worker, admin web, mobile app, and the NAS deployment. This complements the [threat model](threat-model.md). It is an internal engineering review, not a penetration test; an external test is recommended before public launch.
+
+## Controls verified by automated tests
+
+| Area                | Control                                                                                                        | Test                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Anonymity (D-06)    | Public payloads carry no creator id, email or upload time; exact key set asserted                              | `api.int.test` "anonymity contract", map pins                    |
+| Channels (D-23)     | `/v1` accepts only app bearer tokens; `/admin/v1` only admin-web cookies; the admin web never creates accounts | "keeps the two clients apart", "never creates accounts"          |
+| Admin MFA           | Owner role plus TOTP bound to the session; codes can't be replayed; secrets encrypted at rest                  | "MFA is bound to the session…", `app.test` mfa                   |
+| CSRF / origin       | Code requests from other sites refused; origin checks forced on in tests                                       | "refuses code requests without a trusted origin"                 |
+| Privacy of projects | Other members get 404 on every project route                                                                   | "projects are private"                                           |
+| Images              | Portrait / undecodable / oversized rejected; all metadata incl. GPS stripped                                   | worker unit and e2e tests                                        |
+| Account deletion    | Person removed, records stay anonymous, attribution gone                                                       | worker e2e "deletion removes the person…"                        |
+| Headers             | nosniff, frame DENY, referrer no-referrer, `no-store` on private routes, no CORS                               | "sends security headers…"                                        |
+| Backups             | Dump restores with identical row counts                                                                        | rehearsal log in [backup-restore.md](runbooks/backup-restore.md) |
+
+## Reviewed manually
+
+- **Secrets:** none in git. `.env` files are gitignored; NAS secrets are generated on the NAS (root, 600). The mobile bundle contains only the API URL. GitHub secret scanning is HANDWORK 1.5.
+- **Logging:** request logging is off (coordinates live in query strings). Error logs carry no bodies. Sentry scrubs request data, users, coordinates and emails (D-24).
+- **Network (NAS):** only API 4400, admin 4401, S3 4402 and Mailpit 4403 are bound, all to the home-network IP. Postgres and SeaweedFS admin ports are not published. No router port forwards.
+- **Rate limits:** sign-in codes are limited per IP (Better Auth); 300 requests/min per IP globally; feed and map 60/min; 30 records/day; 20 reports/day; 1 export/day.
+- **Storage:** originals sit in a private quarantine bucket and are deleted after processing. Image URLs are presigned and expire after 1 hour.
+
+## Findings
+
+| #   | Finding                                                                                                                                                                                          | Severity                     | Status                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| F1  | **Mailpit on the NAS shows every sign-in code to anyone on the home network.** Acceptable for the owner-only LAN pilot only.                                                                     | High before external testers | Open. Switch to Brevo (D-26) and stop the `devmail` profile before anyone else tests                                  |
+| F2  | Admin web and API run over plain HTTP on the LAN, so cookies are not `Secure`.                                                                                                                   | Medium                       | Open. HTTPS comes with the Cloudflare Tunnel (Phase B); `useSecureCookies` turns on automatically with an `https` URL |
+| F3  | Behind the tunnel, rate limits need the real client IP.                                                                                                                                          | Medium                       | Ready: set `CLIENT_IP_HEADER=cf-connecting-ip` when the tunnel goes live                                              |
+| F4  | `pnpm audit`: 3 advisories (`node-forge`, `braces`, `uuid`), all inside Expo CLI / Metro dev tooling. They are not in the server images or the app runtime. Fixed versions aren't published yet. | Low (dev only)               | Tracked; Dependabot will raise PRs when fixes ship                                                                    |
+| F5  | Admin web has no Content-Security-Policy (Next.js inline scripts need a nonce setup).                                                                                                            | Low                          | Follow-up before public launch                                                                                        |
+| F6  | Rotating `AUTH_SECRET` signs everyone out and invalidates admin TOTP enrolment, because the encryption key is derived from it.                                                                   | Info                         | Documented; rotate only with a planned re-enrolment                                                                   |
+| F7  | Presigned image URLs can be shared outside the app for up to 1 hour. The licence is in-app viewing (D-10).                                                                                       | Low                          | Accepted for pilot; shorten the TTL or add a CDN token after launch if abused                                         |
+| F8  | No external penetration test yet.                                                                                                                                                                | —                            | Recommended before public launch (Phase 5 exit)                                                                       |

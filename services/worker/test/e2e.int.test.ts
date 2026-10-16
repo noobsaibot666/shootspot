@@ -172,6 +172,28 @@ describe('capture → publish → discover', () => {
   });
 });
 
+describe('operational alerts', () => {
+  it('reports problems once per 12 h and resets when they clear', async () => {
+    const { findProblems, dueAlerts, alertText } = await import('../src/ops');
+    await env.pool.query(`update pgmigrations set run_on = now() - interval '3 days'`);
+    let problems = await findProblems(env.pool);
+    expect(problems.map((p) => p.key)).toContain('backup_pg_dump');
+    expect(alertText(problems).text).not.toMatch(/@|\d+\.\d{4,}/); // no emails, no coordinates
+    const first = await dueAlerts(env.pool, problems);
+    expect(first.map((p) => p.key)).toContain('backup_pg_dump');
+    expect((await dueAlerts(env.pool, problems)).length).toBe(0); // de-duplicated
+
+    await env.pool.query(
+      `insert into ops_heartbeats (name, ok_at, detail) values ('pg_dump', now(), 'test')`,
+    );
+    problems = await findProblems(env.pool);
+    expect(problems.map((p) => p.key)).not.toContain('backup_pg_dump');
+    await dueAlerts(env.pool, problems);
+    const left = await env.pool.query(`select key from ops_alerts where key = 'backup_pg_dump'`);
+    expect(left.rowCount).toBe(0); // cleared, so a recurrence alerts immediately
+  });
+});
+
 describe('account lifecycle', () => {
   it('exports the member data as JSON', async () => {
     const headers = await member(env, 'export@example.com', 'Exporter');

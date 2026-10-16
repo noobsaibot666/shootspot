@@ -9,6 +9,7 @@ import { meRoutes } from './me/routes';
 import { projectRoutes } from './projects/routes';
 import { feedRoutes } from './records/feed';
 import { recordRoutes } from './records/routes';
+import { captureError } from './sentry';
 import { vocabularyRoutes } from './vocabulary/routes';
 
 export type { AppDeps } from './http/context';
@@ -66,6 +67,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       return reply.code(status).send({ error: 'bad_request', message: (err as Error).message });
     }
     app.log.error({ err }, 'unhandled');
+    captureError(err);
     return reply.code(500).send({ error: 'internal' });
   });
 

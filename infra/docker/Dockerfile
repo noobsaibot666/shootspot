@@ -53,6 +53,13 @@ COPY --from=build --chown=node:node /out/worker ./
 USER node
 CMD ["node", "--import", "tsx", "src/main.ts"]
 
+# ---- backup (pg_dump 18 + restic) ----------------------------------------------------------------
+FROM postgres:18-alpine AS backup
+RUN apk add --no-cache restic tzdata
+COPY infra/docker/backup.sh /usr/local/bin/backup.sh
+RUN chmod 755 /usr/local/bin/backup.sh
+ENTRYPOINT ["/usr/local/bin/backup.sh"]
+
 # ---- admin (Next.js standalone) -----------------------------------------------------------------
 FROM node:24-bookworm-slim AS admin
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0

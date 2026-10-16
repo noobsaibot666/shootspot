@@ -25,6 +25,8 @@ const envSchema = z.object({
    */
   CLIENT_IP_HEADER: z.string().optional(),
   DATABASE_URL: z.url(),
+  /** Sentry EU DSN for crash/error reports (D-24); optional. */
+  SENTRY_DSN: z.string().optional(),
   /** Signs sessions and derives the key that encrypts admin TOTP secrets. 32+ random characters. */
   AUTH_SECRET: z.string().min(32),
   SMTP_URL: z.url(),

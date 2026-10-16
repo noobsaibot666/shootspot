@@ -6,6 +6,8 @@ export const QUEUE = {
   dataExport: 'data-export',
   /** Periodic sweep that executes account deletions whose grace period has passed. */
   deletionSweep: 'deletion-sweep',
+  /** Every 30 minutes: backups, stuck/failed uploads, overdue reports → owner alert emails. */
+  opsCheck: 'ops-check',
 } as const;
 
 export interface ProcessMediaJob {

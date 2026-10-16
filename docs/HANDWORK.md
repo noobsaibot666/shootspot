@@ -150,9 +150,17 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 
 ### 2.5 Off-site backup storage ðŸ’¶ â± 10 min
 
-Choose one: **Backblaze B2** (EU region) or **Hetzner Storage Box**. It costs a few euros a month and holds encrypted copies of the database and photos.
+**Chosen: Backblaze B2, EU (D-27).** It holds encrypted copies of the database and photos, a few euros a month.
 
-- [ ] Chosen: \_\_\_
+1. Create an account at backblaze.com. When it asks for a region, pick **EU Central (Amsterdam)**.
+2. Go to **Buckets → Create a bucket**: name it e.g. `shootspot-backup-<random>`, **Private**, encryption on.
+3. Go to **Application Keys → Add a New Application Key**: allow access to that bucket only, with Read and Write. Copy the **keyID** and **applicationKey**; the key is shown only once.
+4. Tell Claude the **bucket name** and the endpoint shown on the bucket page (e.g. `s3.eu-central-003.backblazeb2.com`). **Don't send the key in chat.** Claude gives you a NAS command block that asks for the key and stores it in the root-only `.env`, together with a generated restic password.
+5. Save the restic password in your password manager. Without it, the off-site backup can't be read.
+
+- [x] Chosen: Backblaze B2 EU
+- [ ] Bucket and key created
+- [ ] Off-site backup running (admin summary shows the "Off-site" time)
 
 ---
 

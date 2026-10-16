@@ -10,6 +10,10 @@ const envSchema = z.object({
   S3_BUCKET_PUBLIC: z.string().min(3),
   /** Concurrent image jobs; sharp is memory-hungry, keep this low on the NAS. */
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+  /** Owner alert emails; without it, problems are only logged. */
+  SMTP_URL: z.url().optional(),
+  MAIL_FROM: z.string().default('ShootSpot <no-reply@shootspot.local>'),
+  SENTRY_DSN: z.string().optional(),
 });
 
 export type WorkerConfig = z.infer<typeof envSchema>;
