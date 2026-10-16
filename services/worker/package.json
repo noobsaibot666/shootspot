@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@shootspot/api": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "typescript": "~6.0.3",
