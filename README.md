@@ -4,7 +4,9 @@ A mobile-first, community-maintained location scouting library for photographers
 
 ## Status
 
-**Phase 0: product decisions and discovery.** No application code yet.
+**Phase 0 complete (pending review): product decisions recorded.** No application code yet. Next: Phase 1, the technical proof (camera spike, NAS stack, repo scaffold).
+
+Key V1 decisions: EU/UK launch with GDPR · sign-in required · **anonymous location records by default** (attribution is opt-in) · in-app viewing license only · 16:9 or 1:1 images · Feed · Map · Profile + Camera navigation · native maps per platform · follows system theme · NAS-backed prototype first. See [the decision record](docs/phase-0/01-decision-record.md).
 
 ## Documentation
 
