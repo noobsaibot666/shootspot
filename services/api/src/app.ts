@@ -1,4 +1,3 @@
-import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { fromNodeHeaders } from 'better-auth/node';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
@@ -32,14 +31,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return safeJson(req, text, done);
   });
 
-  await app.register(cors, {
-    origin: deps.config.TRUSTED_ORIGINS,
-    credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['content-type', 'authorization'],
-    exposedHeaders: ['set-auth-token'],
-    maxAge: 86400,
-  });
+  // No CORS: the app is native (no CORS) and the admin web calls us through its own same-origin
+  // proxy. Any browser page on another origin is therefore refused by the browser itself.
   if (deps.config.NODE_ENV !== 'test') {
     await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
   }
@@ -88,6 +81,26 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       // is promoted to Origin, and never over an Origin a browser already sent.
       if (!headers.has('origin') && headers.get(APP_ORIGIN_HEADER) === APP_ORIGIN) {
         headers.set('origin', APP_ORIGIN);
+      }
+      // The admin web is for owners only: it can never create an account or sign in a member.
+      // Non-owners get the same answer as owners (no email sent), so it reveals nothing.
+      const origin = headers.get('origin');
+      const adminWeb = origin !== null && deps.config.TRUSTED_ORIGINS.includes(origin);
+      const otpPath = url.pathname.endsWith('/email-otp/send-verification-otp');
+      const signInPath = url.pathname.endsWith('/sign-in/email-otp');
+      if (adminWeb && (otpPath || signInPath)) {
+        const email = String(
+          (req.body as { email?: unknown } | undefined)?.email ?? '',
+        ).toLowerCase();
+        const { rowCount } = await deps.pool.query(
+          `select 1 from auth_users where lower(email) = $1 and role = 'owner'`,
+          [email],
+        );
+        if (!rowCount) {
+          return otpPath
+            ? reply.send({ success: true })
+            : reply.code(401).send({ code: 'INVALID_OTP', message: 'Invalid OTP' });
+        }
       }
       const response = await deps.auth.handler(
         new Request(url, {

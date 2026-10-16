@@ -65,6 +65,18 @@ const phoneEmail = `phone+${stamp}@shootspot.local`;
 
 console.log('admin web (cookies via proxy)');
 const b = browser();
+const stranger = `stranger+${stamp}@shootspot.local`;
+await b('/api/auth/email-otp/send-verification-otp', {
+  method: 'POST',
+  body: JSON.stringify({ email: stranger, type: 'sign-in' }),
+});
+const strangerMail = await (
+  await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${stranger}`)}`)
+).json();
+ok(strangerMail.messages_count === 0, 'admin web sends no code to a non-owner');
+console.log(`  … granting owner to ${ownerEmail}`);
+const { execSync } = await import('node:child_process');
+execSync(`pnpm --silent --filter @shootspot/api owner:grant ${ownerEmail}`, { stdio: 'inherit' });
 ok(
   (
     await b('/api/auth/email-otp/send-verification-otp', {
@@ -78,11 +90,7 @@ const signIn = await b('/api/auth/sign-in/email-otp', {
   method: 'POST',
   body: JSON.stringify({ email: ownerEmail, otp: await latestCode(ownerEmail) }),
 });
-ok(signIn.status === 200, 'signed in with emailed code');
-ok((await b('/admin/v1/summary')).status === 403, 'plain member is refused by the admin API');
-console.log(`  … granting owner to ${ownerEmail}`);
-const { execSync } = await import('node:child_process');
-execSync(`pnpm --silent --filter @shootspot/api owner:grant ${ownerEmail}`, { stdio: 'inherit' });
+ok(signIn.status === 200, 'owner signed in with emailed code');
 const noMfa = await b('/admin/v1/summary');
 ok(
   noMfa.status === 403 && (await noMfa.json()).error === 'mfa_required',

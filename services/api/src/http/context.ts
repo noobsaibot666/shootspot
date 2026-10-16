@@ -34,9 +34,29 @@ export class HttpError extends Error {
 
 export const notFound = () => new HttpError(404, 'not_found');
 
-/** Resolves the signed-in member from a bearer token (mobile) or session cookie (admin web). */
-export async function getViewer(deps: AppDeps, req: FastifyRequest): Promise<Viewer | null> {
-  const result = await deps.auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+/**
+ * Two clients, two channels, never mixed:
+ * - `app`: the mobile app. Member routes (/v1) accept ONLY a bearer token; cookies are ignored.
+ * - `admin`: the admin web. Admin routes (/admin/v1) accept ONLY the session cookie; a bearer
+ *   token is refused, so the app can never reach administration and the web has no member features.
+ */
+export type Channel = 'app' | 'admin';
+
+export async function getViewer(
+  deps: AppDeps,
+  req: FastifyRequest,
+  channel: Channel = 'app',
+): Promise<Viewer | null> {
+  const headers = fromNodeHeaders(req.headers);
+  const bearer = headers.get('authorization')?.startsWith('Bearer ');
+  if (channel === 'app') {
+    if (!bearer) return null;
+    headers.delete('cookie');
+  } else {
+    if (bearer) throw new HttpError(403, 'admin_web_only');
+    headers.delete('authorization');
+  }
+  const result = await deps.auth.api.getSession({ headers });
   if (!result) return null;
   const user = result.user as typeof result.user & { role?: string };
   return {
@@ -63,9 +83,10 @@ export async function requireOnboarded(deps: AppDeps, req: FastifyRequest): Prom
   return viewer;
 }
 
-/** Owner role, no MFA yet: only for the MFA enrol/verify endpoints. */
+/** Owner role on an admin-web session, no MFA yet: only for the MFA enrol/verify endpoints. */
 export async function requireOwner(deps: AppDeps, req: FastifyRequest): Promise<Viewer> {
-  const viewer = await requireViewer(deps, req);
+  const viewer = await getViewer(deps, req, 'admin');
+  if (!viewer) throw new HttpError(401, 'unauthenticated');
   if (viewer.role !== 'owner') throw new HttpError(403, 'forbidden');
   return viewer;
 }

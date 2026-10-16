@@ -1,6 +1,16 @@
 import { currentTotp } from '../src/admin/mfa';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { admin, createTestEnv, draftBody, member, signIn, type TestEnv } from '../src/testing';
+import {
+  ADMIN_ORIGIN,
+  admin,
+  browserSignIn,
+  createTestEnv,
+  draftBody,
+  grantOwner,
+  member,
+  signIn,
+  type TestEnv,
+} from '../src/testing';
 
 let env: TestEnv;
 beforeAll(async () => {
@@ -75,7 +85,8 @@ describe('auth and onboarding', () => {
     expect((await env.app.inject({ method: 'POST', url, payload, headers: app })).statusCode).toBe(
       200,
     );
-    expect(env.mailer.sent.filter((m) => m.to === 'victim@example.com')).toHaveLength(2);
+    // Only the app's request sends mail: on the admin web, a non-owner gets "success" but no email.
+    expect(env.mailer.sent.filter((m) => m.to === 'victim@example.com')).toHaveLength(1);
   });
 
   it('signs in with an emailed code; no passwords exist', async () => {
@@ -413,24 +424,63 @@ describe('reports', () => {
 });
 
 describe('admin (server-side role + MFA)', () => {
-  it('denies members, and owners without a verified MFA session', async () => {
-    const plain = await member(env, 'olga@example.com');
-    expect(
-      (await env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers: plain }))
-        .statusCode,
-    ).toBe(403);
-    expect(
-      (await env.app.inject({ method: 'POST', url: '/admin/v1/mfa/enroll', headers: plain }))
-        .statusCode,
-    ).toBe(403);
+  it('the admin web never creates accounts or signs in members', async () => {
+    const browser = {
+      origin: ADMIN_ORIGIN,
+      'sec-fetch-site': 'same-origin',
+      'sec-fetch-mode': 'cors',
+    };
+    const sent = env.mailer.sent.length;
+    const send = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/send-verification-otp',
+      headers: browser,
+      payload: { email: 'stranger@example.com', type: 'sign-in' },
+    });
+    expect(send.statusCode).toBe(200); // same answer as for an owner: reveals nothing
+    expect(env.mailer.sent.length).toBe(sent); // …but no email goes out
+    const existing = await member(env, 'olga@example.com');
+    expect(existing.authorization).toBeTruthy();
+    const signIn = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email-otp',
+      headers: browser,
+      payload: { email: 'olga@example.com', otp: '123456' },
+    });
+    expect(signIn.statusCode).toBe(401);
+    const users = await env.pool.query(
+      `select 1 from auth_users where email = 'stranger@example.com'`,
+    );
+    expect(users.rowCount).toBe(0);
+  });
 
-    const ownerHeaders = await member(env, 'paulo@example.com');
-    await env.pool.query(`update auth_users set role = 'owner' where email = 'paulo@example.com'`);
+  it('keeps the two clients apart: app tokens never reach admin, web sessions never reach /v1', async () => {
+    const plain = await member(env, 'pia@example.com');
+    const asApp = await env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers: plain });
+    expect(asApp.statusCode).toBe(403);
+    expect(asApp.json().error).toBe('admin_web_only');
+
+    const { headers: web } = await admin(env, 'paulo@example.com');
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/v1/feed', headers: web })).statusCode,
+    ).toBe(401);
+    expect((await env.app.inject({ method: 'GET', url: '/v1/me', headers: web })).statusCode).toBe(
+      401,
+    );
+    // The owner's own app token is just a member token: no admin access through the app.
+    const ownerApp = await signIn(env, 'paulo@example.com');
     const res = await env.app.inject({
       method: 'GET',
       url: '/admin/v1/summary',
-      headers: ownerHeaders,
+      headers: ownerApp,
     });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('requires a verified MFA session even for owners', async () => {
+    await grantOwner(env, 'quica@example.com');
+    const web = await browserSignIn(env, 'quica@example.com');
+    const res = await env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers: web });
     expect(res.statusCode).toBe(403);
     expect(res.json().error).toBe('mfa_required');
   });
@@ -449,7 +499,7 @@ describe('admin (server-side role + MFA)', () => {
     });
     expect(replay.statusCode).toBe(401);
     // A second session of the same owner is not verified until it passes TOTP itself.
-    const second = await signIn(env, 'quim@example.com');
+    const second = await browserSignIn(env, 'quim@example.com');
     expect(
       (await env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers: second }))
         .statusCode,

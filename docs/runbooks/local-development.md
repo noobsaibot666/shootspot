@@ -25,9 +25,9 @@ Then run each of these in its own terminal:
 
 **Become an admin locally:**
 
-1. Sign in once at http://localhost:3000 with any email. The code appears in Mailpit.
-2. Run `pnpm --filter @shootspot/api owner:grant you@example.com`.
-3. Sign in again and scan the QR code with an authenticator app.
+1. Run `pnpm --filter @shootspot/api owner:grant you@example.com`. This creates the owner account; the admin web never creates accounts (D-23).
+2. Sign in at http://localhost:3000. The code appears in Mailpit.
+3. Scan the QR code with an authenticator app.
 
 ## Tests
 

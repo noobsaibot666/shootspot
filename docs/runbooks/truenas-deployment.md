@@ -62,9 +62,9 @@ curl -s http://172.16.1.1:4400/ready
 
 ### A6. First owner
 
-1. Open `http://172.16.1.1:4401` and sign in. Read the code at `http://172.16.1.1:4403`.
-2. Run `sudo docker compose exec api node --import tsx scripts/grant-owner.ts you@…` (`DATABASE_URL` is already set in the container).
-3. Sign in again and scan the TOTP QR code.
+1. Run `sudo docker compose exec api node --import tsx scripts/grant-owner.ts you@…`. This creates the owner account; `DATABASE_URL` is already set in the container.
+2. Open `http://172.16.1.1:4401` and sign in. Read the code at `http://172.16.1.1:4403`.
+3. Scan the TOTP QR code.
 
 ### Rollback
 

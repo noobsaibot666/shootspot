@@ -4,6 +4,12 @@ Base URL: `PUBLIC_API_URL`. In development that's `http://127.0.0.1:4000`; on th
 
 ## Conventions
 
+- **Two clients, never mixed (D-23).**
+  - **`/v1` is the mobile app only**: bearer token required, and cookies are ignored.
+  - **`/admin/v1` is the admin web only**: session cookie required, and a bearer token gets `403 admin_web_only`.
+  - On the admin web, sign-in works only for existing owners. Anyone else gets the same `{ success: true }` answer, but no email is sent and no account is created.
+  - There is no CORS: the admin web calls the API through its same-origin proxy.
+
 - **Auth.** The app sends `Authorization: Bearer <token>`. The admin web uses the session cookie through its same-origin proxy. Without auth, every `/v1` and `/admin/v1` route returns **401**, except `/v1/legal` (D-05).
 - **Errors** look like `{ "error": "<code>", "message"?: string }`, and validation errors like `{ "error": "invalid_request", "issues": [{ path, message }] }`. Common codes:
   - `unauthenticated` (401)

@@ -148,10 +148,46 @@ export async function member(env: TestEnv, email: string, firstName?: string) {
   return headers;
 }
 
-/** Owner with confirmed TOTP and an MFA-verified session. */
+export const ADMIN_ORIGIN = 'http://localhost:3000';
+export type CookieHeaders = { cookie: string };
+
+/** Make an owner account the way scripts/grant-owner.ts does (the admin web can't create one). */
+export async function grantOwner(env: TestEnv, email: string) {
+  await env.pool.query(
+    `insert into auth_users (name, email, "emailVerified", role) values ('Owner', $1, false, 'owner')
+     on conflict (email) do update set role = 'owner'`,
+    [email],
+  );
+}
+
+/** Email-code sign-in from the admin web (browser origin); returns the session cookie. */
+export async function browserSignIn(env: TestEnv, email: string): Promise<CookieHeaders> {
+  const browser = {
+    origin: ADMIN_ORIGIN,
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+  };
+  await env.app.inject({
+    method: 'POST',
+    url: '/api/auth/email-otp/send-verification-otp',
+    headers: browser,
+    payload: { email, type: 'sign-in' },
+  });
+  const otp = env.mailer.lastCodeFor(email);
+  const res = await env.app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-in/email-otp',
+    headers: browser,
+    payload: { email, otp },
+  });
+  if (res.statusCode !== 200) throw new Error(`browser sign in ${res.statusCode} ${res.body}`);
+  return { cookie: res.cookies.map((c) => `${c.name}=${c.value}`).join('; ') };
+}
+
+/** Owner signed in on the admin web, with confirmed TOTP and an MFA-verified session. */
 export async function admin(env: TestEnv, email: string) {
-  const headers = await member(env, email, 'Owner');
-  await env.pool.query(`update auth_users set role = 'owner' where email = $1`, [email]);
+  await grantOwner(env, email);
+  const headers = await browserSignIn(env, email);
   const enroll = await env.app.inject({ method: 'POST', url: '/admin/v1/mfa/enroll', headers });
   const secret = new URL(enroll.json().otpauthUri).searchParams.get('secret');
   if (!secret) throw new Error('no totp secret');
