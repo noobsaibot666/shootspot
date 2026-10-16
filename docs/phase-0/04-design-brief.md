@@ -33,7 +33,7 @@ All text and icon pairs must meet WCAG AA contrast in both themes. The nav pill 
 
 ## Screens for the design pass (priority order)
 
-1. Camera (16:9/1:1 toggle, rotate cue, crop mask, controls) — landscape and portrait-held
+1. Camera: **minimal, native-camera-like (D-22)**. Full-screen viewfinder, shutter, lens pills, tap-to-focus with an exposure slider, a quiet 16:9/1:1 toggle, flash only if present, flip, and a last-photo thumbnail. Covers landscape and portrait-held. No debug text; GPS and heading are captured silently.
 2. Crop preview → pin confirm → short form → advanced form → public preview with attribution toggle and notice
 3. Feed with scope chip and filter sheet
 4. Map tab with clustered pins and preview card

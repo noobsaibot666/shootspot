@@ -1,6 +1,6 @@
 # ADR 0005 — Authentication
 
-**Status:** Proposed · decide at the start of Phase 2
+**Status:** Accepted · 2026-10-16 (product owner)
 
 ## Requirements
 
@@ -11,16 +11,25 @@
 - an account deletion workflow
 - an age gate (D-02)
 - runs on the NAS prototype and migrates to the cloud later
+- **low memory footprint**: the NAS has about 3.5 GB realistically free, shared with other apps
 
-## Options
+## Decision
 
-| Option                                               | Pros                                                                                                                   | Cons                                                                                                             |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Zitadel (self-hosted)** — proposed                 | OIDC/OAuth2, passkeys and TOTP MFA, Postgres-backed, single container; can move to Zitadel Cloud in an EU region later | Another service to run and back up on the NAS                                                                    |
-| Keycloak (self-hosted)                               | Very mature, feature-complete                                                                                          | Heavy (JVM); its admin UX is complex for a small team                                                            |
-| Managed EU auth (e.g. Supabase Auth in an EU region) | No ops                                                                                                                 | A processor DPA is needed; ties us to a vendor schema; it would be the only external dependency in the prototype |
-| Build our own in the API                             | Full control                                                                                                           | Security risk; MFA and passkeys are hard to get right                                                            |
+- **Auth runs inside our API**, using the open-source **Better Auth** library. Its tables (users, sessions, verification codes) live in our own Postgres. There is no extra service to run, update or back up.
+- **Members sign in with a passwordless email code**: they enter their email, receive a 6-digit code, and enter it. There are no member passwords at all, so nothing to leak, reset or breach-check. Sign in with Apple and Google can be added later. Apple requires Sign in with Apple if any other social login is offered.
+- **Admins** use the same email code plus a **required second factor** (TOTP authenticator app, with passkeys as an option). The admin web has its own session policy: shorter lifetime, and admin routes reject sessions without MFA.
+- **Roles** (`member`, `owner`) are stored on our user record and checked server-side on every admin route.
+- **Mobile sessions** use bearer tokens stored in the device keychain/keystore. The admin web uses httpOnly cookies.
 
-## Proposal
+## Alternatives rejected
 
-Zitadel, self-hosted beside the API. The API validates tokens and keeps `users`, `roles` and `consents` in its own schema, keyed by the subject ID. The admin web gets a separate client with required MFA.
+| Option                | Why not                                                                    |
+| --------------------- | -------------------------------------------------------------------------- |
+| Zitadel (self-hosted) | Another 300–500 MB container on a memory-tight NAS; more ops               |
+| Managed EU auth       | An external processor holds accounts during the pilot; a vendor dependency |
+| Hand-rolled auth      | Security risk                                                              |
+
+## Consequences
+
+- Email delivery is required from day one (HANDWORK 3.2). In development, codes go to a local Mailpit inbox.
+- Phase 2 pins the Better Auth version and checks its installed type definitions before use, because the library moves quickly.
