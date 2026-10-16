@@ -90,8 +90,8 @@ sudo midclt call sharing.smb.query | python3 -c 'import json,sys; [print(s["name
 
 Claude uses the output to create the project folders in [server-folders.md](runbooks/server-folders.md) with the correct permissions.
 
-- [ ] Output sent
-- [ ] Project folders created
+- [x] Output sent
+- [x] Project folders created (datasets `Gaia/04_DEV/shootspot-runtime` and `-backups`)
 
 ### 2.2 Use an SSH key instead of a password ⏱ 5 min
 
@@ -105,7 +105,7 @@ The NAS only accepts SSH keys, and the PC's key isn't on it yet. The SSH config 
 3. Check that **SSH** is enabled in **System → Services**.
 4. On the PC, run `ssh truenas`. You should land on the NAS prompt without a password.
 
-- [ ] SSH key works
+- [x] SSH key works (`ssh truenas`; the passphrase is held by the Windows ssh-agent)
 
 ### 2.3 Domain name 💶 ⏱ 10 min
 

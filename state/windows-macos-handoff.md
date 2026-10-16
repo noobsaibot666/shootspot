@@ -19,16 +19,16 @@ Rules:
 
 ## Current state
 
-| Item               | Value                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| Phase              | 1: technical proof (camera spike built, awaiting device tests)                                     |
-| Latest commit      | see `git log -1`                                                                                   |
-| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                  |
-| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                  |
-| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (pending creation, see docs/runbooks/server-folders.md) |
-| Android build      | not yet built                                                                                      |
-| iOS build          | not yet built (macOS side)                                                                         |
-| Backend for phones | local only; TrueNAS deployment not started                                                         |
+| Item               | Value                                                                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Phase              | 1: technical proof (camera spike built, awaiting device tests)                                                                     |
+| Latest commit      | see `git log -1`                                                                                                                   |
+| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                  |
+| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                  |
+| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md) |
+| Android build      | not yet built                                                                                                                      |
+| iOS build          | not yet built (macOS side)                                                                                                         |
+| Backend for phones | local only; TrueNAS deployment not started                                                                                         |
 
 ## Open requests
 

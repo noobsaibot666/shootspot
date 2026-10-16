@@ -34,6 +34,12 @@ shootspot/
 
 TrueNAS SCALE 25.10.3 · x86_64 · 12 cores · 14 GiB RAM · Docker 28.3.1 · Compose 2.38.1. `Gaia/04_DEV` is an NFSv4-ACL dataset and `_personal` is a plain folder inside it. The `Gaia` SMB share exposes all of `/mnt/Gaia`. `alan` is uid 951, has primary group `root` (gid 0), and is in the `docker` group. The `apps` user is uid/gid 568.
 
+## Status
+
+**Created and verified 2026-10-16.** From Windows, `runtime\` is invisible on the share, `backups\` is readable but not writable, and `shared\` is read/write.
+
+> **TrueNAS gotcha:** pools have `altroot=/mnt`, so a ZFS `mountpoint` value must leave out `/mnt` (e.g. `mountpoint=/Gaia/04_DEV/...`). Including it mounts at `/mnt/mnt/...`. That happened once and was fixed.
+
 ## Datasets
 
 The same pattern as the existing `Gaia/04_DEV/exposeu-delivery`: datasets with custom mountpoints.
