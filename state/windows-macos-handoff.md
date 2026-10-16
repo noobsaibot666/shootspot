@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-17 windows: **NAS updated to `5718c20`**: gallery import works against the NAS (pin source `photo`), the portfolio-link fix is live, and the admin website is redesigned (Locations page, pilot metrics).
+
 - 2026-10-16 windows → mac: **The iOS rebuild request below now also covers `@sentry/react-native`** (native; off until `EXPO_PUBLIC_SENTRY_DSN` is set). Build from `5718c20` or later: `git pull && pnpm install && npx expo prebuild --platform ios --clean`, then build. Since then:
   - Design pass finished: Profile grid and menu, project boards, the admin website redesign.
   - Security fix F9: rate limits could be bypassed with a fake `X-Forwarded-For`.
