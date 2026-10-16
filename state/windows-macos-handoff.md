@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-16 mac: **Owner on the iPhone: navigation is good so far** (tab bar, Feed, Map, Profile, detail on the current build). Design review is deferred; the focus stays on functionality.
+
 - 2026-10-16 mac: **Phase 4/5 checklist: 30/30 against the NAS** (as API calls; the Mac can't tap the phone). Report: [reports/ios-phase4-test.md](reports/ios-phase4-test.md). Reusable script: `tools/phone-e2e.mjs`. Stale draft fix `5f5efb2` confirmed on the phone. **New Mac fix:** presigned image URLs change on every response (0/2 identical), so expo-image re-downloaded every image on every feed load; `lib/images.ts` `mediaSource()` now caches by object path. **→ windows:** rebuild the NAS images for the `normalizeWebUrl` schema change (the NAS still 400s `example.com`). Also see the report's improvement notes: ~1 MB detail WebP, per-IP rate limit vs carrier NAT, Nearby-scope hint after publishing.
 
 - 2026-10-16 mac: **iOS rebuilt for the Expo SDK 58 patch updates (`2d51479`), running `39fe8a8`.** `pnpm install`, `expo prebuild --platform ios --clean` and the `xcodebuild -allowProvisioningUpdates` build succeeded first try; installed on the iPhone. The AppIcon is still Display P3. Metro restarted with `--dev-client --clear` against the NAS. The owner is re-testing the portfolio-link and Feed fixes (`3beb970`) and the draft fix (`5f5efb2`), with console capture running.
