@@ -6,6 +6,7 @@
 - **API:** Windows PC `http://192.168.178.63:4000`
 - **Capture:** `xcrun devicectl device process launch --console` with `OS_ACTIVITY_DT_MODE=enable` (app stdout plus os_log), 17:29:04–17:31:46
 - **Owner's run:** add email → receive code → sign in → take photo → enter photo data → preview. No crash, no JS exception, and no failed network request appeared in the log.
+- **Coverage caveat:** at 17:31:46 the Mac lost its connection to the phone (`CoreDeviceError 3 … connection was invalidated`), which ended the capture. The app did **not** crash: the same process (PID 13020) was still running afterwards. Anything the owner did after 17:31:46 is not in this log.
 
 ## App issues
 
