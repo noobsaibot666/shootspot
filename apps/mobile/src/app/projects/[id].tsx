@@ -1,13 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
 import type { PublicRecord } from '@shootspot/shared';
-import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, Text, View } from 'react-native';
-import { mediaSource } from '../../lib/images';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { api } from '../../lib/api';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Field, Row } from '../../ui';
+import { Masonry } from '../../ui/masonry';
 
 type Item =
   | { recordId: string; available: true; record: PublicRecord }
@@ -65,22 +63,21 @@ export default function ProjectScreen() {
           ),
         }}
       />
-      <FlatList
+      <ScrollView
         style={{ flex: 1, backgroundColor: t.canvas }}
-        data={items}
-        keyExtractor={(i) => i.recordId}
-        contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: 60 }}
-        ListHeaderComponent={
-          editing ? (
-            <View style={{ gap: space.md, marginBottom: space.md }}>
-              <Row>
+        contentContainerStyle={{ paddingVertical: space.lg, gap: space.lg, paddingBottom: 60 }}
+      >
+        <View style={{ paddingHorizontal: space.lg }}>
+          {editing ? (
+            <View style={{ gap: space.md }}>
+              <Row style={{ alignItems: 'flex-end' }}>
                 <View style={{ flex: 1 }}>
                   <Field label="Project name" value={name} onChangeText={setName} maxLength={80} />
                 </View>
                 <Button
                   label="Rename"
                   kind="secondary"
-                  style={{ marginTop: 22 }}
+                  size="small"
                   disabled={!name.trim()}
                   onPress={() =>
                     void api(`/v1/projects/${id}`, { method: 'PATCH', body: { name: name.trim() } })
@@ -110,65 +107,38 @@ export default function ProjectScreen() {
               />
             </View>
           ) : (
-            <Body muted>Private · only you can see this project.</Body>
-          )
-        }
-        ListEmptyComponent={
-          <Body muted>Nothing saved yet. Use the bookmark on any location to add it here.</Body>
-        }
-        renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={!item.available}
-              onPress={() => router.push(`/records/${item.recordId}`)}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md }}
-            >
-              {item.available ? (
-                <Image
-                  source={mediaSource(item.record.images.thumb)}
-                  style={{ width: 96, height: 54, borderRadius: 8, backgroundColor: '#000' }}
-                  contentFit="cover"
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 96,
-                    height: 54,
-                    borderRadius: 8,
-                    backgroundColor: t.surface,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="eye-off-outline" size={18} color={t.muted} />
-                </View>
-              )}
-              <Text
-                style={{
-                  color: item.available ? t.ink : t.muted,
-                  fontSize: 15,
-                  fontWeight: '600',
-                  flex: 1,
-                }}
-                numberOfLines={2}
-              >
-                {item.available ? item.record.label : 'No longer available'}
-              </Text>
-            </Pressable>
-            {editing || !item.available ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Remove from project"
-                hitSlop={10}
-                onPress={() => void remove(item.recordId)}
-              >
-                <Ionicons name="remove-circle-outline" size={24} color={t.signalRed} />
-              </Pressable>
-            ) : null}
-          </View>
-        )}
-      />
+            <Body muted>
+              Private · only you can see this project.
+              {items.length ? '' : ' Nothing saved yet: use Save on any location to add it here.'}
+            </Body>
+          )}
+        </View>
+        {/* A board, like the feed. In edit mode (or for removed locations) a tap removes. */}
+        <Masonry
+          tiles={items.map((item) =>
+            item.available
+              ? {
+                  id: item.recordId,
+                  label: item.record.label,
+                  image: item.record.images.feed,
+                  placeholder: item.record.images.thumb,
+                  width: item.record.images.width,
+                  height: item.record.images.height,
+                  badge: editing ? 'Tap to remove' : null,
+                  onPress: editing ? () => void remove(item.recordId) : undefined,
+                }
+              : {
+                  id: item.recordId,
+                  label: 'No longer available',
+                  image: null,
+                  width: 16,
+                  height: 9,
+                  badge: 'Unavailable · tap to remove',
+                  onPress: () => void remove(item.recordId),
+                },
+          )}
+        />
+      </ScrollView>
     </>
   );
 }

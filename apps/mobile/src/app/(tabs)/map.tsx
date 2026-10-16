@@ -9,6 +9,7 @@ import MapView, { Marker, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { mapsAvailable } from '../../lib/device';
+import { mediaSource } from '../../lib/images';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { radius, space, useTheme } from '../../theme/tokens';
 
@@ -202,7 +203,7 @@ export default function MapTab() {
           accessibilityRole="button"
           accessibilityLabel={`Filters: ${scopeLabel(scope, Boolean(center))}`}
           onPress={() => router.push('/filters')}
-          style={[styles.chip, { backgroundColor: t.raised, borderColor: t.divider }]}
+          style={[styles.chip, { backgroundColor: t.scrim }]}
         >
           <Ionicons name="options-outline" size={16} color={t.ink} />
           <Text style={{ color: t.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
@@ -212,7 +213,7 @@ export default function MapTab() {
           </Text>
         </Pressable>
         {truncated ? (
-          <View style={[styles.chip, { backgroundColor: t.raised, borderColor: t.divider }]}>
+          <View style={[styles.chip, { backgroundColor: t.scrim }]}>
             <Text style={{ color: t.muted, fontSize: 13 }}>Zoom in to see all</Text>
           </View>
         ) : null}
@@ -234,10 +235,7 @@ export default function MapTab() {
               400,
             );
         }}
-        style={[
-          styles.locate,
-          { top: insets.top + 8, backgroundColor: t.raised, borderColor: t.divider },
-        ]}
+        style={[styles.locate, { top: insets.top + 8, backgroundColor: t.scrim }]}
       >
         <Ionicons name="locate" size={22} color={t.ink} />
       </Pressable>
@@ -253,7 +251,7 @@ export default function MapTab() {
           ]}
         >
           <Image
-            source={selected.thumb}
+            source={mediaSource(selected.thumb)}
             style={{ width: 112, height: 63, borderRadius: 8, backgroundColor: '#000' }}
             contentFit="cover"
           />
@@ -288,7 +286,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: 1,
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
     minHeight: 40,
@@ -300,7 +297,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

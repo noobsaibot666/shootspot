@@ -73,7 +73,7 @@ function Navigator() {
           }}
         />
         <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="settings" options={{ title: 'Menu' }} />
         <Stack.Screen name="filters" options={{ title: 'Area & filters', presentation: 'modal' }} />
         <Stack.Screen
           name="save/[id]"
