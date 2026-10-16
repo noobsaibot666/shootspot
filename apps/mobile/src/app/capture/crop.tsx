@@ -181,6 +181,19 @@ export default function ImportCrop() {
               {...responder.panHandlers}
               accessible
               accessibilityLabel="Frame. Drag to choose the part of the photo to publish."
+              // Screen readers: swipe up/down (adjustable) moves the frame along its free axis.
+              accessibilityRole="adjustable"
+              accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+              onAccessibilityAction={(e) => {
+                const dir = e.nativeEvent.actionName === 'increment' ? 1 : -1;
+                const freeX = geo.dw - geo.fw;
+                const freeY = geo.dh - geo.fh;
+                setOffset((o) =>
+                  freeX >= freeY
+                    ? { ...o, x: Math.max(0, Math.min(freeX, o.x + dir * freeX * 0.1)) }
+                    : { ...o, y: Math.max(0, Math.min(freeY, o.y + dir * freeY * 0.1)) },
+                );
+              }}
               style={[
                 styles.frame,
                 { left: offset.x, top: offset.y, width: geo.fw, height: geo.fh },

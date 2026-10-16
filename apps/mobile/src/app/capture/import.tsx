@@ -97,6 +97,12 @@ export default function ImportBatch() {
             accessibilityLabel={item.state === 'done' ? 'Published photo' : 'Review this photo'}
             disabled={item.state === 'done'}
             onPress={() => review(item)}
+            // Long-press has a screen-reader equivalent: the "Remove from batch" action.
+            accessibilityActions={[{ name: 'remove', label: 'Remove from batch' }]}
+            onAccessibilityAction={(e) => {
+              if (e.nativeEvent.actionName === 'remove')
+                void removeImport(item.id).then(listImports).then(setItems);
+            }}
             onLongPress={() =>
               Alert.alert('Remove this photo from the batch?', undefined, [
                 { text: 'Keep', style: 'cancel' },

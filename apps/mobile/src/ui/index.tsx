@@ -261,6 +261,8 @@ export function Chip(props: { label: string; selected: boolean; onPress(): void 
       accessibilityRole="checkbox"
       accessibilityState={{ checked: props.selected }}
       onPress={props.onPress}
+      // 36 pt chip + slop = 44 pt touch target.
+      hitSlop={4}
       scaleTo={0.95}
       style={[
         styles.chip,
@@ -441,6 +443,8 @@ export function Sheet(props: { visible: boolean; onClose(): void; children: Reac
         <Pressable accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={close} />
       </Animated.View>
       <Animated.View
+        // Screen readers stay inside the sheet while it's open; the scrim is a "Close" button.
+        accessibilityViewIsModal
         style={{
           position: 'absolute',
           left: 0,

@@ -166,7 +166,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 
 ## ▶ Step 3 — Backend and app building (Phases 2–4)
 
-- [ ] **3.1 Approve the login system.** Claude proposes Zitadel ([why](adr/0005-authentication.md)) and will ask before starting.
+- [x] **3.1 Approve the login system.** Done: email codes via Better Auth inside the API ([ADR 0005](adr/0005-authentication.md)).
 - [ ] **3.2 Email sender: Brevo (D-26)** ⏱ 20 min, after the domain (2.3).
   1. Create a free account at brevo.com.
   2. **Senders, Domains & Dedicated IPs → Domains → Add a domain:** add the DNS records it shows (DKIM, Brevo code, and DMARC if offered) at your DNS host; with Cloudflare, that's under DNS.
