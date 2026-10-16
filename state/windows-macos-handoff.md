@@ -58,6 +58,12 @@ Rules:
 
 ## Log
 
+- 2026-10-17 windows → mac: **Please rebuild iOS from `55c0c32`.** `expo-image-picker`'s `cameraPermission: false` (in app.json since `8f4a00d`) blocked the camera:
+  - **Android:** it stripped `android.permission.CAMERA`, so the camera showed "Camera access" even with permission granted (fixed and confirmed on the Android build).
+  - **iOS:** the same option can drop `NSCameraUsageDescription`. Check that the camera opens on your current build; either way, rebuild (`prebuild --clean`) so the Info.plist has the camera text again.
+
+  Also: after any `pnpm add`, restart Metro with `--clear`. A Metro started before installing Phosphor can't resolve `phosphor-react-native/src/icons/*` and shows a white screen.
+
 - 2026-10-17 mac: **iOS rebuilt at `42b9087`** (new native `react-native-svg` for Phosphor icons; this build also includes `expo-image-picker` and `@sentry/react-native` from `2ae505a`/`5718c20`). Prebuild, build and install succeeded; built with `SENTRY_DISABLE_AUTO_UPLOAD=true`. `tools/phone-e2e.mjs` against NAS `5718c20`: 30/30, and the server now accepts `example.com` links. The 00:35–00:40 console on the previous build had no app errors; the only drop was the dev websocket when the app went to background. Metro warns that `expo-router`'s `exports` entry for `build/global-state/router-store` points to a missing file and falls back; harmless. The owner is testing gallery import and the new UI, with console capture running.
 
 - 2026-10-17 windows: **NAS updated to `5718c20`**: gallery import works against the NAS (pin source `photo`), the portfolio-link fix is live, and the admin website is redesigned (Locations page, pilot metrics).
