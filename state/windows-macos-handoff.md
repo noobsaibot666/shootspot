@@ -21,7 +21,7 @@ Rules:
 
 | Item               | Value                                                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Phase              | 2 complete (backend + admin). Next: first NAS deploy, then Phase 3 mobile capture/publish                                          |
+| Phase              | 3 built (capture/publish app); waiting on device tests. NAS deploy pending owner answer                                            |
 | Latest commit      | see `git log -1`                                                                                                                   |
 | Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                  |
 | ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                  |
@@ -32,7 +32,20 @@ Rules:
 
 ## Open requests
 
-_None._
+- 2026-10-16 → mac: **Phase 3 iOS dev build (real app: sign-in, camera, publish).** New native modules (maps, secure store, router, haptics, expo-image), so a fresh build is needed.
+  1. `git pull && pnpm install`
+  2. Create `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.178.63:4000` (the Windows PC on the same Wi-Fi; the Windows side starts the API, worker and Mailpit before testing).
+  3. `cd apps/mobile && npx expo prebuild --platform ios --clean`, then build and install with the `xcodebuild … -allowProvisioningUpdates` workaround from the log below.
+  4. **Icon check (backlog 3.9):** the new `plugins/with-p3-app-icon.js` copies the P3-tagged icon into the AppIcon set. Confirm `ios/…/AppIcon.appiconset/*1024*.png` still has an ICC profile (`sips -g profile <file>` should say Display P3) and that the home-screen icon looks as vivid as in Figma.
+  5. Run the Phase 3 flow and log the results here:
+     - sign in (the code arrives in Mailpit at `http://192.168.178.63:8025`)
+     - onboarding
+     - capture held sideways and held upright
+     - confirm the pin
+     - notes
+     - publish
+     - the status screen shows **Published**
+  6. **Heading test C16/C17** on the iPhone (camera-spike-test-plan): log the error in degrees at N/E/S/W, upright and sideways.
 
 ## Log
 

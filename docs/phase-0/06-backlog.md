@@ -35,18 +35,19 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 
 ## Phase 3 — Mobile: capture and publish
 
-| #    | Item                                                                                                                                                                                                         | Pri     |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
-| 3.1  | Onboarding: age, sign-up, consents, anonymity explainer                                                                                                                                                      | P0      |
-| 3.2  | Theme system (light/dark tokens, system-following)                                                                                                                                                           | P0      |
-| 3.3  | Camera screen: minimal, native-camera-like on each platform (D-22), and crop preview                                                                                                                         | P0      |
-| 3.4  | Pin confirmation (GPS/manual/search)                                                                                                                                                                         | P0      |
-| 3.5  | Short data form; advanced form                                                                                                                                                                               | P0 / P1 |
-| 3.6  | Public preview, attribution toggle and notice, publish, local draft, retry, processing status                                                                                                                | P0      |
-| 3.7  | Heading accuracy test (C16/C17) on Android and iPhone; native camera-azimuth module if error is over 15°                                                                                                     | P0      |
-| 3.8  | Camera fixes from the spike: apply torch/zoom only after the session starts (Android "Camera is not active"); lens fallback when the device exposes a single zoom factor; correct the crop-retention readout | P0      |
-| 3.9  | iOS icon keeps Display P3: config plugin to restore the ICC profile / display-gamut in AppIcon after prebuild (the Mac found prebuild strips it)                                                             | P1      |
-| 3.10 | iOS signing: document or script the `xcodebuild -allowProvisioningUpdates` workaround from the Mac log                                                                                                       | P1      |
+| #    | Item                                                                                          | Pri     | Status                                                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3.1  | Onboarding: age, sign-up, consents, anonymity explainer                                       | P0      | Built: email-code sign-in, onboarding (16+, name, versioned consents)                                                                       |
+| 3.2  | Theme system (light/dark tokens, system-following)                                            | P0      | Built; camera and viewer always dark                                                                                                        |
+| 3.3  | Camera screen: minimal, native-camera-like (D-22), and crop preview                           | P0      | Built: viewfinder, shutter, lens pills, tap-focus + drag exposure, pinch zoom, 16:9/1:1, flash, flip, last shot, review                     |
+| 3.4  | Pin confirmation (GPS/manual/search)                                                          | P0      | Built: native map with fixed centre pin, place search, GPS button, no-permission path. **Android needs the Google Maps key (HANDWORK 3.4)** |
+| 3.5  | Short data form; advanced form                                                                | P0 / P1 | Built                                                                                                                                       |
+| 3.6  | Public preview, attribution toggle and notice, publish, local draft, retry, processing status | P0      | Built: drafts saved on the phone, resumable create/upload/confirm, status screen                                                            |
+| 3.7  | Heading accuracy test (C16/C17); native azimuth module if error is over 15°                   | P0      | **Device test pending**                                                                                                                     |
+| 3.8  | Camera fixes from the spike (torch timing, single-lens fallback, retention readout)           | P0      | Done: zoom/exposure only after start, torch removed from UI (D-22), digital 2× fallback, spike readouts removed                             |
+| 3.9  | iOS icon keeps Display P3                                                                     | P1      | Plugin `plugins/with-p3-app-icon.js`; **Mac to verify**                                                                                     |
+| 3.10 | iOS signing workaround documented                                                             | P1      | In the handoff log; to move into a runbook                                                                                                  |
+| 3.11 | End-to-end on devices: capture → published on iOS and Android                                 | P0      | **Pending** (needs new dev builds: new native modules)                                                                                      |
 
 ## Phase 4 — Mobile: discover and organize
 

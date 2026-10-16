@@ -59,6 +59,33 @@ On GitHub, open the repo → **Settings → Code security**. Turn on **Secret sc
 - [ ] Restarted VS Code
 - [ ] Mac connected (after the NAS server is up)
 
+### 1.7 Test the real app on your phones (Phase 3) 🔁 ⏱ 45 min
+
+The app now has sign-in, the new camera, the map pin, notes and publishing. It contains new native parts, so **both phones need a fresh build**.
+
+**One-time setup on the Windows PC:**
+
+1. Let phones reach this PC. In an **admin** PowerShell, run:
+   ```powershell
+   New-NetFirewallRule -DisplayName "ShootSpot dev" -Direction Inbound -Protocol TCP -LocalPort 4000,8333,8025 -Profile Private -Action Allow
+   ```
+2. In `services/api/.env`, set `S3_PUBLIC_ENDPOINT=http://192.168.178.63:8333`.
+3. Copy `apps/mobile/.env.example` to `apps/mobile/.env`.
+
+**Each test session:** run `pnpm dev:infra`, `pnpm dev:api`, `pnpm dev:worker` and `pnpm --filter @shootspot/mobile start`. Sign-in codes appear at http://192.168.178.63:8025.
+
+**Builds:**
+
+- **Android:** run `pnpm --filter @shootspot/mobile build:dev:android` and install the new APK. The map on the pin screen stays grey until you have a Google Maps key (3.4). Everything else works without it.
+- **iPhone:** the Mac follows the request in the handoff file.
+
+**Test:** sign in → onboarding → capture (sideways and upright) → pin → notes → publish, and check the status screen shows **Published**. Then run the compass test C16/C17 outdoors. Send Claude the results.
+
+- [ ] Firewall rule added
+- [ ] Android: published a location
+- [ ] iPhone: published a location
+- [ ] Compass test results sent
+
 ---
 
 ## ▶ Step 2 — Before the NAS goes live

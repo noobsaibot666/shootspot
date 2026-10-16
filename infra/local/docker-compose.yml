@@ -29,7 +29,9 @@ services:
       AWS_ACCESS_KEY_ID: shootspot-dev
       AWS_SECRET_ACCESS_KEY: shootspot-dev-secret
     ports:
-      - '127.0.0.1:8333:8333'
+      # LAN-visible so a test phone can PUT/GET via presigned URLs (set S3_PUBLIC_ENDPOINT in
+      # services/api/.env to http://<this PC's LAN IP>:8333). Dev credentials only.
+      - '8333:8333'
     volumes:
       - s3-data:/data
 

@@ -37,7 +37,10 @@
         {
           "locationWhenInUsePermission": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."
         }
-      ]
+      ],
+      "expo-router",
+      "expo-secure-store",
+      "expo-image"
     ],
     "extra": {
       "eas": {
