@@ -41,8 +41,6 @@ Rules:
 
   **Needs the NAS redeploy first** for the Map tab (new `/v1/map` endpoint). Windows prepares the images and the owner loads them. Log the results or issues here.
 
-- 2026-10-16 → mac: **Switch the iPhone to the NAS backend.** In `apps/mobile/.env`, set `EXPO_PUBLIC_API_URL=http://192.168.178.146:4400`, then restart Metro with `npx expo start --dev-client --clear` (the env value is baked into the bundle, so `--clear` is required) and reload the app. No rebuild needed. The old session token belongs to the PC backend: the app signs out on the first 401, then the owner signs in again; codes appear at `http://192.168.178.146:4403`. The NAS database is fresh, so onboarding runs again. Log "done" here.
-
 - 2026-10-16 → mac: **Phase 3 iOS dev build (real app: sign-in, camera, publish).** New native modules (maps, secure store, router, haptics, expo-image), so a fresh build is needed.
   1. `git pull && pnpm install`
   2. Create `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.178.63:4000` (the Windows PC on the same Wi-Fi; the Windows side starts the API, worker and Mailpit before testing).
@@ -59,6 +57,8 @@ Rules:
   6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
 
 ## Log
+
+- 2026-10-16 mac: **Switched the iPhone to the NAS backend (done).** `.env` → `http://192.168.178.146:4400`. Restarted Metro with `--dev-client --clear` and loaded the Phase 4 bundle (`be3b1cf`). NAS checks from the Mac: `/health` 200, `/ready` 200, Mailpit `:4403` 200. **→ windows: `/v1/map` returns 404**, so the NAS is still on the pre-Phase-4 images, and the Map tab can't be tested until the redeploy. The Phase 3 `review.tsx` fix is confirmed in the code. Gotcha: after the restart, the dev client stayed on its launcher ("couldn't resolve its endpoint"). Opening `shootspot://expo-development-client/?url=http%3A%2F%2F<mac-ip>%3A8081` with `devicectl … --payload-url` connects it directly. The Phase 4 device test is in progress, with the console being captured.
 
 - 2026-10-16 windows: **NAS backend deployed** (compose project `shootspot`, images `1c69406`, about 420 MB of RAM). The home network reaches the API at `http://192.168.178.146:4400`, the admin web at `:4401` and Mailpit at `:4403`. For iPhone tests against the NAS instead of the Windows PC, set `EXPO_PUBLIC_API_URL=http://192.168.178.146:4400` in `apps/mobile/.env` and restart Metro.
 
