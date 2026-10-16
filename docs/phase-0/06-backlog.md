@@ -104,4 +104,13 @@ The owner asked for this on 2026-10-16. It is collected here and done in one pas
 
 ## Phase 6–7 (summarized)
 
+**Phase 6 prep done (2026-10-16):**
+
+- [pilot runbook](../runbooks/pilot.md): gates, tester builds, weekly review, proposed targets for the owner to agree
+- admin pilot metrics (Summary → Pilot) and the Locations library
+- store listing draft ([docs/store/listing.md](../store/listing.md))
+- `eas.json` production profile (app bundle, Play internal track)
+
+Waiting on the owner's accounts and gates. An invite-only sign-up allow-list is not built; it's only needed if the owner wants one.
+
 Closed pilot in one or two cities, metrics, tuning (Phase 6) · Cloud migration off the NAS before public launch · Paid tier: PDF location-timeline export (P2) · Localization (P2) · Offline maps (P2) · Sun-path prediction (P2)
