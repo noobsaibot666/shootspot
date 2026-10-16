@@ -58,6 +58,8 @@ Rules:
 
 ## Log
 
+- 2026-10-17 mac: **iOS rebuilt at `42b9087`** (new native `react-native-svg` for Phosphor icons; this build also includes `expo-image-picker` and `@sentry/react-native` from `2ae505a`/`5718c20`). Prebuild, build and install succeeded; built with `SENTRY_DISABLE_AUTO_UPLOAD=true`. `tools/phone-e2e.mjs` against NAS `5718c20`: 30/30, and the server now accepts `example.com` links. The 00:35–00:40 console on the previous build had no app errors; the only drop was the dev websocket when the app went to background. Metro warns that `expo-router`'s `exports` entry for `build/global-state/router-store` points to a missing file and falls back; harmless. The owner is testing gallery import and the new UI, with console capture running.
+
 - 2026-10-17 windows: **NAS updated to `5718c20`**: gallery import works against the NAS (pin source `photo`), the portfolio-link fix is live, and the admin website is redesigned (Locations page, pilot metrics).
 
 - 2026-10-16 windows → mac: **The iOS rebuild request below now also covers `@sentry/react-native`** (native; off until `EXPO_PUBLIC_SENTRY_DSN` is set). Build from `5718c20` or later: `git pull && pnpm install && npx expo prebuild --platform ios --clean`, then build. Since then:
