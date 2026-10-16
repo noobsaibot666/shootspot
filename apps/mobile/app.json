@@ -38,6 +38,12 @@
           "locationWhenInUsePermission": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "43d5bfac-52db-4815-999f-6cd2336d405b"
+      }
+    },
+    "owner": "expose.u"
   }
 }

@@ -19,14 +19,16 @@ Rules:
 
 ## Current state
 
-| Item               | Value                                                          |
-| ------------------ | -------------------------------------------------------------- |
-| Phase              | 1: technical proof (camera spike built, awaiting device tests) |
-| Latest commit      | see `git log -1`                                               |
-| Expo project       | not yet linked (`eas init` pending Expo login on Windows)      |
-| Android build      | not yet built                                                  |
-| iOS build          | not yet built (macOS side)                                     |
-| Backend for phones | local only; TrueNAS deployment not started                     |
+| Item               | Value                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| Phase              | 1: technical proof (camera spike built, awaiting device tests)                                     |
+| Latest commit      | see `git log -1`                                                                                   |
+| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                  |
+| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                  |
+| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (pending creation, see docs/runbooks/server-folders.md) |
+| Android build      | not yet built                                                                                      |
+| iOS build          | not yet built (macOS side)                                                                         |
+| Backend for phones | local only; TrueNAS deployment not started                                                         |
 
 ## Open requests
 
@@ -41,4 +43,5 @@ Rules:
 
 ## Log
 
+- 2026-10-16 windows: Linked the EAS project. Installed ai-memory 3.1.0 on Windows (Claude Code only). Defined the server folder layout.
 - 2026-10-16 windows: Created this handoff file. Phase 1 code is on `main` (`2b49e4a`).

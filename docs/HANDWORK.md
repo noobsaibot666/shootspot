@@ -14,18 +14,11 @@ These are the steps only you can do: accounts, phones, the NAS, payments and leg
 
 ## ▶ Step 1 — Do now (camera test)
 
-### 1.1 Log in to Expo on the Windows PC ⏱ 1 min
+### 1.1 Log in to Expo on the Windows PC ✅
 
-Your Expo account exists, but this PC isn't signed in yet. In a terminal in the project folder, run:
+Logged in as `expose.u`. The project is linked at [expo.dev/accounts/expose.u/projects/shootspot](https://expo.dev/accounts/expose.u/projects/shootspot).
 
-```powershell
-cd apps\mobile
-npx eas-cli@latest login
-```
-
-Type your Expo username and password. Then tell Claude, and Claude will link the project to your account (`eas init`).
-
-- [ ] Logged in
+- [x] Logged in and project linked
 
 ### 1.2 Install the test app on an Android phone ⏱ 20 min (mostly waiting)
 
@@ -57,40 +50,48 @@ On GitHub, open the repo → **Settings → Code security**. Turn on **Secret sc
 
 ### 1.6 Make ai-memory work in this project 🔁 ⏱ 10 min
 
-This PC has **no ai-memory installed**: no program, no Claude connection, and nothing running. It's probably installed only on the Mac. To share one memory between Windows and Mac, both need to point at **one server**. Pick one option and tell Claude which:
+**Windows: done.** ai-memory 3.1.0 is installed, connected to Claude Code only (MCP, hooks and skills), runs at logon, and is protected by a token. **Restart VS Code once** so new sessions get captured.
 
-- **A (recommended):** run the ai-memory server on the TrueNAS with a password, then connect both the PC and the Mac to it. Claude will give you the NAS commands.
-- **B:** install it separately on each machine. Simpler, but the two machines won't share memories.
+**Next:** today the Windows PC and the Mac would each keep a separate memory. To share one, the plan is to move the server to the NAS (`runtime/ai-memory` in [server-folders.md](runbooks/server-folders.md)) and point both machines at it. That happens with the NAS setup in Step 2.
 
-For either option, the Windows install is this (PowerShell, no admin needed):
-
-```powershell
-irm https://github.com/akitaonrails/ai-memory/releases/latest/download/install.ps1 | iex
-ai-memory setup
-```
-
-Then restart VS Code and run `ai-memory status`.
-
-- [ ] Option chosen: \_\_\_
-- [ ] `ai-memory status` works on Windows
-- [ ] `ai-memory status` works on Mac
+- [x] `ai-memory status` works on Windows
+- [ ] Restarted VS Code
+- [ ] Mac connected (after the NAS server is up)
 
 ---
 
 ## ▶ Step 2 — Before the NAS goes live
 
-### 2.1 Run the NAS check commands 🔁 ⏱ 5 min
+### 2.1 Check the NAS 🔁 ⏱ 5 min
 
-These commands only read information; they change nothing. Connect with `ssh alan@172.16.1.1`, paste this block, and send Claude the output:
+These commands only read information; nothing is changed.
+
+**Step A: connect first.** Linux commands don't work in Windows PowerShell; they have to run on the NAS. In a terminal on the PC, type:
+
+```powershell
+ssh alan@172.16.1.1
+```
+
+Log in. When the prompt changes to something like `alan@truenas:~$`, you are on the NAS.
+
+**Step B: paste this block** at the NAS prompt and send Claude everything it prints:
 
 ```sh
 cat /etc/version; echo; uname -m; nproc; free -h
-zpool list -o name,size,alloc,free,health
 sudo docker version --format 'docker {{.Server.Version}}'
 sudo docker compose version
+zfs list -o name,mountpoint,acltype,aclmode,used,avail | grep -E 'NAME|Gaia/04_DEV'
+ls -la /mnt/Gaia/04_DEV/_personal/
+id; getent passwd apps
+sudo midclt call sharing.smb.query | python3 -c 'import json,sys; [print(s["name"], "->", s["path"]) for s in json.load(sys.stdin)]'
 ```
 
+**Step C:** type `exit` to leave the NAS.
+
+Claude uses the output to create the project folders in [server-folders.md](runbooks/server-folders.md) with the correct permissions.
+
 - [ ] Output sent
+- [ ] Project folders created
 
 ### 2.2 Use an SSH key instead of a password ⏱ 5 min
 
