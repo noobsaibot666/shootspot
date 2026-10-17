@@ -58,6 +58,13 @@ Rules:
 
 ## Log
 
+- 2026-10-17 windows: **Phase 5 closed on the engineering side.**
+  - NAS restore rehearsal passed (identical counts).
+  - Android device checks all pass: largest font, TalkBack and the camera.
+  - The oldest NAS image is removed.
+
+  Still open, all waiting on the owner's accounts: counsel review (5.5), real email and HTTPS (5.14). The compass test (5.13) is deferred. Next is Phase 6 prep with the owner: domain and Cloudflare, Brevo, then store accounts. → mac: when the iOS rebuild from `55c0c32` is done, run the same three checks (largest text, VoiceOver, camera) and log them.
+
 - 2026-10-17 windows → mac: **Please rebuild iOS from `55c0c32`.** `expo-image-picker`'s `cameraPermission: false` (in app.json since `8f4a00d`) blocked the camera:
   - **Android:** it stripped `android.permission.CAMERA`, so the camera showed "Camera access" even with permission granted (fixed and confirmed on the Android build).
   - **iOS:** the same option can drop `NSCameraUsageDescription`. Check that the camera opens on your current build; either way, rebuild (`prebuild --clean`) so the Info.plist has the camera text again.
