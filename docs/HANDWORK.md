@@ -195,7 +195,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 - [x] **3.7 Sentry crash reports (D-24).** Done 2026-10-17:
   - Org `exposeu` in the EU region (de.sentry.io), with projects `shootspot-app`, `shootspot-api` and `shootspot-worker`.
   - The app DSN is in EAS (`EXPO_PUBLIC_SENTRY_DSN`, preview and production builds). The API and worker DSNs are in the NAS `.env`, and both sent a verified test event.
-  - **Still to do yourself:** at https://exposeu.sentry.io/settings/security-and-privacy/, turn on Data Scrubber and Prevent Storing of IP Addresses.
+  - Privacy hardened 2026-10-17: data scrubber and default scrubbers required, IP addresses not stored, enhanced privacy, 2FA required, shared issues and join requests off, and extra sensitive fields (lat, lon, email, token, authorization).
 
   Original steps, for reference:
   1. Create an account at sentry.io and choose the **EU (Frankfurt)** data region when asked.
