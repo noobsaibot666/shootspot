@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import { formatCoordinates, distanceMeters } from '@shootspot/shared';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -147,7 +147,7 @@ export default function PinScreen() {
         )}
         {/* Fixed centre pin: its tip marks the location. */}
         <View pointerEvents="none" style={styles.pinWrap}>
-          <Icon name="pin.fill" size={40} color={t.signalRed} style={{ marginTop: -40 }} />
+          <Icon name="pin.fill" size={40} color={t.accent} style={{ marginTop: -40 }} />
         </View>
         <View style={[styles.search, { backgroundColor: t.raised, borderColor: t.divider }]}>
           <Icon name="search" size={18} color={t.muted} />

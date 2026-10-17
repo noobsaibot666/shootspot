@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import { Stack, router } from 'expo-router';
 import { Pressable } from 'react-native';
 import { CaptureProvider } from '../../capture/context';

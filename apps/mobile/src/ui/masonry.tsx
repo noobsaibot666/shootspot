@@ -2,12 +2,30 @@ import { formatDistance, type PublicRecord } from '@shootspot/shared';
 import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { memo, useCallback } from 'react';
+import {
+  PixelRatio,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { mediaSource } from '../lib/images';
 import { useLiked } from '../lib/likes';
-import { setPreview } from '../lib/motion';
+import { setPreview, useReduceMotion } from '../lib/motion';
 import { grid, radius, useTheme } from '../theme/tokens';
 import { Icon } from './icon';
 import { Tap } from './index';
@@ -69,13 +87,18 @@ export const TileCard = memo(function TileCard({ tile, width }: { tile: Tile; wi
   const t = useTheme();
   const aspect = aspectOf(tile);
   const height = width / aspect;
+  const caption = tile.caption ?? tile.label;
+  // A column is ~500 px wide on most phones: the 480 px derivative is sharp enough there and
+  // decodes ~5x less than the 1080 px one (the main cost of a fast scroll on Android).
+  const small = !!tile.placeholder && width * PixelRatio.get() <= THUMB_MAX_PX;
+  const image = small ? tile.placeholder! : tile.image;
   const open =
     tile.onPress ??
     (() => {
-      if (tile.image) setPreview(tile.id, { image: tile.image, aspect });
+      // The page shows what this tile already has in cache while the large image loads.
+      if (image) setPreview(tile.id, { image, aspect });
       router.push(`/records/${tile.id}`);
     });
-  const caption = tile.caption ?? tile.label;
   return (
     <Tap
       accessibilityRole="button"
@@ -94,10 +117,10 @@ export const TileCard = memo(function TileCard({ tile, width }: { tile: Tile; wi
           backgroundColor: t.surface,
         }}
       >
-        {tile.image ? (
+        {image ? (
           <Image
-            source={tile.image.startsWith('file:') ? tile.image : mediaSource(tile.image)}
-            placeholder={tile.placeholder ? mediaSource(tile.placeholder) : undefined}
+            source={image.startsWith('file:') ? image : mediaSource(image)}
+            placeholder={!small && tile.placeholder ? mediaSource(tile.placeholder) : undefined}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             transition={{ duration: 220, effect: 'cross-dissolve', timing: 'ease-out' }}
@@ -126,19 +149,48 @@ export const TileCard = memo(function TileCard({ tile, width }: { tile: Tile; wi
   );
 });
 
-function Heart({ id, initial }: { id: string; initial: boolean }) {
+const THUMB_MAX_PX = 560;
+
+/** The private like (D-29): a small pop when liked. */
+export function Heart({
+  id,
+  initial,
+  size = 18,
+  color = '#FFFFFF',
+  style,
+}: {
+  id: string;
+  initial: boolean;
+  size?: number;
+  /** Colour when not liked. */
+  color?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
   const t = useTheme();
+  const reduce = useReduceMotion();
   const [liked, toggle] = useLiked(id, initial);
+  const scale = useSharedValue(1);
+  const pop = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={liked ? 'Unlike' : 'Like'}
       accessibilityState={{ selected: liked }}
-      onPress={toggle}
+      onPress={() => {
+        if (!liked && !reduce) {
+          scale.value = withSequence(
+            withTiming(1.28, { duration: 110, easing: Easing.out(Easing.quad) }),
+            withSpring(1, { damping: 9, stiffness: 260, mass: 0.6 }),
+          );
+        }
+        toggle();
+      }}
       hitSlop={10}
-      style={styles.heart}
+      style={style ?? styles.heart}
     >
-      <Icon name={liked ? 'heart.fill' : 'heart'} size={18} color={liked ? t.accent : '#FFFFFF'} />
+      <Animated.View style={pop}>
+        <Icon name={liked ? 'heart.fill' : 'heart'} size={size} color={liked ? t.accent : color} />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -148,32 +200,45 @@ function Heart({ id, initial }: { id: string; initial: boolean }) {
  * Tiles fade in once when first created; recycled cells swap images with a short cross-fade.
  */
 export function MasonryList(
-  props: Omit<FlashListProps<Tile>, 'data' | 'renderItem' | 'numColumns' | 'masonry'> & {
+  props: Omit<
+    FlashListProps<Tile>,
+    'data' | 'renderItem' | 'numColumns' | 'masonry' | 'onScroll'
+  > & {
     tiles: Tile[];
     edge?: number;
+    /** A Reanimated scroll handler (`useAnimatedScrollHandler`): runs on the UI thread. */
+    onScroll?: ReturnType<typeof useAnimatedScrollHandler>;
   },
 ) {
   const { tiles, edge = grid.edge, contentContainerStyle, ...rest } = props;
   const colW = useColumnWidth(edge);
+  const renderItem = useCallback(
+    ({ item }: { item: Tile }) => (
+      <Animated.View entering={FadeIn.duration(240)} style={{ padding: grid.gap / 2 }}>
+        <TileCard tile={item} width={colW} />
+      </Animated.View>
+    ),
+    [colW],
+  );
   return (
-    <FlashList
+    <AnimatedFlashList
       {...rest}
       data={tiles}
       masonry
       numColumns={2}
-      keyExtractor={(t) => t.id}
+      keyExtractor={tileKey}
+      scrollEventThrottle={16}
       contentContainerStyle={{
         ...(contentContainerStyle as object),
         paddingHorizontal: edge - grid.gap / 2,
       }}
-      renderItem={({ item }) => (
-        <Animated.View entering={FadeIn.duration(240)} style={{ padding: grid.gap / 2 }}>
-          <TileCard tile={item} width={colW} />
-        </Animated.View>
-      )}
+      renderItem={renderItem}
     />
   );
 }
+
+const tileKey = (t: Tile) => t.id;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<Tile>);
 
 /** Small static grid (a dozen tiles, e.g. "More nearby" inside a page that already scrolls). */
 export function MasonryGrid({ tiles, edge = grid.edge }: { tiles: Tile[]; edge?: number }) {

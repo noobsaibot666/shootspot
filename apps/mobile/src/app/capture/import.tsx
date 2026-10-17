@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';

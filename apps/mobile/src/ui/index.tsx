@@ -1,8 +1,7 @@
 import { Icon, type IconName } from './icon';
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -15,6 +14,14 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReduceMotion } from '../lib/motion';
 import { font, motion, radius, space, type, useTheme } from '../theme/tokens';
@@ -96,33 +103,29 @@ export function Mono({ children, style }: { children: React.ReactNode; style?: o
   );
 }
 
+/** Press feedback: a quick ease down, a soft spring back (runs on the UI thread). */
+const PRESS_IN = { duration: 110, easing: Easing.out(Easing.quad) };
+const PRESS_OUT = { damping: 15, stiffness: 260, mass: 0.6 };
+
 /** Pressable with a gentle scale-down on press (tiles, buttons, rows). */
 export function Tap(
   props: Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; scaleTo?: number },
 ) {
   const { style, scaleTo = 0.97, children, ...rest } = props;
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
   const reduce = useReduceMotion();
-  const to = (v: number) =>
-    reduce
-      ? undefined
-      : Animated.spring(scale, {
-          toValue: v,
-          useNativeDriver: true,
-          speed: 40,
-          bounciness: 0,
-        }).start();
+  const pressed = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   // The pressable itself is animated, so layout styles (flex, margins) apply where callers expect.
   return (
     <AnimatedPressable
       {...rest}
-      style={[style, { transform: [{ scale }] }]}
+      style={[style, pressed]}
       onPressIn={(e: Parameters<NonNullable<PressableProps['onPressIn']>>[0]) => {
-        to(scaleTo);
+        if (!reduce) scale.value = withTiming(scaleTo, PRESS_IN);
         rest.onPressIn?.(e);
       }}
       onPressOut={(e: Parameters<NonNullable<PressableProps['onPressOut']>>[0]) => {
-        to(1);
+        if (!reduce) scale.value = withSpring(1, PRESS_OUT);
         rest.onPressOut?.(e);
       }}
     >
@@ -365,13 +368,28 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-/** Underlined text tabs (Profile: Locations / Projects). */
+/** Text tabs with an underline that slides between them (Profile: Locations / Liked / Projects). */
 export function TextTabs<K extends string>(props: {
   tabs: { key: K; label: string }[];
   value: K;
   onChange(k: K): void;
 }) {
   const t = useTheme();
+  const reduce = useReduceMotion();
+  const [frames, setFrames] = useState<Record<string, { x: number; w: number }>>({});
+  const x = useSharedValue(0);
+  const w = useSharedValue(0);
+  const current = frames[props.value];
+  useEffect(() => {
+    if (!current) return;
+    const spring = { damping: 18, stiffness: 220, mass: 0.8 };
+    x.value = reduce || !w.value ? current.x : withSpring(current.x, spring);
+    w.value = reduce || !w.value ? current.w : withSpring(current.w, spring);
+  }, [current, reduce, w, x]);
+  const underline = useAnimatedStyle(() => ({
+    width: w.value,
+    transform: [{ translateX: x.value }],
+  }));
   return (
     <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: space.xl }}>
       {props.tabs.map((tab) => {
@@ -382,46 +400,54 @@ export function TextTabs<K extends string>(props: {
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             onPress={() => props.onChange(tab.key)}
+            onLayout={(e) => {
+              const { x: fx, width } = e.nativeEvent.layout;
+              setFrames((f) => ({ ...f, [tab.key]: { x: fx, w: width } }));
+            }}
             hitSlop={8}
-            style={{ paddingVertical: space.sm }}
+            style={{ paddingTop: space.sm, paddingBottom: space.sm + 8 }}
           >
             <Text style={[type.headline, { color: on ? t.ink : t.muted }]}>{tab.label}</Text>
-            <View
-              style={{
-                height: 2,
-                marginTop: 6,
-                borderRadius: 1,
-                backgroundColor: on ? t.ink : 'transparent',
-              }}
-            />
           </Pressable>
         );
       })}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          { position: 'absolute', left: 0, bottom: space.sm, height: 2, borderRadius: 1 },
+          { backgroundColor: t.ink },
+          underline,
+        ]}
+      />
     </View>
   );
 }
+
+/** Sheet motion: a soft spring in, a quick ease out. */
+const SHEET_IN = { damping: 22, stiffness: 240, mass: 0.9 };
+const SHEET_OUT = { duration: 200, easing: Easing.in(Easing.cubic) };
+const SHEET_TRAVEL = 480;
 
 /** Bottom sheet with a slide-up animation (capture menu, small choices). */
 export function Sheet(props: { visible: boolean; onClose(): void; children: React.ReactNode }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReduceMotion();
-  const y = useRef(new Animated.Value(1)).current;
+  // 0 = open, 1 = closed.
+  const y = useSharedValue(1);
   useEffect(() => {
-    if (props.visible)
-      Animated.timing(y, {
-        toValue: 0,
-        duration: reduce ? 0 : motion.base,
-        useNativeDriver: true,
-      }).start();
-    else y.setValue(1);
+    if (props.visible) y.value = reduce ? 0 : withSpring(0, SHEET_IN);
+    else y.value = 1;
   }, [props.visible, reduce, y]);
-  const close = () =>
-    Animated.timing(y, {
-      toValue: 1,
-      duration: reduce ? 0 : motion.fast,
-      useNativeDriver: true,
-    }).start(() => props.onClose());
+  const { onClose } = props;
+  const close = () => {
+    if (reduce) return onClose();
+    y.value = withTiming(1, SHEET_OUT, (done) => {
+      if (done) scheduleOnRN(onClose);
+    });
+  };
+  const scrim = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, Math.max(0, y.value)) }));
+  const panel = useAnimatedStyle(() => ({ transform: [{ translateY: y.value * SHEET_TRAVEL }] }));
   return (
     <Modal
       transparent
@@ -431,31 +457,27 @@ export function Sheet(props: { visible: boolean; onClose(): void; children: Reac
       statusBarTranslucent
     >
       <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            opacity: y.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-          },
-        ]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }, scrim]}
       >
         <Pressable accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={close} />
       </Animated.View>
       <Animated.View
         // Screen readers stay inside the sheet while it's open; the scrim is a "Close" button.
         accessibilityViewIsModal
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: t.surface,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          paddingTop: space.sm,
-          paddingBottom: insets.bottom + space.md,
-          transform: [{ translateY: y.interpolate({ inputRange: [0, 1], outputRange: [0, 420] }) }],
-        }}
+        style={[
+          {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: t.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: space.sm,
+            paddingBottom: insets.bottom + space.md,
+          },
+          panel,
+        ]}
       >
         <View
           style={{

@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import type { MapPin } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
@@ -160,7 +160,7 @@ export default function MapTab() {
               }}
               accessibilityLabel={c.pins[0]!.label}
             >
-              <View style={[styles.dot, { backgroundColor: t.signalRed, borderColor: '#fff' }]} />
+              <View style={[styles.dot, { backgroundColor: t.accent, borderColor: '#fff' }]} />
             </Marker>
           ) : (
             <Marker

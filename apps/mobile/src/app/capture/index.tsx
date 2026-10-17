@@ -1,6 +1,5 @@
 import { Icon, type IconName } from '../../ui/icon';
 import type { Framing } from '@shootspot/shared';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {

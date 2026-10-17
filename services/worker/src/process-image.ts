@@ -57,8 +57,11 @@ export async function processImage(input: Buffer): Promise<ProcessResult> {
   } as const;
 
   let format: string | undefined;
+  let channels = 3;
   try {
-    ({ format } = await sharp(input, options).metadata());
+    const meta = await sharp(input, options).metadata();
+    format = meta.format;
+    channels = meta.channels ?? 3;
   } catch (err) {
     return toDecodeFailure(err);
   }
@@ -80,7 +83,6 @@ export async function processImage(input: Buffer): Promise<ProcessResult> {
   if (!check.ok) return { ok: false, reason: check.reason };
 
   const tone = toneCorrection(await measureTone(input, options));
-  const channels = (await sharp(input, options).metadata()).channels ?? 3;
 
   const derivatives: Derivative[] = [];
   for (const spec of DERIVATIVES) {

@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@expo/vector-icons": "^15.1.1",
     "@sentry/react-native": "~8.28.0",
     "@shootspot/shared": "workspace:*",
     "@shopify/flash-list": "2.3.2",

@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import { formatBearing, type AdvancedInput } from '@shootspot/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';

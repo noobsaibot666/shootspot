@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  PixelRatio,
   Platform,
   ScrollView,
   Share,
@@ -29,7 +30,7 @@ import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
 import { mediaSource } from '../../lib/images';
 import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
-import { seedLiked, useLiked } from '../../lib/likes';
+import { seedLiked } from '../../lib/likes';
 import { getPreview } from '../../lib/motion';
 import { useVocabulary } from '../../lib/vocabulary';
 import { grid, radius, space, type, useTheme } from '../../theme/tokens';
@@ -46,7 +47,7 @@ import {
   Tap,
 } from '../../ui';
 import { Icon, type IconName } from '../../ui/icon';
-import { MasonryGrid, aspectOf, recordTile } from '../../ui/masonry';
+import { Heart, MasonryGrid, aspectOf, recordTile } from '../../ui/masonry';
 
 const LIGHT = {
   backlit: 'Backlit',
@@ -77,7 +78,6 @@ export default function RecordScreen() {
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
   const [preview] = useState(() => getPreview(id));
-  const [liked, toggleLike] = useLiked(id, record?.liked);
 
   const load = useCallback(async () => {
     const [pub, own] = await Promise.allSettled([
@@ -197,9 +197,15 @@ export default function RecordScreen() {
 
   const heroH = width / (record ? aspectOf(record.images) : preview!.aspect);
   const heroTop = insets.top + BAR;
+  // The 1080 px derivative fills a phone screen; the 2160 px one (~4x the bytes) only for tablets.
+  const hero = record
+    ? width * PixelRatio.get() <= 1200
+      ? record.images.feed
+      : record.images.detail
+    : preview!.image;
   const heroImage = (
     <Image
-      source={mediaSource(record ? record.images.detail : preview!.image)}
+      source={mediaSource(hero)}
       // The tile's image is already in the cache: the photo is on screen at once.
       placeholder={mediaSource(preview?.image ?? record!.images.feed)}
       placeholderContentFit="cover"
@@ -271,21 +277,13 @@ export default function RecordScreen() {
           {/* Actions: Savee's row of quiet icons with one strong Save pill. */}
           <Row style={{ justifyContent: 'space-between' }}>
             <Row style={{ gap: space.xs }}>
-              <Tap
-                accessibilityRole="button"
-                accessibilityLabel={liked ? 'Unlike' : 'Like'}
-                accessibilityState={{ selected: liked }}
-                onPress={toggleLike}
-                scaleTo={0.85}
-                hitSlop={8}
+              <Heart
+                id={id}
+                initial={record.liked}
+                size={24}
+                color={t.ink}
                 style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Icon
-                  name={liked ? 'heart.fill' : 'heart'}
-                  size={24}
-                  color={liked ? t.accent : t.ink}
-                />
-              </Tap>
+              />
               <IconButton icon="navigate" label="Open in Maps" onPress={openInMaps} />
               <IconButton
                 icon="share"

@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '../../ui/icon';
+import { Icon } from '../../ui/icon';
 import { REPORT_REASONS } from '@shootspot/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';

@@ -9,7 +9,7 @@ import { seedLiked } from '../../lib/likes';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { radius, space, type, useTheme } from '../../theme/tokens';
 import { Body, Button, Tap } from '../../ui';
-import { useChrome } from '../../ui/chrome';
+import { useChrome, useChromeScroll } from '../../ui/chrome';
 import { Icon, type IconName } from '../../ui/icon';
 import { MasonryList, recordTile } from '../../ui/masonry';
 
@@ -22,7 +22,8 @@ export default function Feed() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { scope, center, locationDenied } = useScope();
-  const { onScrollY, hidden, show } = useChrome();
+  const { hidden, show } = useChrome();
+  const scroll = useChromeScroll();
   const [items, setItems] = useState<PublicRecord[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'offline' | 'error'>('loading');
@@ -88,8 +89,7 @@ export default function Feed() {
     <View style={{ flex: 1, backgroundColor: t.canvas }}>
       <MasonryList
         tiles={tiles}
-        onScroll={(e) => onScrollY(e.nativeEvent.contentOffset.y)}
-        scrollEventThrottle={16}
+        onScroll={scroll}
         onEndReached={() => void more()}
         onEndReachedThreshold={0.8}
         contentContainerStyle={{ paddingTop: top, paddingBottom: insets.bottom + 120 }}
