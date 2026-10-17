@@ -112,8 +112,8 @@ export default function SignIn() {
                     Create your free account
                   </Text>
                   <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
-                    Enter your email and we'll send you a 6-digit code. Already a member? Use the
-                    same email to sign in. No password needed.
+                    We'll email you a 6-digit code, no password needed. Already a member? Use the
+                    same email to sign in.
                   </Text>
                 </View>
                 <Field
