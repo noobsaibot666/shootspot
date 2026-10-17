@@ -78,7 +78,7 @@ P0 = required for the closed pilot · P1 = required for public launch · P2 = af
 | 5.11 | Store listings and privacy declarations                | P1  | **Drafted**: docs/store/listing.md and privacy-declarations.md; screenshots after the pilot build                                                                                                                      |
 | 5.12 | Support and incident runbooks                          | P0  | **Done**: docs/runbooks/incident-response.md                                                                                                                                                                           |
 | 5.13 | Compass/heading test (deferred 3.7)                    | P2  | Pending, owner: low priority                                                                                                                                                                                           |
-| 5.14 | Real email (D-26) and HTTPS via tunnel                 | P0  | Needs domain + Brevo (HANDWORK 2.3, 3.2) and Cloudflare hostname                                                                                                                                                       |
+| 5.14 | Real email (D-26) and HTTPS via tunnel                 | P0  | **Email done** (2026-10-17, Brevo free, Mailpit stopped). **HTTPS** waits for the domain (HANDWORK 2.3) and the Cloudflare hostname                                                                                    |
 
 ### Load test results (5.9), local stack, 2026-10-16
 

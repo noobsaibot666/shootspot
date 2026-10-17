@@ -23,12 +23,12 @@ The API takes about 30 s to report healthy after `up -d`, so run checks after th
 
 ## Endpoints (home network)
 
-| What                                                    | URL                           |
-| ------------------------------------------------------- | ----------------------------- |
-| API (phones)                                            | `http://192.168.178.146:4400` |
-| Admin web                                               | `http://192.168.178.146:4401` |
-| S3 (presigned URLs only)                                | `http://192.168.178.146:4402` |
-| Mailpit, sign-in codes (until real email, HANDWORK 3.2) | `http://192.168.178.146:4403` |
+| What                                                        | URL                                                 |
+| ----------------------------------------------------------- | --------------------------------------------------- |
+| API (phones)                                                | `http://192.168.178.146:4400`                       |
+| Admin web                                                   | `http://192.168.178.146:4401`                       |
+| S3 (presigned URLs only)                                    | `http://192.168.178.146:4402`                       |
+| Mailpit: **stopped** since 2026-10-17; real email via Brevo | (`:4403`, only if started with `--profile devmail`) |
 
 ## Deploy or update
 
@@ -61,7 +61,7 @@ if sudo test -e $R/.env; then echo ".env kept"; else
 
 ```sh
 sudo zfs snapshot -r Gaia/04_DEV/shootspot-runtime@pre-deploy-$(date +%Y%m%d-%H%M)
-sudo docker compose -p shootspot -f $F --profile devmail up -d
+sudo docker compose -p shootspot -f $F up -d    # no --profile devmail: real email via Brevo (SMTP_URL in .env)
 sudo docker compose -p shootspot -f $F ps -a
 curl -s http://192.168.178.146:4400/ready
 sudo docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' | grep shootspot
@@ -80,7 +80,7 @@ sudo docker images --format '{{.Repository}}:{{.Tag}}' | grep shootspot
 sudo docker compose -p shootspot -f $F exec api node --import tsx scripts/grant-owner.ts you@example.com
 ```
 
-Then sign in at `http://192.168.178.146:4401`, read the code in Mailpit (`:4403`), and scan the TOTP QR code.
+Then sign in at `http://192.168.178.146:4401`, read the code in your email (Brevo), and scan the TOTP QR code.
 
 ## Rollback
 

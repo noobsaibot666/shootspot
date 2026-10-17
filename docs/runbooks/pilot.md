@@ -4,15 +4,15 @@ How the closed pilot runs, from first install to the go/no-go for a wider rollou
 
 ## Before the first tester (all must be true)
 
-| Gate                                                                  | Where                                           | Status                   |
-| --------------------------------------------------------------------- | ----------------------------------------------- | ------------------------ |
-| Real email (Brevo); Mailpit stopped (security F1)                     | HANDWORK 3.2                                    | waiting on owner         |
-| HTTPS through the Cloudflare Tunnel (F2); `CLIENT_IP_HEADER` set (F3) | HANDWORK 2.3–2.4, truenas-deployment.md Phase B | waiting on owner         |
-| Off-site backups running; NAS restore rehearsed                       | HANDWORK 2.5, backup-restore.md                 | waiting on owner         |
-| Crash reporting on (Sentry DSNs in EAS and the NAS `.env`)            | HANDWORK 3.7                                    | code ready               |
-| Store accounts; TestFlight and Play internal testing set up           | HANDWORK 4.2                                    | waiting on owner         |
-| Terms, privacy notice and image licence reviewed                      | HANDWORK 4.1                                    | waiting on owner         |
-| Pilot targets agreed (below)                                          | owner                                           | **proposal, not agreed** |
+| Gate                                                                  | Where                                           | Status                                      |
+| --------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| Real email (Brevo); Mailpit stopped (security F1)                     | HANDWORK 3.2                                    | **done**; switch sender to the domain later |
+| HTTPS through the Cloudflare Tunnel (F2); `CLIENT_IP_HEADER` set (F3) | HANDWORK 2.3–2.4, truenas-deployment.md Phase B | waiting on owner                            |
+| Off-site backups running; NAS restore rehearsed                       | HANDWORK 2.5, backup-restore.md                 | waiting on owner                            |
+| Crash reporting on (Sentry DSNs in EAS and the NAS `.env`)            | HANDWORK 3.7                                    | code ready                                  |
+| Store accounts; TestFlight and Play internal testing set up           | HANDWORK 4.2                                    | waiting on owner                            |
+| Terms, privacy notice and image licence reviewed                      | HANDWORK 4.1                                    | waiting on owner                            |
+| Pilot targets agreed (below)                                          | owner                                           | **proposal, not agreed**                    |
 
 ## Builds for testers
 

@@ -167,11 +167,19 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 ## ▶ Step 3 — Backend and app building (Phases 2–4)
 
 - [x] **3.1 Approve the login system.** Done: email codes via Better Auth inside the API ([ADR 0005](adr/0005-authentication.md)).
-- [ ] **3.2 Email sender: Brevo (D-26)** ⏱ 20 min, after the domain (2.3).
+- [x] **3.2 Email sender: Brevo (D-26).** Done 2026-10-17, on the free plan:
+  - Sign-in codes are sent via Brevo SMTP (login `be94a2001@smtp-brevo.com`). The key is only in the NAS `.env`, set with `infra/nas/scripts/email-setup.sh`.
+  - Mailpit is stopped.
+  - Brevo blocks SMTP from unknown IPs: if your home IP changes, approve the "Verify a new IP" email, or turn off IP blocking in Brevo → Security.
+  - **Later, with the domain:** steps 2 and 4 below switch the sender from `alanxalves@me.com` to `no-reply@<domain>` (DKIM and DMARC, so codes don't land in spam).
+
+  Original steps:
+
   1. Create a free account at brevo.com.
   2. **Senders, Domains & Dedicated IPs → Domains → Add a domain:** add the DNS records it shows (DKIM, Brevo code, and DMARC if offered) at your DNS host; with Cloudflare, that's under DNS.
   3. **SMTP & API → SMTP:** note the SMTP login and create an SMTP key.
   4. Tell Claude when the domain shows as verified. Claude gives you the NAS block that stores the SMTP key securely and turns off the test inbox. This fixes security finding F1 and is **required before anyone else tests**.
+
 - [x] **3.3 Admin 2-factor.** Done: owner `alanxalves@me.com` signed in on the NAS admin web (`http://192.168.178.146:4401`) with an authenticator.
 - [x] **3.4 Google Maps key.** Done 2026-10-16: Google Cloud project `shootspot-0t76lk` (exposeuberlin@gmail.com), key `shootspot-android` restricted to the app and the Maps SDK, a 5/month budget, and `GOOGLE_MAPS_ANDROID_KEY` stored in EAS (Sensitive). Created via Cloud Shell because local `gcloud auth login` fails (Google retired the OAuth client). Steps, for reference or to redo it:
   1. https://console.cloud.google.com → new project `ShootSpot` → link billing (displaying maps in the Android SDK has no usage charge).
