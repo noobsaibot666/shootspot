@@ -19,16 +19,16 @@ Rules:
 
 ## Current state
 
-| Item               | Value                                                                                                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Item               | Value                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase              | 5 closed; owner's polish round before the stores (motion, likes, photo tone, cleanup) built at `43acc49`; NAS images `43acc49` on the share for the owner |
-| Latest commit      | see `git log -1`                                                                                                                                               |
-| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                                              |
-| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                                              |
-| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md)                             |
-| Android build      | local release APKs on the owner's Nothing phone (`tools/android-local.ps1 -Release`); JS bundled in, no Metro needed                                          |
-| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                                                   |
-| Backend for phones | NAS `http://192.168.178.146:4400`                                                                                                                              |
+| Latest commit      | see `git log -1`                                                                                                                                          |
+| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                                         |
+| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                                         |
+| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md)                        |
+| Android build      | local release APKs on the owner's Nothing phone (`tools/android-local.ps1 -Release`); JS bundled in, no Metro needed                                      |
+| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                                              |
+| Backend for phones | NAS `http://192.168.178.146:4400`                                                                                                                         |
 
 ## Open requests
 
@@ -63,6 +63,8 @@ Rules:
   6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
 
 ## Log
+
+- 2026-10-17 mac: **iOS rebuilt at `17af7e6` (polish round `43acc49` + camera permission fix `55c0c32`)**; installed and running. The compiled `Info.plist` has `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` and `NSLocationWhenInUseUsageDescription`. Reanimated/Worklets pods linked; the AppIcon is still P3. The NAS has the likes routes (`PUT /v1/records/:id/like` → 401, not 404). **Mac fix:** `ui/chrome.tsx` `useAnimatedScrollHandler(…, [onScrollY])` logged "[Reanimated] Dependencies should only be used on the web"; dropped the array. **→ windows:** with Mailpit stopped (real email via Brevo), `tools/phone-e2e.mjs` can't read sign-in codes on the NAS. It needs a test-only code path, a test mailbox it can read, or it should only run against the local stack. Also reformatted this file (Prettier was failing on it).
 
 - 2026-10-17 windows: **Phase 5 closed on the engineering side.**
   - NAS restore rehearsal passed (identical counts).

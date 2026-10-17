@@ -99,5 +99,6 @@ export function useChromeScroll() {
   const c = useContext(Ctx);
   if (!c) throw new Error('useChromeScroll outside ChromeProvider');
   const { onScrollY } = c;
-  return useAnimatedScrollHandler({ onScroll: (e) => onScrollY(e.contentOffset.y) }, [onScrollY]);
+  // No dependency array: Reanimated 4 ignores it on native (web only) and warns.
+  return useAnimatedScrollHandler({ onScroll: (e) => onScrollY(e.contentOffset.y) });
 }
