@@ -59,7 +59,8 @@ Then stop `s3`, copy `restore/data/seaweedfs` over `runtime/seaweedfs` (as root,
 
 ## Rehearsal log
 
-| Date                               | What                                                                                             | Result                                             |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| 2026-10-16                         | Local: backup container (pg_dump + restic to a local repo), `pg_restore` into a scratch database | Pass: identical row counts, restic snapshot listed |
-| _before the first external tester_ | NAS: full restore of database and photos into a scratch stack                                    | _pending_                                          |
+| Date                                          | What                                                                                                                                                                              | Result                                                                              |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2026-10-16                                    | Local: backup container (pg_dump + restic to a local repo), `pg_restore` into a scratch database                                                                                  | Pass: identical row counts, restic snapshot listed                                  |
+| 2026-10-17                                    | NAS: nightly dump `shootspot-20261017T011523Z.dump` restored into a scratch database (`restore_check`) next to the live one, counts compared, scratch dropped. No service stopped | Pass: locations 6, users 6, media 6, vocabulary 24, migrations 6, identical to live |
+| _after off-site is configured (HANDWORK 2.5)_ | NAS: restic restore of photos from Backblaze into `backups/restore`, spot-check files                                                                                             | _pending_                                                                           |
