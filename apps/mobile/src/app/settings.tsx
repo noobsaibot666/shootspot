@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 import { listImports, pickPhotos } from '../lib/imports';
+import { links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
 import { space, type, useTheme } from '../theme/tokens';
 import { Avatar, Body, Button, Card, ErrorNote, Field, ListRow } from '../ui';
@@ -196,6 +197,16 @@ export default function Settings() {
           label="Request my data"
           value={ready ? 'Ready' : preparing ? 'Preparing…' : undefined}
           onPress={() => (ready ? void Linking.openURL(ready.downloadUrl!) : void requestExport())}
+        />
+
+        <View style={{ height: space.lg }} />
+        <ListRow icon="globe" label="Help & support" onPress={() => openLink(links.support)} />
+        <ListRow icon="hidden" label="Privacy notice" onPress={() => openLink(links.privacy)} />
+        <ListRow icon="flag" label="Terms of use" onPress={() => openLink(links.terms)} />
+        <ListRow
+          icon="gallery"
+          label="Image licence"
+          onPress={() => openLink(links.imageLicence)}
         />
 
         <View style={{ height: space.lg }} />

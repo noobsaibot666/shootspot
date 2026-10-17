@@ -1,13 +1,21 @@
 // Phone-flow E2E against a running backend, as the iPhone/Android app would call it.
-//   node tools/phone-e2e.mjs            (NAS LAN defaults)
-//   API=http://127.0.0.1:4000 MAIL=http://127.0.0.1:8025 node tools/phone-e2e.mjs
+//   node tools/phone-e2e.mjs            (local stack: API :4000, Mailpit :8025)
+//   API=… MAIL=… node tools/phone-e2e.mjs
+// It reads sign-in codes from Mailpit, so it needs a backend that still mails to Mailpit. The NAS
+// sends real email (Brevo) and has no Mailpit, so run it against the local stack only.
 // Throwaway account; deletes what it creates and schedules the account for deletion at the end.
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const sharp = createRequire(path.resolve('services/worker/package.json'))('sharp');
-const API = process.env.API ?? 'http://192.168.178.146:4400';
-const MAIL = process.env.MAIL ?? 'http://192.168.178.146:4403';
+const API = process.env.API ?? 'http://127.0.0.1:4000';
+const MAIL = process.env.MAIL ?? 'http://127.0.0.1:8025';
+try {
+  await fetch(`${MAIL}/api/v1/info`, { signal: AbortSignal.timeout(3000) });
+} catch {
+  console.error(`No Mailpit at ${MAIL}: this test reads sign-in codes from it (local stack only).`);
+  process.exit(2);
+}
 const results = [];
 const timings = [];
 let failures = 0;

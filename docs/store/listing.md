@@ -12,8 +12,11 @@ Draft copy for the App Store and Google Play. The owner edits and submits it. Pr
 | Category                     | Photo & Video (secondary: Travel)                                                |
 | Age rating                   | 12+ / Teen (user-generated photos, moderated); the app requires 16+ at sign-up   |
 | Price                        | Free                                                                             |
-| Support URL / email          | _support@&lt;domain&gt; (HANDWORK 2.3)_                                          |
-| Privacy policy URL           | _https://&lt;domain&gt;/privacy (after counsel review, 4.1)_                     |
+| Support URL                  | https://docs.alan-design.com/shootspot/user-guide/support/ (D-35)                |
+| Support email                | hello@expose-u.com                                                               |
+| Privacy policy URL           | https://docs.alan-design.com/shootspot/legal/privacy/                            |
+| Account deletion URL (Play)  | https://docs.alan-design.com/shootspot/legal/delete-account/                     |
+| Version                      | 1.0.0                                                                            |
 
 ## Description
 
@@ -55,7 +58,8 @@ Sizes: iPhone 6.9" (1320 × 2868), Android phone (1080 × 2400). Use real scouti
 
 ## Review notes (for Apple / Google)
 
-- Sign-in uses a 6-digit email code. Give reviewers a demo account: create `review@<domain>` and tell Claude, who will set up a fixed code for it only during review.
+- Sign-in uses a 6-digit email code. **Review account (D-34):** before submitting, set `REVIEW_EMAIL` and `REVIEW_CODE` in the NAS `.env` (6 random digits; Claude gives the guarded block), then put both in the review notes: _"Sign in with review@… and, when asked for the code, enter …. No email is needed for this account."_ Remove both from `.env` once the review is approved.
+- Before sending a review: on a phone outside the home network, sign in with the review account and open a location (the NAS must be public over HTTPS, D-33).
 - Location: when-in-use only, and optional (manual pin and place search work without it).
 - Photos: the picker is only used for imports the member starts. Their GPS metadata is read on the phone and never uploaded.
 - Moderation: reports in the app, an admin console, and a 72-hour target.

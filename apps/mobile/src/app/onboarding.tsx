@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Switch, Text, View } from 'react-native';
 import { ApiError, api } from '../lib/api';
+import { links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
 import { useTheme, space } from '../theme/tokens';
 import { Body, Button, Card, ErrorNote, Field, Screen, Title } from '../ui';
@@ -103,7 +104,21 @@ export default function Onboarding() {
         onChange={setAccept}
         label={`I accept the Terms, Privacy notice and Image licence${legal ? ` (${legal.terms})` : ''}`}
       />
-      <Body muted>Draft wording: the final legal texts follow review before public launch.</Body>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.lg }}>
+        {(
+          [
+            ['Terms', links.terms],
+            ['Privacy notice', links.privacy],
+            ['Image licence', links.imageLicence],
+          ] as const
+        ).map(([label, url]) => (
+          <Pressable key={url} accessibilityRole="link" hitSlop={8} onPress={() => openLink(url)}>
+            <Text style={{ color: t.ink, fontSize: 14, textDecorationLine: 'underline' }}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       <Button
