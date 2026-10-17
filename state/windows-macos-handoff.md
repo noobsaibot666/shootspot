@@ -66,6 +66,12 @@ Rules:
 
 ## Log
 
+- 2026-10-17 mac: **iOS 1.0.0 (2) in TestFlight**, built locally and uploaded from the Mac.
+  - **Owner feedback fixed:** the sign-in screens are redesigned (centered, branded, "Create your free account", six digit boxes, auto-submit, resend countdown).
+  - **Profile blank-screen bug:** the header now sits outside the list, with a loading state, an error state with retry, and a guard against overlapping loads (`9a4c296`).
+  - **Build number:** `ios.buildNumber` in app.json (2). Bump it before each upload.
+  - **Disk:** the Mac's disk filled up during builds (Docker cache); Docker was cleaned, 19 GB free now.
+
 - 2026-10-17 mac: **App Store Connect set up; build 1.0.0 (1) in TestFlight.**
   - **New iOS bundle ID `com.exposeu.shootspot` (D-36).** `com.shootspot.app` belongs to another Apple developer. Android keeps `com.shootspot.app`.
   - **App:** "ShootSpot – Location Scouting" (`6824017223`; plain "ShootSpot" was taken). The home-screen name stays "ShootSpot".
