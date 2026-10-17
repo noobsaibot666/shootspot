@@ -184,7 +184,12 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   6. **Later, at Play Store launch:** add the Play App Signing SHA-1 (Play Console → App integrity) to the same key.
 - [x] **3.5 Logo / app icon.** Done. Generated from `shared/design/app-icon/Group 15@4x.png`; previews are in `shared/design/app-icon/generated/`. If the logo changes, drop the new export there and ask Claude to re-run `tools/make-icons.mjs`.
 - [ ] **3.6 Review the photo tags and note fields** in [02-v1-scope-and-flows.md §3](phase-0/02-v1-scope-and-flows.md#3-scout-record-fields).
-- [ ] **3.7 Sentry crash reports (D-24)** ⏱ 15 min.
+- [x] **3.7 Sentry crash reports (D-24).** Done 2026-10-17:
+  - Org `exposeu` in the EU region (de.sentry.io), with projects `shootspot-app`, `shootspot-api` and `shootspot-worker`.
+  - The app DSN is in EAS (`EXPO_PUBLIC_SENTRY_DSN`, preview and production builds). The API and worker DSNs are in the NAS `.env`, and both sent a verified test event.
+  - **Still to do yourself:** at https://exposeu.sentry.io/settings/security-and-privacy/, turn on Data Scrubber and Prevent Storing of IP Addresses.
+
+  Original steps, for reference:
   1. Create an account at sentry.io and choose the **EU (Frankfurt)** data region when asked.
   2. Create 3 projects: `shootspot-api` (Node.js), `shootspot-worker` (Node.js), `shootspot-app` (React Native).
   3. Copy each project's **DSN** (Settings → Client Keys). Claude adds the server DSNs to the NAS `.env`; the app DSN goes in with the next native build.
