@@ -92,8 +92,10 @@ sudo zfs rollback -r Gaia/04_DEV/shootspot-runtime@pre-deploy-<stamp>
 
 ## Phase B: public through the existing Cloudflare Tunnel (after HANDWORK 2.3–2.4)
 
-1. In the Cloudflare dashboard, under the existing tunnel, add `api.<domain>` → `http://192.168.178.146:4400` and `media.<domain>` → `http://192.168.178.146:4402`.
-2. Set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `TRUSTED_ORIGINS` and `CLIENT_IP_HEADER=cf-connecting-ip` in `.env`, then run `up -d`.
+**Done 2026-10-17.** The public hostnames are `shootspot-api.expose-u.com` (→ `:4400`) and `shootspot-media.expose-u.com` (→ `:4402`). Tunnel routes, DNS, the `.env` values and how to change them are in [public-endpoints.md](public-endpoints.md).
+
+1. Add the two routes to the existing `TrueNas` tunnel (API script or dashboard), never touching the other sites' routes.
+2. Set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT` and `CLIENT_IP_HEADER=cf-connecting-ip` in `.env`; `TRUSTED_ORIGINS` stays the LAN admin. Then run `up -d api`. Needs compose `30237a7` or later.
 
 ## Phase C: backups (before any external tester)
 
