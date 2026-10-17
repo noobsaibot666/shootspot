@@ -14,6 +14,7 @@ ShootSpot is a location-scouting app for photographers and filmmakers. Our princ
 Alan Alves, trading as expose.u (sole proprietorship)
 Dudenstraße 24, 10965 Berlin, Germany
 Email: [hello@expose-u.com](mailto:hello@expose-u.com)
+Legal notice (Impressum): [expose-u.com/impressum](https://expose-u.com/impressum)
 
 ## What we process, and why
 

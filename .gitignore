@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Astro generated types (docs-site)
 .astro/
+
+# Local store builds (iOS archives / IPAs)
+apps/mobile/build-store/
