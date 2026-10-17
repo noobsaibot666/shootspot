@@ -1,132 +1,301 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, auth } from '../lib/api';
+import { links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
-import { Body, Button, ErrorNote, Field, Screen, Title } from '../ui';
+import { radius, space, type, useTheme } from '../theme/tokens';
+import { Button, ErrorNote, Field } from '../ui';
 
-/** Passwordless: email → 6-digit code (ADR 0005). New emails get an account on first sign-in. */
+const RESEND_SECONDS = 30;
+const CODE_LENGTH = 6;
+
+/**
+ * Passwordless entry (ADR 0005): email → 6-digit code. The same flow creates the account for a
+ * new email and signs in an existing one, so the copy says both. Centered and branded: this is the
+ * first screen anyone sees.
+ */
 export default function SignIn() {
+  const t = useTheme();
   const { refresh } = useSession();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
 
-  const [resent, setResent] = useState(false);
+  const address = email.trim().toLowerCase();
+  const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address);
 
-  const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  // Countdown before "Send a new code" is available again (the server also rate-limits).
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
 
-  async function resend() {
-    setError(null);
-    try {
-      await auth.sendCode(email.trim().toLowerCase());
-      setCode('');
-      setResent(true);
-      // Allow another try after 30 s (the server also rate-limits).
-      setTimeout(() => setResent(false), 30_000);
-    } catch (err) {
-      const c = err instanceof ApiError ? err.code : '';
-      setError(
-        c === 'rate_limited'
-          ? 'Too many attempts. Wait a minute and try again.'
-          : 'Could not send the code. Try again.',
-      );
-    }
+  function message(err: unknown, sending: boolean) {
+    const c = err instanceof ApiError ? err.code : '';
+    if (c === 'offline') return 'No connection. Try again when you are online.';
+    if (c === 'rate_limited') return 'Too many attempts. Wait a minute and try again.';
+    return sending
+      ? 'Could not send the code. Try again.'
+      : 'That code did not work. Check it, or send a new one.';
   }
 
-  async function submit() {
+  async function sendCode() {
     setBusy(true);
     setError(null);
     try {
-      if (step === 'email') {
-        await auth.sendCode(email.trim().toLowerCase());
-        setStep('code');
-      } else {
-        await auth.verifyCode(email.trim().toLowerCase(), code.trim());
-        await refresh();
-        router.replace('/');
-      }
+      await auth.sendCode(address);
+      setCode('');
+      setStep('code');
+      setWait(RESEND_SECONDS);
     } catch (err) {
-      const c = err instanceof ApiError ? err.code : '';
-      setError(
-        c === 'offline'
-          ? 'No connection. Try again when you are online.'
-          : c === 'rate_limited'
-            ? 'Too many attempts. Wait a minute and try again.'
-            : step === 'code'
-              ? 'That code did not work. Check it, or request a new one.'
-              : 'Could not send the code. Try again.',
-      );
+      setError(message(err, true));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verify(value: string) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await auth.verifyCode(address, value);
+      await refresh();
+      router.replace('/');
+    } catch (err) {
+      setError(message(err, false));
+      setCode('');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.canvas }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'center',
+            padding: space.xl,
+          }}
+        >
+          <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: space.xxl }}>
+            <Brand compact={step === 'code'} />
+
+            {step === 'email' ? (
+              <View style={{ gap: space.lg }}>
+                <View style={{ gap: space.xs }}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[type.title, { color: t.ink, textAlign: 'center' }]}
+                  >
+                    Create your free account
+                  </Text>
+                  <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
+                    Enter your email and we'll send you a 6-digit code. Already a member? Use the
+                    same email to sign in. No password needed.
+                  </Text>
+                </View>
+                <Field
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  returnKeyType="send"
+                  onSubmitEditing={() => valid && void sendCode()}
+                />
+                {error ? <ErrorNote>{error}</ErrorNote> : null}
+                <Button
+                  label="Continue"
+                  busy={busy}
+                  disabled={!valid}
+                  onPress={() => void sendCode()}
+                />
+                <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
+                  By continuing you agree to the{' '}
+                  <Text
+                    accessibilityRole="link"
+                    onPress={() => openLink(links.terms)}
+                    style={{ color: t.ink, textDecorationLine: 'underline' }}
+                  >
+                    Terms
+                  </Text>{' '}
+                  and the{' '}
+                  <Text
+                    accessibilityRole="link"
+                    onPress={() => openLink(links.privacy)}
+                    style={{ color: t.ink, textDecorationLine: 'underline' }}
+                  >
+                    Privacy notice
+                  </Text>
+                  .
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: space.lg }}>
+                <View style={{ gap: space.xs }}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[type.title, { color: t.ink, textAlign: 'center' }]}
+                  >
+                    Check your email
+                  </Text>
+                  <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
+                    We sent a 6-digit code to{'\n'}
+                    <Text style={{ color: t.ink, fontWeight: '600' }}>{address}</Text>
+                    {'\n'}Enter it to finish creating your account or signing in.
+                  </Text>
+                </View>
+                <CodeInput
+                  value={code}
+                  onChange={(v) => {
+                    setCode(v);
+                    setError(null);
+                    if (v.length === CODE_LENGTH) void verify(v);
+                  }}
+                  disabled={busy}
+                />
+                {error ? (
+                  <View style={{ alignItems: 'center' }}>
+                    <ErrorNote>{error}</ErrorNote>
+                  </View>
+                ) : null}
+                <Button
+                  label="Continue"
+                  busy={busy}
+                  disabled={code.length !== CODE_LENGTH}
+                  onPress={() => void verify(code)}
+                />
+                <View style={{ alignItems: 'center', gap: space.sm }}>
+                  <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
+                    No email after a minute? Check your spam folder.
+                  </Text>
+                  <Button
+                    label={wait > 0 ? `Send a new code in ${wait}s` : 'Send a new code'}
+                    kind="secondary"
+                    size="small"
+                    disabled={busy || wait > 0}
+                    onPress={() => void sendCode()}
+                  />
+                  <Button
+                    label="Use a different email"
+                    kind="ghost"
+                    size="small"
+                    onPress={() => {
+                      setStep('email');
+                      setCode('');
+                      setError(null);
+                    }}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+/** App icon, wordmark and tagline; smaller on the code step so the keyboard leaves room. */
+function Brand({ compact }: { compact: boolean }) {
+  const t = useTheme();
+  const size = compact ? 56 : 88;
+  return (
+    <View style={{ alignItems: 'center', gap: space.md }}>
+      <Image
+        source={require('../../assets/icon.png')}
+        style={{ width: size, height: size, borderRadius: size * 0.225 }}
+        accessibilityIgnoresInvertColors
+        accessible={false}
+      />
+      {compact ? null : (
+        <View style={{ alignItems: 'center', gap: 2 }}>
+          <Text style={[type.display, { color: t.ink }]}>ShootSpot</Text>
+          <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
+            Location scouting for photographers and filmmakers
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Six boxes over one hidden input, so the system's code autofill (iOS one-time-code, Android SMS
+ * Retriever/autofill) and paste fill all digits at once.
+ */
+function CodeInput(props: { value: string; onChange(v: string): void; disabled?: boolean }) {
+  const t = useTheme();
+  const input = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const [focused, setFocused] = useState(true);
+  return (
+    <Pressable
+      accessible={false}
+      onPress={() => input.current?.focus()}
+      style={{ flexDirection: 'row', justifyContent: 'center', gap: space.sm }}
     >
-      <Screen scroll>
-        <Title sub="Location scouting for photographers and filmmakers.">ShootSpot</Title>
-        {step === 'email' ? (
-          <>
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              returnKeyType="send"
-              onSubmitEditing={() => valid && void submit()}
-            />
-            <Body muted>We'll email you a 6-digit code. No password needed.</Body>
-          </>
-        ) : (
-          <>
-            <Body>Enter the code we sent to {email.trim()}.</Body>
-            <Field
-              label="6-digit code"
-              value={code}
-              onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              autoFocus
-            />
-          </>
-        )}
-        {error ? <ErrorNote>{error}</ErrorNote> : null}
-        <Button
-          label={step === 'email' ? 'Send code' : 'Sign in'}
-          busy={busy}
-          disabled={step === 'email' ? !valid : code.length !== 6}
-          onPress={() => void submit()}
-        />
-        {step === 'code' ? (
-          <>
-            <Body muted>No email after a minute? Check your spam folder, or send a new code.</Body>
-            <Button
-              label={resent ? 'New code sent' : 'Send a new code'}
-              kind="secondary"
-              disabled={busy || resent}
-              onPress={() => void resend()}
-            />
-            <Button
-              label="Use a different email"
-              kind="ghost"
-              onPress={() => {
-                setStep('email');
-                setCode('');
-              }}
-            />
-          </>
-        ) : null}
-      </Screen>
-    </KeyboardAvoidingView>
+      {Array.from({ length: CODE_LENGTH }, (_, i) => {
+        const active = focused && i === Math.min(props.value.length, CODE_LENGTH - 1);
+        return (
+          <View
+            key={i}
+            style={{
+              width: 46,
+              height: 56,
+              borderRadius: radius.control,
+              backgroundColor: t.surface,
+              borderWidth: 2,
+              borderColor: active ? t.ink : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[type.title, { color: t.ink }]}>{props.value[i] ?? ''}</Text>
+          </View>
+        );
+      })}
+      <TextInput
+        ref={input}
+        value={props.value}
+        onChangeText={(v) => props.onChange(v.replace(/\D/g, '').slice(0, CODE_LENGTH))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        editable={!props.disabled}
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        autoFocus
+        maxLength={CODE_LENGTH}
+        accessibilityLabel="6-digit code"
+        caretHidden
+        style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.011 }}
+      />
+    </Pressable>
   );
 }

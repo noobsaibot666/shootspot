@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.exposeu.shootspot",
+      "buildNumber": "2",
       "supportsTablet": false,
       "config": { "usesNonExemptEncryption": false },
       "infoPlist": {

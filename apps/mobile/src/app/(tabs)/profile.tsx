@@ -1,8 +1,15 @@
 import type { ImageSet, MediaState, PublicRecord, RecordStatus } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import {
@@ -71,28 +78,38 @@ export default function Profile() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingImports, setPendingImports] = useState(0);
   const [manage, setManage] = useState<PublicRecord | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // Focus and pull-to-refresh can overlap: only the newest load may write state.
+  const loadSeq = useRef(0);
   const me = state.status === 'signed-in' ? state.me : null;
   const name = me
     ? me.profile.displayName || `${me.profile.firstName} ${me.profile.lastName}`.trim()
     : '';
 
   const load = useCallback(async () => {
-    setDrafts(await listDrafts());
-    const pending = (await listImports()).filter((i) => i.state === 'todo').length;
-    setPendingImports(pending);
-    // A fully reviewed batch is tidied up here even if "Done" was never tapped.
-    if (pending === 0) await clearFinishedImports();
+    const seq = ++loadSeq.current;
+    // Local drafts and imports never block the server lists (a bad file must not blank the page).
+    try {
+      setDrafts(await listDrafts());
+      const pending = (await listImports()).filter((i) => i.state === 'todo').length;
+      setPendingImports(pending);
+      // A fully reviewed batch is tidied up here even if "Done" was never tapped.
+      if (pending === 0) await clearFinishedImports();
+    } catch {}
     const [r, p, l] = await Promise.allSettled([
       api<{ items: MyRecord[] }>('/v1/me/records'),
       api<{ items: Project[] }>('/v1/projects'),
       api<{ items: PublicRecord[] }>('/v1/me/likes'),
     ]);
+    if (seq !== loadSeq.current) return;
     if (r.status === 'fulfilled') setRecords(r.value.items);
     if (p.status === 'fulfilled') setProjects(p.value.items);
     if (l.status === 'fulfilled') {
       seedLiked(l.value.items);
       setLikedItems(l.value.items);
     }
+    const failed = [r, p, l].every((x) => x.status === 'rejected');
+    setStatus(failed ? 'error' : 'ready');
   }, []);
 
   useFocusEffect(
@@ -176,7 +193,7 @@ export default function Profile() {
     <View
       style={{
         paddingTop: insets.top + space.sm,
-        paddingHorizontal: space.lg - grid.edge + grid.gap / 2,
+        paddingHorizontal: space.lg,
         gap: space.lg,
         paddingBottom: space.md,
       }}
@@ -245,24 +262,49 @@ export default function Profile() {
 
   const listProps = {
     refreshControl: refresh,
-    contentContainerStyle: { paddingBottom: insets.bottom + 120 },
-    ListHeaderComponent: header,
-    style: { flex: 1, backgroundColor: t.canvas },
+    contentContainerStyle: { paddingTop: space.sm, paddingBottom: insets.bottom + 120 },
+    style: { flex: 1 },
   };
 
+  // Shown instead of an empty list until the first load finishes, or when it failed.
+  const pending =
+    status === 'loading' ? (
+      <View style={{ paddingTop: space.xxl, alignItems: 'center' }}>
+        <ActivityIndicator color={t.muted} />
+      </View>
+    ) : status === 'error' ? (
+      <EmptyState
+        icon="offline"
+        text="Your profile could not be loaded. Check your connection."
+        action={() => {
+          setStatus('loading');
+          void load();
+        }}
+      />
+    ) : null;
+
+  // The header sits outside the list, so the page is never blank even if a list fails to lay out.
+  const page = (body: React.ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: t.canvas }}>
+      {header}
+      <View style={{ flex: 1 }}>{body}</View>
+    </View>
+  );
+
   if (tab !== 'projects') {
-    return (
+    return page(
       <>
         <MasonryList
           key={tab}
           {...listProps}
           tiles={tab === 'locations' ? myTiles : likedTiles}
           ListEmptyComponent={
-            tab === 'locations' ? (
+            pending ??
+            (tab === 'locations' ? (
               <EmptyState icon="camera" text="Locations you capture or import appear here." />
             ) : (
               <EmptyState icon="heart" text="Tap the heart on any location to keep it here." />
-            )
+            ))
           }
           ListFooterComponent={
             tab === 'locations' && myTiles.length ? (
@@ -291,18 +333,17 @@ export default function Profile() {
             </>
           ) : null}
         </Sheet>
-      </>
+      </>,
     );
   }
 
   const boardW = (width - grid.edge * 2 - grid.gap) / 2;
-  return (
+  return page(
     <ScrollView
       style={listProps.style}
       contentContainerStyle={listProps.contentContainerStyle}
       refreshControl={refresh}
     >
-      <View style={{ paddingHorizontal: grid.edge - grid.gap / 2 }}>{header}</View>
       <View style={{ gap: space.lg }}>
         <View style={{ paddingHorizontal: space.lg }}>
           {adding ? (
@@ -386,17 +427,19 @@ export default function Profile() {
             ))}
           </View>
         ) : (
-          <EmptyState
-            icon="boards"
-            text="No projects yet. Create one, then save locations into it from the feed."
-          />
+          (pending ?? (
+            <EmptyState
+              icon="boards"
+              text="No projects yet. Create one, then save locations into it from the feed."
+            />
+          ))
         )}
       </View>
-    </ScrollView>
+    </ScrollView>,
   );
 }
 
-function EmptyState({ icon, text }: { icon: IconName; text: string }) {
+function EmptyState({ icon, text, action }: { icon: IconName; text: string; action?(): void }) {
   const t = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: space.md, padding: space.xl, paddingTop: space.xxl }}>
@@ -404,6 +447,7 @@ function EmptyState({ icon, text }: { icon: IconName; text: string }) {
       <View style={{ alignItems: 'center' }}>
         <Body muted>{text}</Body>
       </View>
+      {action ? <Button label="Try again" kind="secondary" size="small" onPress={action} /> : null}
     </View>
   );
 }
