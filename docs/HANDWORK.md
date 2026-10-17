@@ -213,7 +213,12 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 
 - [ ] **4.1 Lawyer review** of the image licence, terms, privacy notice and deletion policy. Drafts are in [03-rights-privacy-data-ownership.md](phase-0/03-rights-privacy-data-ownership.md).
 - [x] **4.2 Store accounts** 💶: Apple Developer Program and Google Play Console. Done: both active for more than 6 months (existing apps). The ShootSpot app records come after the polish round and field test.
-- [ ] **4.3 Store privacy forms.** Claude drafts the answers and you submit them.
+- [ ] **4.3 Store privacy forms.** Drafted in [store/privacy-declarations.md](store/privacy-declarations.md); you submit them in App Store Connect and Play Console.
+- [ ] **4.5 Public pages on the docs hub (D-35)**: the Mac builds them (handoff request). You give the Mac expose-u's legal name, legal form and address (as on your Impressum).
+- [ ] **4.6 Public HTTPS (D-33)**: two Cloudflare Tunnel hostnames (the Mac or you, in Cloudflare), then Claude's guarded NAS block. Then set the EAS production variable `EXPO_PUBLIC_API_URL` to the HTTPS API address.
+- [ ] **4.7 Sign-in email from your domain**: in Brevo → Senders, Domains → add `expose-u.com` and add its DNS records in Cloudflare (DKIM, DMARC). Then the sender becomes e.g. `ShootSpot <no-reply@expose-u.com>` and codes stop landing in spam. Also in Brevo → Security → Authorized IPs, **Deactivate for SMTP keys**.
+- [ ] **4.8 App records**: create ShootSpot in App Store Connect (bundle `com.shootspot.app`) and Play Console (package `com.shootspot.app`). Claude guides you, then runs the EAS production builds and submissions (TestFlight, Play internal track).
+- [ ] **4.9 Review account (D-34)**: just before submitting, Claude gives the NAS block for `REVIEW_EMAIL`/`REVIEW_CODE`; listing and review notes are in [store/listing.md](store/listing.md).
 - [ ] **4.4 Pick a cloud host for launch.** The NAS is for testing only and should not be the public production server.
 
 ---
