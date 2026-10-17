@@ -203,8 +203,9 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   3. Copy each project's **DSN** (Settings → Client Keys). Claude adds the server DSNs to the NAS `.env`; the app DSN goes in with the next native build.
   4. Under Settings → Security & Privacy, turn on **Data Scrubber** and **Prevent Storing of IP Addresses**.
 
-- [ ] **3.8 Load NAS images `43acc49`** (polish round: likes, photo tone). Claude gives the guarded block; it adds the `likes` table (migration 0006).
-- [ ] **3.9 Field test away from home over Tailscale (D-30).** Install Tailscale on the phone, sign in to the same tailnet as the NAS, and use the release build (`tools/android-local.ps1 -Release`) on mobile data. Claude first checks, read-only, that the NAS's Tailscale routes the home network (`192.168.178.0/24`). Note anything that feels slow, stutters or looks off.
+- [x] **3.8 Load NAS images `43acc49`** (polish round: likes, photo tone). Done 2026-10-17: migration 0006 (`likes`) applied, API healthy.
+- [ ] **3.9 Field test away from home over Tailscale (D-30).** Install Tailscale on the phone, sign in to the same tailnet as the NAS, and use the release build (`tools/android-local.ps1 -Release`) on mobile data. Note anything that feels slow, stutters or looks off.
+  - [x] Checked 2026-10-17: the NAS Tailscale app (`ix-tailscale-tailscale-1`) advertises only `192.168.178.146/32` (the NAS, nothing else at home), and the Nothing phone reached `http://192.168.178.146:4400/ready` on mobile data.
 
 ---
 

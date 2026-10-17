@@ -1,0 +1,16 @@
+// Gradle init script for local Windows builds (tools/android-local.ps1).
+// Release native builds write to <lib>\android\build\intermediates\cxx\RelWithDebInfo\... and
+// <lib>\android\.cxx\RelWithDebInfo\..., which under pnpm's deep node_modules paths pass Windows'
+// 260-character limit ("CreateProcess error=2", "Failed to set working directory"). Library build
+// and CMake folders move to a short path instead; the app module keeps its own, so the APK stays
+// where the script expects it.
+def root = System.getenv('SHOOTSPOT_GRADLE_BUILD_ROOT')
+if (root) {
+  gradle.beforeProject { p ->
+    if (p.path == ':' || p.path == ':app') return
+    p.layout.buildDirectory.set(new File(root, p.name))
+    p.plugins.withId('com.android.library') {
+      p.android.externalNativeBuild.cmake.buildStagingDirectory = new File(root, "${p.name}/cxx")
+    }
+  }
+}

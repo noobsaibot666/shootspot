@@ -54,7 +54,12 @@ try {
   $abi = if ($phone) { (adb shell getprop ro.product.cpu.abi 2>$null | Out-String).Trim() } else { '' }
   if (-not $abi) { $abi = 'arm64-v8a' }
   $task = if ($Release) { 'assembleRelease' } else { 'assembleDebug' }
-  .\gradlew.bat $task --console=plain "-PreactNativeArchitectures=$abi"
+  # Library build folders on a short path (Windows path limit; see the init script). It must end
+  # in `android`: Expo's code generator refuses build folders outside an android directory.
+  $env:SHOOTSPOT_GRADLE_BUILD_ROOT = Join-Path $env:USERPROFILE '.ssb\android'
+  if ($Clean -and (Test-Path $env:SHOOTSPOT_GRADLE_BUILD_ROOT)) { Remove-Item -Recurse -Force $env:SHOOTSPOT_GRADLE_BUILD_ROOT }
+  $init = Join-Path $PSScriptRoot 'android-short-build.gradle'
+  .\gradlew.bat $task --console=plain --init-script $init "-PreactNativeArchitectures=$abi"
   if ($LASTEXITCODE) { throw "Gradle failed ($LASTEXITCODE)" }
 } finally { Pop-Location }
 
