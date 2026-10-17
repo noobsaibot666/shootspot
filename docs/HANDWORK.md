@@ -203,12 +203,15 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   3. Copy each project's **DSN** (Settings → Client Keys). Claude adds the server DSNs to the NAS `.env`; the app DSN goes in with the next native build.
   4. Under Settings → Security & Privacy, turn on **Data Scrubber** and **Prevent Storing of IP Addresses**.
 
+- [ ] **3.8 Load NAS images `43acc49`** (polish round: likes, photo tone). Claude gives the guarded block; it adds the `likes` table (migration 0006).
+- [ ] **3.9 Field test away from home over Tailscale (D-30).** Install Tailscale on the phone, sign in to the same tailnet as the NAS, and use the release build (`tools/android-local.ps1 -Release`) on mobile data. Claude first checks, read-only, that the NAS's Tailscale routes the home network (`192.168.178.0/24`). Note anything that feels slow, stutters or looks off.
+
 ---
 
 ## ▶ Step 4 — Before public launch
 
 - [ ] **4.1 Lawyer review** of the image licence, terms, privacy notice and deletion policy. Drafts are in [03-rights-privacy-data-ownership.md](phase-0/03-rights-privacy-data-ownership.md).
-- [ ] **4.2 Store accounts** 💶: Apple Developer Program (99 USD/year) and Google Play Console (25 USD once). Make them in **your** name, so you own the app.
+- [x] **4.2 Store accounts** 💶: Apple Developer Program and Google Play Console. Done: both active for more than 6 months (existing apps). The ShootSpot app records come after the polish round and field test.
 - [ ] **4.3 Store privacy forms.** Claude drafts the answers and you submit them.
 - [ ] **4.4 Pick a cloud host for launch.** The NAS is for testing only and should not be the public production server.
 

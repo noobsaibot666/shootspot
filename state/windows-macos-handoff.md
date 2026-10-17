@@ -21,16 +21,22 @@ Rules:
 
 | Item               | Value                                                                                                                                                          |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase              | 5 built (tags admin, rate limits, backups, alerts, server Sentry); Phase 4/5 NAS images `9e2b35d` ready, owner loading them; then bug review from device tests |
+| Phase              | 5 closed; owner's polish round before the stores (motion, likes, photo tone, cleanup) built at `43acc49`; NAS images `43acc49` on the share for the owner |
 | Latest commit      | see `git log -1`                                                                                                                                               |
 | Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                                              |
 | ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                                              |
 | Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md)                             |
-| Android build      | not yet built                                                                                                                                                  |
+| Android build      | local release APKs on the owner's Nothing phone (`tools/android-local.ps1 -Release`); JS bundled in, no Metro needed                                          |
 | iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                                                   |
 | Backend for phones | NAS `http://192.168.178.146:4400`                                                                                                                              |
 
 ## Open requests
+
+- 2026-10-17 → mac: **New iOS dev build needed (`43acc49` or later).** The owner's polish round adds native modules: `react-native-reanimated` 4.7 + `react-native-worklets`, `@shopify/flash-list` 2.3, and `expo-build-properties`. `@expo/vector-icons` is gone. `git pull && pnpm install`, `npx expo prebuild --platform ios --clean`, rebuild, and restart Metro with `--clear`. **Needs NAS images `43acc49`** (likes table, migration 0006); Windows has them on the share and the owner loads them. Then test on the iPhone and log the results:
+  - **Motion:** feed scroll (the menu hides pill-first, then camera; it returns with a soft spring), the sliding tab highlight, sheets (spring in, quick out), and the Profile tabs underline. Anything that stutters?
+  - **Feed tiles:** location pill (pin · place · distance) and the heart. Like/unlike there and on the location page; check the **Liked** tab in Profile: long-press → Add to a project / Remove from Liked.
+  - **Location page:** opens with the native transition and the photo shows at once (no blank frame).
+  - **Photo look:** newly published photos get a gentle automatic tone balance (D-32). Publish one dark and one bright photo and say whether they look natural.
 
 - 2026-10-16 → mac: **Phase 4 is built (JS only, no new native modules, no rebuild).** `git pull`, restart Metro with `--clear`, and reload. Test on the iPhone:
   - the floating Feed · Map · Profile bar and the camera button
