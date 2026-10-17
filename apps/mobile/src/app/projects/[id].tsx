@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { api } from '../../lib/api';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, Field, Row } from '../../ui';
-import { Masonry } from '../../ui/masonry';
+import { MasonryGrid, recordTile } from '../../ui/masonry';
 
 type Item =
   | { recordId: string; available: true; record: PublicRecord }
@@ -114,19 +114,17 @@ export default function ProjectScreen() {
           )}
         </View>
         {/* A board, like the feed. In edit mode (or for removed locations) a tap removes. */}
-        <Masonry
+        <MasonryGrid
           tiles={items.map((item) =>
             item.available
-              ? {
-                  id: item.recordId,
-                  label: item.record.label,
-                  image: item.record.images.feed,
-                  placeholder: item.record.images.thumb,
-                  width: item.record.images.width,
-                  height: item.record.images.height,
-                  badge: editing ? 'Tap to remove' : null,
-                  onPress: editing ? () => void remove(item.recordId) : undefined,
-                }
+              ? editing
+                ? {
+                    ...recordTile(item.record),
+                    liked: undefined,
+                    badge: 'Tap to remove',
+                    onPress: () => void remove(item.recordId),
+                  }
+                : recordTile(item.record)
               : {
                   id: item.recordId,
                   label: 'No longer available',

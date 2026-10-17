@@ -1,10 +1,14 @@
-# Local Android dev build on Windows: prebuild -> Gradle -> install over USB -> open on Metro.
-# Usage (repo root):  powershell -File tools/android-local.ps1 [-Clean]
-#   -Clean  regenerate android/ (after native dependency or app config changes) and drop native build caches.
+# Local Android build on Windows: prebuild -> Gradle -> install over USB.
+# Usage (repo root):  powershell -File tools/android-local.ps1 [-Clean] [-Release]
+#   -Clean    regenerate android/ (after native dependency or app config changes) and drop native build caches.
+#   -Release  optimised build with the JS bundled in (no Metro): how the app really feels, and it
+#             works away from the PC (e.g. via Tailscale). Signed with the debug key, so it installs
+#             over the dev build and keeps the sign-in.
+#   default   dev build that loads JS from Metro.
 # Needs: JDK 17, Android SDK (platform 37, build-tools 37.0.0, NDK 27.1.12297006, CMake 3.31.6), a phone with
 # USB debugging, and Metro running (`pnpm --filter @shootspot/mobile start --dev-client`).
 # CMake 3.31 is required: the SDK default 3.22 loops forever ("build.ninja still dirty") on pnpm's linked folders.
-param([switch]$Clean)
+param([switch]$Clean, [switch]$Release)
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot
@@ -49,13 +53,14 @@ try {
   # Only the connected phone's ABI: about half the native compile time of all four.
   $abi = if ($phone) { (adb shell getprop ro.product.cpu.abi 2>$null | Out-String).Trim() } else { '' }
   if (-not $abi) { $abi = 'arm64-v8a' }
-  .\gradlew.bat assembleDebug --console=plain "-PreactNativeArchitectures=$abi"
+  $task = if ($Release) { 'assembleRelease' } else { 'assembleDebug' }
+  .\gradlew.bat $task --console=plain "-PreactNativeArchitectures=$abi"
   if ($LASTEXITCODE) { throw "Gradle failed ($LASTEXITCODE)" }
 } finally { Pop-Location }
 
 # adb reports install failures on stderr; handle them here instead of stopping.
 $ErrorActionPreference = 'Continue'
-$apk = 'android\app\build\outputs\apk\debug\app-debug.apk'
+$apk = if ($Release) { 'android\app\build\outputs\apk\release\app-release.apk' } else { 'android\app\build\outputs\apk\debug\app-debug.apk' }
 if (-not $phone) {
   Write-Host "Built: $mobile\$apk. Connect the phone and run again (no -Clean) to install."
   exit 0
@@ -67,6 +72,11 @@ if ($out -match 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match') {
   $out = adb install $apk 2>&1 | Out-String
 }
 Write-Host $out.Trim()
+if ($Release) {
+  adb shell monkey -p com.shootspot.app -c android.intent.category.LAUNCHER 1 | Out-Null
+  Write-Host 'Done: release build installed and opened (no Metro needed).'
+  exit 0
+}
 adb reverse tcp:8081 tcp:8081 | Out-Null
 adb shell am start -a android.intent.action.VIEW -d 'shootspot://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081' com.shootspot.app | Out-Null
 Write-Host 'Done: app opened on Metro (localhost:8081 via adb reverse).'

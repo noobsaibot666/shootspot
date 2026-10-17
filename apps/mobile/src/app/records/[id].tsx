@@ -1,4 +1,3 @@
-import { Icon, type IconName } from '../../ui/icon';
 import {
   formatBearing,
   formatCoordinates,
@@ -9,15 +8,14 @@ import {
   type RecordStatusResponse,
 } from '@shootspot/shared';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Easing,
   Linking,
   Platform,
+  ScrollView,
   Share,
   StyleSheet,
   Switch,
@@ -25,14 +23,16 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
 import { mediaSource } from '../../lib/images';
 import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
-import { getOrigin, useReduceMotion, type Origin } from '../../lib/motion';
+import { seedLiked, useLiked } from '../../lib/likes';
+import { getPreview } from '../../lib/motion';
 import { useVocabulary } from '../../lib/vocabulary';
-import { grid, motion, radius, space, type, useTheme } from '../../theme/tokens';
+import { grid, radius, space, type, useTheme } from '../../theme/tokens';
 import {
   Body,
   Button,
@@ -45,7 +45,8 @@ import {
   SheetAction,
   Tap,
 } from '../../ui';
-import { Masonry, aspectOf } from '../../ui/masonry';
+import { Icon, type IconName } from '../../ui/icon';
+import { MasonryGrid, aspectOf, recordTile } from '../../ui/masonry';
 
 const LIGHT = {
   backlit: 'Backlit',
@@ -59,15 +60,15 @@ const HERO_RADIUS = 24;
 const BAR = 52;
 
 /**
- * Location detail (plan journey 5), Savee-style: the photo grows out of the tapped tile, then
- * actions (Save pill, Maps, share, more), the scouting notes, technical data, and more
- * locations nearby. Close reverses the animation. The owner also sees status and controls.
+ * Location detail (plan journey 5), Savee-style: the photo first (painted at once from the tile's
+ * cached image, then sharpened), actions (heart, Save pill, Maps, share, more), the scouting
+ * notes, technical data, and more locations nearby. The screen slides in with the native stack
+ * transition (smooth on both platforms). The owner also sees status and controls.
  */
 export default function RecordScreen() {
   const { label } = useVocabulary();
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const reduce = useReduceMotion();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [record, setRecord] = useState<PublicRecord | null>(null);
@@ -75,64 +76,18 @@ export default function RecordScreen() {
   const [missing, setMissing] = useState(false);
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
-
-  // --- Card-open transition -------------------------------------------------------------
-  // The tile hands over its image and size, so the photo grows out of it immediately while the
-  // record loads; the details rise in once they arrive.
-  const [origin] = useState<Origin | null>(() => getOrigin(id));
-  const progress = useRef(new Animated.Value(0)).current;
-  const contentIn = useRef(new Animated.Value(0)).current;
-  const scroll = useRef<React.ComponentRef<typeof Animated.ScrollView>>(null);
-  const closing = useRef(false);
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: reduce ? 0 : motion.slow,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [progress, reduce]);
-
-  const loaded = record !== null;
-  useEffect(() => {
-    if (!loaded) return;
-    Animated.timing(contentIn, {
-      toValue: 1,
-      duration: reduce ? 0 : motion.base,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [loaded, contentIn, reduce]);
-
-  // Every way of leaving (button, Android back, pull-down) first plays the close animation.
-  const [closed, setClosed] = useState(false);
-  const pending = useRef<(() => void) | null>(null);
-  usePreventRemove(!closed && !reduce, ({ repeat }) => {
-    if (closing.current) return;
-    closing.current = true;
-    // Return to the top first so the photo shrinks back into its tile from where it opened.
-    scroll.current?.scrollTo({ y: 0, animated: false });
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: motion.base,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      pending.current = repeat;
-      setClosed(true);
-    });
-  });
-  useEffect(() => {
-    if (closed) pending.current?.();
-  }, [closed]);
+  const [preview] = useState(() => getPreview(id));
+  const [liked, toggleLike] = useLiked(id, record?.liked);
 
   const load = useCallback(async () => {
     const [pub, own] = await Promise.allSettled([
       api<PublicRecord>(`/v1/records/${id}`),
       api<RecordStatusResponse>(`/v1/records/${id}/status`),
     ]);
-    if (pub.status === 'fulfilled') setRecord(pub.value);
+    if (pub.status === 'fulfilled') {
+      seedLiked([pub.value]);
+      setRecord(pub.value);
+    }
     if (own.status === 'fulfilled') setStatus(own.value);
     if (pub.status === 'rejected' && own.status === 'rejected') setMissing(true);
     return { pub: pub.status === 'fulfilled', own: own.status === 'fulfilled' ? own.value : null };
@@ -166,58 +121,47 @@ export default function RecordScreen() {
     void api<Page<PublicRecord>>(
       `/v1/feed?lat=${record.lat}&lon=${record.lon}&radiusKm=25&limit=13`,
     )
-      .then((p) => setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 12)))
+      .then((p) => {
+        seedLiked(p.items);
+        setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 12));
+      })
       .catch(() => {});
   }, [record]);
 
   const close = () => router.back();
-  const fade = { opacity: progress };
-  // Details: in when loaded, out with the page on close.
-  const shown = Animated.multiply(progress, contentIn);
-  const rise = {
-    opacity: shown,
-    transform: [{ translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [32, 0] }) }],
-  };
 
   // Top bar of its own: the back button never sits on the photo, and content scrolls under it.
   const backButton = (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: insets.top + BAR,
-          paddingTop: insets.top,
-          paddingHorizontal: space.sm,
-          justifyContent: 'center',
-          backgroundColor: t.canvas,
-        },
-        fade,
-      ]}
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top + BAR,
+        paddingTop: insets.top,
+        paddingHorizontal: space.sm,
+        justifyContent: 'center',
+        backgroundColor: t.canvas,
+      }}
     >
       <IconButton icon="back" label="Back" onPress={close} />
-    </Animated.View>
+    </View>
   );
 
   // No photo to show yet (opened from a list or the capture flow, not a tile), or gone.
-  if (missing || (!record && !origin)) {
+  if (missing || (!record && !preview)) {
     const rejected = status?.status === 'rejected';
     return (
-      <View style={{ flex: 1 }}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
-        <Animated.View
-          style={[
-            {
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: space.md,
-              padding: space.xl,
-            },
-            rise,
-          ]}
+      <View style={{ flex: 1, backgroundColor: t.canvas }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: space.md,
+            padding: space.xl,
+          }}
         >
           {missing ? (
             <>
@@ -245,58 +189,31 @@ export default function RecordScreen() {
               </View>
             </>
           )}
-        </Animated.View>
+        </View>
         {backButton}
       </View>
     );
   }
 
-  const heroH = width / (record ? aspectOf(record.images) : origin!.aspect);
+  const heroH = width / (record ? aspectOf(record.images) : preview!.aspect);
   const heroTop = insets.top + BAR;
-  // Grow out of the tile: same centre and scale at progress 0, in place at 1.
-  const heroAnim =
-    origin && !reduce
-      ? {
-          transform: [
-            {
-              translateX: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [origin.x + origin.width / 2 - width / 2, 0],
-              }),
-            },
-            {
-              translateY: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [origin.y + origin.height / 2 - (heroTop + heroH / 2), 0],
-              }),
-            },
-            {
-              scale: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [origin.width / width, 1],
-              }),
-            },
-          ],
-        }
-      : fade;
-
   const heroImage = (
-    <Animated.View style={heroAnim}>
-      <Image
-        source={mediaSource(record ? record.images.detail : origin!.image)}
-        placeholder={mediaSource(origin?.image ?? record!.images.feed)}
-        style={{ width, height: heroH, borderRadius: HERO_RADIUS, backgroundColor: t.surface }}
-        contentFit="cover"
-        accessibilityLabel={record?.label}
-      />
-    </Animated.View>
+    <Image
+      source={mediaSource(record ? record.images.detail : preview!.image)}
+      // The tile's image is already in the cache: the photo is on screen at once.
+      placeholder={mediaSource(preview?.image ?? record!.images.feed)}
+      placeholderContentFit="cover"
+      style={{ width, height: heroH, borderRadius: HERO_RADIUS, backgroundColor: t.surface }}
+      contentFit="cover"
+      transition={180}
+      accessibilityLabel={record?.label}
+    />
   );
 
   if (!record) {
     // The photo is already in place; the details are on their way.
     return (
-      <View style={{ flex: 1 }}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
+      <View style={{ flex: 1, backgroundColor: t.canvas }}>
         <View style={{ paddingTop: heroTop }}>
           {heroImage}
           <ActivityIndicator style={{ marginTop: space.xl }} color={t.muted} />
@@ -338,14 +255,8 @@ export default function RecordScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.canvas }, fade]} />
-      <Animated.ScrollView
-        ref={scroll}
-        // Pull down at the top to close, like dismissing a card.
-        onScrollEndDrag={(e) => {
-          if (e.nativeEvent.contentOffset.y < -90) close();
-        }}
+    <View style={{ flex: 1, backgroundColor: t.canvas }}>
+      <ScrollView
         contentContainerStyle={{
           paddingTop: heroTop,
           paddingBottom: insets.bottom + space.xxl * 2,
@@ -354,11 +265,27 @@ export default function RecordScreen() {
         {heroImage}
 
         <Animated.View
-          style={[{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.xl }, rise]}
+          entering={FadeInDown.duration(260)}
+          style={{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.xl }}
         >
           {/* Actions: Savee's row of quiet icons with one strong Save pill. */}
           <Row style={{ justifyContent: 'space-between' }}>
             <Row style={{ gap: space.xs }}>
+              <Tap
+                accessibilityRole="button"
+                accessibilityLabel={liked ? 'Unlike' : 'Like'}
+                accessibilityState={{ selected: liked }}
+                onPress={toggleLike}
+                scaleTo={0.85}
+                hitSlop={8}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon
+                  name={liked ? 'heart.fill' : 'heart'}
+                  size={24}
+                  color={liked ? t.accent : t.ink}
+                />
+              </Tap>
               <IconButton icon="navigate" label="Open in Maps" onPress={openInMaps} />
               <IconButton
                 icon="share"
@@ -560,24 +487,17 @@ export default function RecordScreen() {
         </Animated.View>
 
         {nearby.length ? (
-          <Animated.View style={[{ paddingTop: space.xl, gap: space.md }, rise]}>
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            style={{ paddingTop: space.xl, gap: space.md }}
+          >
             <View style={{ paddingHorizontal: space.lg }}>
               <Label>More nearby</Label>
             </View>
-            <Masonry
-              edge={grid.edge}
-              tiles={nearby.map((r) => ({
-                id: r.id,
-                label: r.label,
-                image: r.images.feed,
-                placeholder: r.images.thumb,
-                width: r.images.width,
-                height: r.images.height,
-              }))}
-            />
+            <MasonryGrid edge={grid.edge} tiles={nearby.map(recordTile)} />
           </Animated.View>
         ) : null}
-      </Animated.ScrollView>
+      </ScrollView>
       {backButton}
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>

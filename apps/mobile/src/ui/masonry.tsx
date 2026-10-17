@@ -1,10 +1,15 @@
+import { formatDistance, type PublicRecord } from '@shootspot/shared';
+import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Animated, Text, View, useWindowDimensions } from 'react-native';
+import { memo } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { mediaSource } from '../lib/images';
-import { setOrigin, useReduceMotion } from '../lib/motion';
-import { grid, radius, type, useTheme } from '../theme/tokens';
+import { useLiked } from '../lib/likes';
+import { setPreview } from '../lib/motion';
+import { grid, radius, useTheme } from '../theme/tokens';
+import { Icon } from './icon';
 import { Tap } from './index';
 
 export interface Tile {
@@ -15,9 +20,33 @@ export interface Tile {
   placeholder?: string | null;
   width: number;
   height: number;
-  /** Small overlay text (e.g. "Processing", "Draft"). */
+  /** Short caption in the location pill (defaults to the label). */
+  caption?: string | null;
+  distanceM?: number | null;
+  /** Viewer's like; undefined = no heart on this tile (own drafts, statuses). */
+  liked?: boolean;
+  /** Small status overlay (e.g. "Processing", "Draft"); replaces the location pill. */
   badge?: string | null;
   onPress?(): void;
+  onLongPress?(): void;
+}
+
+/** The first part of a label ("Dudenstraße 24, Friedrichshain" → "Dudenstraße 24") for the pill. */
+const short = (label: string) => label.split(',')[0]!.trim();
+
+/** A published record as a tile: location pill, distance and the viewer's heart. */
+export function recordTile(r: PublicRecord): Tile {
+  return {
+    id: r.id,
+    label: r.label,
+    caption: short(r.label),
+    distanceM: r.distanceM,
+    liked: r.liked,
+    image: r.images.feed,
+    placeholder: r.images.thumb,
+    width: r.images.width,
+    height: r.images.height,
+  };
 }
 
 /** width / height, falling back to 16:9 when the server or file gave no usable size. */
@@ -26,52 +55,142 @@ export function aspectOf(it: { width: number; height: number }): number {
   return Number.isFinite(a) && a > 0 ? a : 16 / 9;
 }
 
-/** Two shortest-column-first stacks: keeps the columns' bottoms level (Savee-style masonry). */
-export function columns<T extends { width: number; height: number }>(items: T[], n = 2): T[][] {
-  const cols: T[][] = Array.from({ length: n }, () => []);
-  const heights = new Array<number>(n).fill(0);
-  for (const it of items) {
-    const i = heights.indexOf(Math.min(...heights));
+/** Column width for a two-column grid with Savee-like tight gutters. */
+export function useColumnWidth(edge: number = grid.edge) {
+  const { width } = useWindowDimensions();
+  return (width - edge * 2 - grid.gap) / 2;
+}
+
+/**
+ * One image-first tile: the photo, a short location pill (where it is, how far) and a private
+ * heart. Memoised: recycled list cells re-render only when their tile changes.
+ */
+export const TileCard = memo(function TileCard({ tile, width }: { tile: Tile; width: number }) {
+  const t = useTheme();
+  const aspect = aspectOf(tile);
+  const height = width / aspect;
+  const open =
+    tile.onPress ??
+    (() => {
+      if (tile.image) setPreview(tile.id, { image: tile.image, aspect });
+      router.push(`/records/${tile.id}`);
+    });
+  const caption = tile.caption ?? tile.label;
+  return (
+    <Tap
+      accessibilityRole="button"
+      accessibilityLabel={tile.label}
+      onPress={open}
+      onLongPress={tile.onLongPress}
+      delayLongPress={350}
+      scaleTo={0.97}
+    >
+      <View
+        style={{
+          width,
+          height,
+          borderRadius: radius.tile,
+          overflow: 'hidden',
+          backgroundColor: t.surface,
+        }}
+      >
+        {tile.image ? (
+          <Image
+            source={tile.image.startsWith('file:') ? tile.image : mediaSource(tile.image)}
+            placeholder={tile.placeholder ? mediaSource(tile.placeholder) : undefined}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={{ duration: 220, effect: 'cross-dissolve', timing: 'ease-out' }}
+            recyclingKey={tile.id}
+            cachePolicy="memory-disk"
+          />
+        ) : null}
+        {tile.badge ? (
+          <View style={[styles.pill, { maxWidth: width - 16 }]}>
+            <Text style={styles.pillText} numberOfLines={1}>
+              {tile.badge}
+            </Text>
+          </View>
+        ) : caption ? (
+          <View style={[styles.pill, { maxWidth: width - (tile.liked === undefined ? 16 : 52) }]}>
+            <Icon name="pin.fill" size={11} color="#FFFFFF" />
+            <Text style={styles.pillText} numberOfLines={1}>
+              {caption}
+              {tile.distanceM != null ? ` · ${formatDistance(tile.distanceM)}` : ''}
+            </Text>
+          </View>
+        ) : null}
+        {tile.liked !== undefined ? <Heart id={tile.id} initial={tile.liked} /> : null}
+      </View>
+    </Tap>
+  );
+});
+
+function Heart({ id, initial }: { id: string; initial: boolean }) {
+  const t = useTheme();
+  const [liked, toggle] = useLiked(id, initial);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={liked ? 'Unlike' : 'Like'}
+      accessibilityState={{ selected: liked }}
+      onPress={toggle}
+      hitSlop={10}
+      style={styles.heart}
+    >
+      <Icon name={liked ? 'heart.fill' : 'heart'} size={18} color={liked ? t.accent : '#FFFFFF'} />
+    </Pressable>
+  );
+}
+
+/**
+ * Recycling two-column masonry (FlashList): only visible tiles exist, so long feeds stay light.
+ * Tiles fade in once when first created; recycled cells swap images with a short cross-fade.
+ */
+export function MasonryList(
+  props: Omit<FlashListProps<Tile>, 'data' | 'renderItem' | 'numColumns' | 'masonry'> & {
+    tiles: Tile[];
+    edge?: number;
+  },
+) {
+  const { tiles, edge = grid.edge, contentContainerStyle, ...rest } = props;
+  const colW = useColumnWidth(edge);
+  return (
+    <FlashList
+      {...rest}
+      data={tiles}
+      masonry
+      numColumns={2}
+      keyExtractor={(t) => t.id}
+      contentContainerStyle={{
+        ...(contentContainerStyle as object),
+        paddingHorizontal: edge - grid.gap / 2,
+      }}
+      renderItem={({ item }) => (
+        <Animated.View entering={FadeIn.duration(240)} style={{ padding: grid.gap / 2 }}>
+          <TileCard tile={item} width={colW} />
+        </Animated.View>
+      )}
+    />
+  );
+}
+
+/** Small static grid (a dozen tiles, e.g. "More nearby" inside a page that already scrolls). */
+export function MasonryGrid({ tiles, edge = grid.edge }: { tiles: Tile[]; edge?: number }) {
+  const colW = useColumnWidth(edge);
+  const cols: Tile[][] = [[], []];
+  const heights = [0, 0];
+  for (const it of tiles) {
+    const i = heights[0]! <= heights[1]! ? 0 : 1;
     cols[i]!.push(it);
     heights[i]! += 1 / aspectOf(it);
   }
-  return cols;
-}
-
-/** Distance (pt) over which a tile rises into place after its top edge enters the screen. */
-const REVEAL = 160;
-
-/**
- * Image-only tiles in two columns, rounded, tight gutters. With `scrollY` (the parent's native
- * scroll offset) and `offsetTop` (where the grid starts in the scroll content), tiles rise and
- * fade into place as they enter the screen. Tapping a record tile remembers its on-screen frame
- * so the detail page can open out of it.
- */
-export function Masonry({
-  tiles,
-  edge = grid.edge,
-  scrollY,
-  offsetTop = 0,
-}: {
-  tiles: Tile[];
-  edge?: number;
-  scrollY?: Animated.Value;
-  offsetTop?: number;
-}) {
-  const { width } = useWindowDimensions();
-  const colW = (width - edge * 2 - grid.gap) / 2;
   return (
     <View style={{ flexDirection: 'row', gap: grid.gap, paddingHorizontal: edge }}>
-      {columns(tiles).map((col, i) => (
+      {cols.map((col, i) => (
         <View key={i} style={{ flex: 1, gap: grid.gap }}>
           {col.map((tile) => (
-            <TileView
-              key={tile.id}
-              tile={tile}
-              width={colW}
-              scrollY={scrollY}
-              offsetTop={offsetTop}
-            />
+            <TileCard key={tile.id} tile={tile} width={colW} />
           ))}
         </View>
       ))}
@@ -79,106 +198,29 @@ export function Masonry({
   );
 }
 
-function TileView({
-  tile,
-  width,
-  scrollY,
-  offsetTop,
-}: {
-  tile: Tile;
-  width: number;
-  scrollY?: Animated.Value;
-  offsetTop: number;
-}) {
-  const t = useTheme();
-  const { height: screenH } = useWindowDimensions();
-  const reduce = useReduceMotion();
-  const ref = useRef<React.ComponentRef<typeof View>>(null);
-  const [y, setY] = useState<number | null>(null);
-  const aspect = aspectOf(tile);
-  const height = width / aspect;
-
-  // Scroll-linked reveal: 0 while the tile is below the screen, 1 once it has risen REVEAL pt in.
-  const enter = offsetTop + (y ?? 0) - screenH;
-  const reveal =
-    scrollY && y !== null && !reduce
-      ? scrollY.interpolate({
-          inputRange: [enter, enter + REVEAL],
-          outputRange: [0, 1],
-          extrapolate: 'clamp',
-        })
-      : null;
-  const motionStyle = reveal
-    ? {
-        opacity: reveal.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }),
-        transform: [
-          { translateY: reveal.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
-          { scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
-        ],
-      }
-    : null;
-
-  const open =
-    tile.onPress ??
-    (() => {
-      const go = () => router.push(`/records/${tile.id}`);
-      if (!ref.current || !tile.image) return go();
-      ref.current.measureInWindow((x, wy, w, h) => {
-        setOrigin(tile.id, { x, y: wy, width: w, height: h, image: tile.image!, aspect });
-        go();
-      });
-    });
-
-  return (
-    <Animated.View
-      style={motionStyle ?? undefined}
-      onLayout={(e) => {
-        const ly = e.nativeEvent.layout.y;
-        if (ly !== y) setY(ly);
-      }}
-    >
-      <Tap accessibilityRole="button" accessibilityLabel={tile.label} onPress={open} scaleTo={0.97}>
-        <View
-          ref={ref}
-          collapsable={false}
-          style={{
-            width,
-            height,
-            borderRadius: radius.tile,
-            overflow: 'hidden',
-            backgroundColor: t.surface,
-          }}
-        >
-          {tile.image ? (
-            <Image
-              source={tile.image.startsWith('file:') ? tile.image : mediaSource(tile.image)}
-              placeholder={tile.placeholder ? mediaSource(tile.placeholder) : undefined}
-              style={{ width, height }}
-              contentFit="cover"
-              // Soft fade as each photo arrives.
-              transition={
-                reduce ? 0 : { duration: 320, effect: 'cross-dissolve', timing: 'ease-out' }
-              }
-              recyclingKey={tile.id}
-            />
-          ) : null}
-          {tile.badge ? (
-            <View
-              style={{
-                position: 'absolute',
-                left: 8,
-                bottom: 8,
-                backgroundColor: 'rgba(10,10,10,0.7)',
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-              }}
-            >
-              <Text style={[type.label, { color: '#FFFFFF' }]}>{tile.badge}</Text>
-            </View>
-          ) : null}
-        </View>
-      </Tap>
-    </Animated.View>
-  );
-}
+const styles = StyleSheet.create({
+  pill: {
+    position: 'absolute',
+    left: 8,
+    bottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(10,10,10,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  pillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', flexShrink: 1 },
+  heart: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,10,10,0.35)',
+  },
+});

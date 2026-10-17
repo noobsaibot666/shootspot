@@ -17,6 +17,8 @@ export const palette = {
     signalGreen: '#00703C',
     onInk: '#FFFFFF',
     scrim: 'rgba(255,255,255,0.86)',
+    /** Brand red (the icon). Minimal use, only where it means something: liked, map pin. */
+    accent: '#F0281A',
   },
   dark: {
     canvas: '#0A0A0A',
@@ -30,6 +32,7 @@ export const palette = {
     signalGreen: '#30D158',
     onInk: '#0A0A0A',
     scrim: 'rgba(10,10,10,0.82)',
+    accent: '#FF3B2C',
   },
 } as const;
 

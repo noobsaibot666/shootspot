@@ -7,7 +7,13 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { HttpError, notFound, requireOnboarded, type AppDeps } from '../http/context';
-import { ATTRIBUTION_JOIN, PUBLIC_COLUMNS, toPublicRecord, type PublicRow } from '../records/dto';
+import {
+  ATTRIBUTION_JOIN,
+  PUBLIC_COLUMNS,
+  likedColumn,
+  toPublicRecord,
+  type PublicRow,
+} from '../records/dto';
 
 const idParam = z.object({ id: z.uuid() });
 const itemParams = z.object({ id: z.uuid(), recordId: z.uuid() });
@@ -95,12 +101,12 @@ export function projectRoutes(app: FastifyInstance, deps: AppDeps) {
     await ownProject(id, viewer.userId);
     const { rows } = await pool.query<PublicRow & { item_location_id: string; available: boolean }>(
       `select i.location_id as item_location_id, (l.status = 'published' and m.id is not null) as available,
-              ${PUBLIC_COLUMNS}
+              ${PUBLIC_COLUMNS}, ${likedColumn('$2')}
        from project_items i join locations l on l.id = i.location_id
        left join media m on m.location_id = l.id and m.state = 'ready'
        ${ATTRIBUTION_JOIN}
        where i.project_id = $1 order by i.position, i.added_at`,
-      [id],
+      [id, viewer.userId],
     );
     return {
       items: await Promise.all(

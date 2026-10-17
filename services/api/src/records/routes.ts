@@ -12,7 +12,13 @@ import { tx } from '../db';
 import { HttpError, notFound, requireOnboarded, getViewer, type AppDeps } from '../http/context';
 import { legalVersions } from '../legal';
 import { assertActiveTags } from '../vocabulary/routes';
-import { ATTRIBUTION_JOIN, PUBLIC_COLUMNS, toPublicRecord, type PublicRow } from './dto';
+import {
+  ATTRIBUTION_JOIN,
+  PUBLIC_COLUMNS,
+  likedColumn,
+  toPublicRecord,
+  type PublicRow,
+} from './dto';
 
 const UPLOAD_URL_TTL = 15 * 60;
 /** Plan §10: upload quota per member. */
@@ -153,7 +159,7 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!viewer) throw new HttpError(401, 'unauthenticated');
     const { id } = idParam.parse(req.params);
     const { rows } = await pool.query<PublicRow>(
-      `select ${PUBLIC_COLUMNS}
+      `select ${PUBLIC_COLUMNS}, ${likedColumn('$2')}
        from locations l join media m on m.location_id = l.id and m.state = 'ready'
        ${ATTRIBUTION_JOIN}
        where l.id = $1 and (l.status = 'published' or (l.status in ('hidden') and exists (
@@ -162,6 +168,52 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
     );
     if (!rows[0]) throw notFound();
     return reply.send(await toPublicRecord(storage, rows[0]));
+  });
+
+  /**
+   * Private likes (D-29). Like/unlike are idempotent; only published records can be liked.
+   * The list is the viewer's own, newest like first, published records only.
+   */
+  app.put('/v1/records/:id/like', async (req, reply) => {
+    const viewer = await requireOnboarded(deps, req);
+    const { id } = idParam.parse(req.params);
+    const { rowCount } = await pool.query(
+      `insert into likes (user_id, location_id)
+       select $2, l.id from locations l where l.id = $1 and l.status = 'published'
+       on conflict do nothing`,
+      [id, viewer.userId],
+    );
+    if (!rowCount) {
+      const exists = await pool.query(
+        `select 1 from locations where id = $1 and status = 'published'`,
+        [id],
+      );
+      if (!exists.rowCount) throw notFound();
+    }
+    return reply.code(204).send();
+  });
+
+  app.delete('/v1/records/:id/like', async (req, reply) => {
+    const viewer = await requireOnboarded(deps, req);
+    const { id } = idParam.parse(req.params);
+    await pool.query('delete from likes where user_id = $1 and location_id = $2', [
+      viewer.userId,
+      id,
+    ]);
+    return reply.code(204).send();
+  });
+
+  app.get('/v1/me/likes', async (req) => {
+    const viewer = await requireOnboarded(deps, req);
+    const { rows } = await pool.query<PublicRow>(
+      `select ${PUBLIC_COLUMNS}, true as liked
+       from likes lk join locations l on l.id = lk.location_id and l.status = 'published'
+       join media m on m.location_id = l.id and m.state = 'ready'
+       ${ATTRIBUTION_JOIN}
+       where lk.user_id = $1 order by lk.created_at desc limit 500`,
+      [viewer.userId],
+    );
+    return { items: await Promise.all(rows.map((r) => toPublicRecord(storage, r))) };
   });
 
   async function createResponse(

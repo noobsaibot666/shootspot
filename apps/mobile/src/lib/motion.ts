@@ -13,29 +13,21 @@ export function useReduceMotion(): boolean {
 }
 
 /**
- * Where a tapped tile sat on screen, and the image it showed, so the detail page can grow the
- * photo out of it at once (card-open transition) while the full record loads.
+ * The image a tapped tile was showing, so the detail page can paint the photo instantly from the
+ * image cache while the full record loads (no blank page during the transition).
  */
-export interface Origin {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  /** The tile's image URL and aspect ratio (width / height). */
+export interface Preview {
   image: string;
+  /** width / height */
   aspect: number;
 }
+const previews = new Map<string, Preview>();
 
-/** A tap is used within this window; an old position (deep link, later visit) is ignored. */
-const FRESH_MS = 1500;
-const origins = new Map<string, Origin & { at: number }>();
-
-export function setOrigin(id: string, o: Origin) {
-  origins.set(id, { ...o, at: Date.now() });
+export function setPreview(id: string, p: Preview) {
+  previews.set(id, p);
+  if (previews.size > 200) previews.delete(previews.keys().next().value!);
 }
 
-/** Non-destructive (render may run twice in development); freshness limits reuse. */
-export function getOrigin(id: string): Origin | null {
-  const o = origins.get(id);
-  return o && Date.now() - o.at < FRESH_MS ? o : null;
+export function getPreview(id: string): Preview | null {
+  return previews.get(id) ?? null;
 }

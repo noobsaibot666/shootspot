@@ -297,10 +297,12 @@ describe('anonymity contract (D-06)', () => {
         'images',
         'label',
         'lat',
+        'liked',
         'lon',
         'sun',
       ].sort(),
     );
+    expect(item.liked).toBe(false);
     expect(item.attribution).toBeNull();
     const raw = JSON.stringify(feed);
     expect(raw).not.toContain('gil@example.com');
@@ -695,6 +697,50 @@ describe('admin (server-side role + MFA)', () => {
       .filter((e: { target_id: string }) => e.target_id === rec)
       .map((e: { action: string }) => e.action);
     expect(actions).toEqual(expect.arrayContaining(['record.hide', 'record.view_creator']));
+  });
+});
+
+describe('private likes (D-29)', () => {
+  it('likes are per member, private, idempotent and listed newest first', async () => {
+    const creator = await member(env, 'likes-creator@example.com');
+    const a = await member(env, 'likes-a@example.com');
+    const b = await member(env, 'likes-b@example.com');
+    const first = await publishDirect(creator);
+    const second = await publishDirect(creator);
+
+    for (const id of [first, second, second]) {
+      const res = await env.app.inject({
+        method: 'PUT',
+        url: `/v1/records/${id}/like`,
+        headers: a,
+      });
+      expect(res.statusCode).toBe(204);
+    }
+    const mine = (await env.app.inject({ method: 'GET', url: '/v1/me/likes', headers: a })).json();
+    expect(mine.items.map((r: { id: string }) => r.id)).toEqual([second, first]);
+    expect(mine.items.every((r: { liked: boolean }) => r.liked)).toBe(true);
+
+    // Another member sees no trace of a's likes.
+    const detailB = (
+      await env.app.inject({ method: 'GET', url: `/v1/records/${first}`, headers: b })
+    ).json();
+    expect(detailB.liked).toBe(false);
+    expect(JSON.stringify(detailB)).not.toMatch(/like_count|likes"/);
+    const detailA = (
+      await env.app.inject({ method: 'GET', url: `/v1/records/${first}`, headers: a })
+    ).json();
+    expect(detailA.liked).toBe(true);
+
+    // Unlike, and unknown records are 404.
+    await env.app.inject({ method: 'DELETE', url: `/v1/records/${first}/like`, headers: a });
+    const after = (await env.app.inject({ method: 'GET', url: '/v1/me/likes', headers: a })).json();
+    expect(after.items.map((r: { id: string }) => r.id)).toEqual([second]);
+    const missing = await env.app.inject({
+      method: 'PUT',
+      url: `/v1/records/${crypto.randomUUID()}/like`,
+      headers: a,
+    });
+    expect(missing.statusCode).toBe(404);
   });
 });
 

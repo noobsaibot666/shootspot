@@ -153,6 +153,10 @@ export async function dataExportJob(deps: JobDeps, exportId: string) {
       await q(`select p.name, p.created_at, coalesce(json_agg(i.location_id) filter (where i.location_id is not null), '[]') as records
                        from projects p left join project_items i on i.project_id = p.id
                        where p.user_id = $1 group by p.id order by p.position`),
+    // Private likes (D-29) are personal data too.
+    likes: await q(
+      `select location_id, created_at from likes where user_id = $1 order by created_at desc`,
+    ),
     reportsFiled: await q(
       `select location_id, reason, note, status, created_at from reports where reporter_user_id = $1`,
     ),

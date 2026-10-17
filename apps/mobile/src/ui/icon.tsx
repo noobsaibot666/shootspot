@@ -42,6 +42,7 @@ const FolderSimpleIcon: PhosphorIcon =
 const GearIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Gear').GearIcon;
 const GlobeHemisphereWestIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/GlobeHemisphereWest').GlobeHemisphereWestIcon;
+const HeartIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Heart').HeartIcon;
 const HouseIcon: PhosphorIcon = require('phosphor-react-native/src/icons/House').HouseIcon;
 const ImagesSquareIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ImagesSquare').ImagesSquareIcon;
@@ -116,6 +117,7 @@ const ICONS = {
   forward: CaretRightIcon,
   gallery: ImagesIcon,
   globe: GlobeHemisphereWestIcon,
+  heart: HeartIcon,
   hidden: EyeSlashIcon,
   home: HouseIcon,
   locate: CrosshairIcon,

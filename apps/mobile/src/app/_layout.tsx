@@ -65,15 +65,11 @@ function Navigator() {
           name="capture"
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
-        {/* Opens over the grid; the screen animates its own photo out of the tapped tile. */}
+        {/* Native transition (UI thread, smooth on both platforms); the photo is painted at once
+            from the tile's cached image. */}
         <Stack.Screen
           name="records/[id]"
-          options={{
-            headerShown: false,
-            presentation: 'transparentModal',
-            animation: 'none',
-            contentStyle: { backgroundColor: 'transparent' },
-          }}
+          options={{ headerShown: false, animation: 'fade_from_bottom' }}
         />
         <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
         <Stack.Screen name="settings" options={{ title: 'Menu' }} />

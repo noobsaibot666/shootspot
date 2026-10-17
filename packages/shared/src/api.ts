@@ -42,6 +42,8 @@ export interface PublicRecord {
   sun: { azimuthDeg: number; elevationDeg: number } | null;
   images: ImageSet;
   attribution: Attribution | null;
+  /** The viewer's own like (D-29). Private: never about other members, no counts. */
+  liked: boolean;
 }
 
 export interface Page<T> {

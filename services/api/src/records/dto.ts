@@ -16,6 +16,14 @@ export const PUBLIC_COLUMNS = `
   l.sun_elevation_deg, l.published_at, m.id as media_id, m.width, m.height,
   attr.name as attr_name, attr.portfolio_url as attr_portfolio, attr.social_handle as attr_social`;
 
+/**
+ * Whether the viewer liked this location (D-29). Only ever about the viewer: likes are private,
+ * so no other member's likes or any count leaves the server. `viewerParam` is the placeholder
+ * ($n) holding the viewer's user id.
+ */
+export const likedColumn = (viewerParam: string) =>
+  `exists (select 1 from likes lk where lk.location_id = l.id and lk.user_id = ${viewerParam}) as liked`;
+
 /** Attribution join: only when the record is attributed AND an owner still exists. */
 export const ATTRIBUTION_JOIN = `
   left join lateral (
@@ -51,6 +59,7 @@ export interface PublicRow {
   attr_name: string | null;
   attr_portfolio: string | null;
   attr_social: string | null;
+  liked?: boolean;
 }
 
 const IMAGE_URL_TTL = 60 * 60;
@@ -91,5 +100,6 @@ export async function toPublicRecord(storage: Storage, row: PublicRow): Promise<
     attribution: row.attr_name
       ? { name: row.attr_name, portfolioUrl: row.attr_portfolio, socialHandle: row.attr_social }
       : null,
+    liked: row.liked ?? false,
   };
 }

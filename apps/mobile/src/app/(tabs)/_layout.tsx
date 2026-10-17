@@ -1,7 +1,12 @@
 import { Tabs, router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
-import { useReduceMotion } from '../../lib/motion';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Tap } from '../../ui';
 import { ChromeProvider, useChrome } from '../../ui/chrome';
@@ -12,6 +17,7 @@ type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tab
 /** Tab width and the distance between tab origins (width + pill gap). */
 const TAB_W = 64;
 const STEP = TAB_W + 4;
+const DROP = 130;
 
 const TABS: Record<string, { label: string; icon: IconName; active: IconName }> = {
   feed: { label: 'Feed', icon: 'feed', active: 'feed.fill' },
@@ -36,44 +42,41 @@ export default function TabsLayout() {
 }
 
 /**
- * Dark pill with single-weight icons; the selected tab gets a soft backplate and a filled icon
- * (never colour alone). The camera button sits beside it. While the feed scrolls down, the pill
- * drops first and the camera follows (staggered spring, see ui/chrome). Gallery import lives in
- * the camera (bottom-left) and in the Profile menu.
+ * Dark pill with single-weight icons; the selected tab gets a soft backplate that springs to it
+ * and a filled icon (never colour alone). The camera button sits beside it. All motion runs on
+ * the UI thread (Reanimated): see ui/chrome for the staggered hide and elastic return.
  */
 function FloatingBar({ state, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const { hidden, hiddenLate } = useChrome();
-  const drop = (v: Animated.Value) => ({
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, 130] }) }],
-  });
   const routes = state.routes.filter((r) => TABS[r.name]);
-
-  // The selected backplate slides to the tapped tab (spring), instead of jumping.
   const activeIndex = Math.max(
     0,
     routes.findIndex((r) => r.key === state.routes[state.index]?.key),
   );
-  const reduce = useReduceMotion();
-  const slide = useRef(new Animated.Value(activeIndex * STEP)).current;
+
+  const slide = useSharedValue(activeIndex * STEP);
   useEffect(() => {
-    if (reduce) slide.setValue(activeIndex * STEP);
-    else
-      Animated.spring(slide, {
-        toValue: activeIndex * STEP,
-        tension: 170,
-        friction: 18,
-        useNativeDriver: true,
-      }).start();
-  }, [activeIndex, reduce, slide]);
+    slide.value = withSpring(activeIndex * STEP, {
+      damping: 18,
+      stiffness: 220,
+      mass: 0.8,
+      reduceMotion: ReduceMotion.System,
+    });
+  }, [activeIndex, slide]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: hidden.value * DROP }],
+  }));
+  const cameraStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: hiddenLate.value * DROP }],
+  }));
+  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slide.value }] }));
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 12 }]}>
-      <Animated.View style={[styles.pill, drop(hidden)]} accessibilityRole="tablist">
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.indicator, { transform: [{ translateX: slide }] }]}
-        />
+      <Animated.View style={[styles.pill, pillStyle]} accessibilityRole="tablist">
+        <Animated.View pointerEvents="none" style={[styles.indicator, indicatorStyle]} />
         {routes.map((route) => {
           const tab = TABS[route.name]!;
           const focused = state.routes[state.index]?.key === route.key;
@@ -94,7 +97,7 @@ function FloatingBar({ state, navigateToTab }: TabBarProps) {
           );
         })}
       </Animated.View>
-      <Animated.View style={drop(hiddenLate)}>
+      <Animated.View style={cameraStyle}>
         <Tap
           accessibilityRole="button"
           accessibilityLabel="Capture a location"

@@ -1,39 +1,33 @@
-import { Icon, type IconName } from '../../ui/icon';
 import type { Page, PublicRecord } from '@shootspot/shared';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  RefreshControl,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
+import { seedLiked } from '../../lib/likes';
 import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { radius, space, type, useTheme } from '../../theme/tokens';
 import { Body, Button, Tap } from '../../ui';
 import { useChrome } from '../../ui/chrome';
-import { Masonry } from '../../ui/masonry';
+import { Icon, type IconName } from '../../ui/icon';
+import { MasonryList, recordTile } from '../../ui/masonry';
 
 /**
- * Image-first discovery (plan journey 2), Savee-style: a two-column masonry of photos with no
- * text; details open on tap. The active scope stays visible in a small floating chip.
+ * Image-first discovery (plan journey 2), Savee-style: a recycling two-column masonry. Each tile
+ * shows a short location pill and a private heart; details open on tap. The active scope stays
+ * visible in a small floating chip that recedes with the menu while scrolling.
  */
 export default function Feed() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { scope, center, locationDenied } = useScope();
-  const { onScroll, hidden, show } = useChrome();
+  const { onScrollY, hidden, show } = useChrome();
   const [items, setItems] = useState<PublicRecord[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'offline' | 'error'>('loading');
   const [refreshing, setRefreshing] = useState(false);
   const loadingMore = useRef(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const waitingForLocation = scope.mode === 'nearby' && !center && !locationDenied;
   const base = useCallback(() => {
@@ -48,6 +42,7 @@ export default function Feed() {
     if (waitingForLocation) return;
     try {
       const page = await api<Page<PublicRecord>>(base());
+      seedLiked(page.items);
       setItems(page.items);
       setCursor(page.nextCursor);
       setState('ready');
@@ -71,33 +66,32 @@ export default function Feed() {
     }, [base, load, show]),
   );
 
-  async function more() {
+  const more = useCallback(async () => {
     if (!cursor || loadingMore.current) return;
     loadingMore.current = true;
     try {
       const page = await api<Page<PublicRecord>>(`${base()}&cursor=${encodeURIComponent(cursor)}`);
+      seedLiked(page.items);
       setItems((prev) => [...prev, ...page.items.filter((p) => !prev.some((x) => x.id === p.id))]);
       setCursor(page.nextCursor);
     } catch {}
     loadingMore.current = false;
-  }
+  }, [base, cursor]);
 
-  const headerY = hidden.interpolate({ inputRange: [0, 1], outputRange: [0, -(insets.top + 70)] });
+  const tiles = useMemo(() => items.map(recordTile), [items]);
   const top = insets.top + 60;
+  const chipStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -hidden.value * (insets.top + 70) }],
+  }));
 
   return (
     <View style={{ flex: 1, backgroundColor: t.canvas }}>
-      <Animated.ScrollView
-        // Native scroll offset drives the tiles' reveal; the listener handles chrome and paging.
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          useNativeDriver: true,
-          listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-            onScroll(e);
-            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-            if (contentOffset.y + layoutMeasurement.height > contentSize.height - 800) void more();
-          },
-        })}
+      <MasonryList
+        tiles={tiles}
+        onScroll={(e) => onScrollY(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
+        onEndReached={() => void more()}
+        onEndReachedThreshold={0.8}
         contentContainerStyle={{ paddingTop: top, paddingBottom: insets.bottom + 120 }}
         refreshControl={
           <RefreshControl
@@ -110,43 +104,33 @@ export default function Feed() {
             }}
           />
         }
-      >
-        {items.length ? (
-          <Masonry
-            scrollY={scrollY}
-            offsetTop={top}
-            tiles={items.map((r) => ({
-              id: r.id,
-              label: r.label,
-              image: r.images.feed,
-              placeholder: r.images.thumb,
-              width: r.images.width,
-              height: r.images.height,
-            }))}
-          />
-        ) : (
+        ListEmptyComponent={
           <Empty
             state={state}
             denied={scope.mode === 'nearby' && locationDenied}
             waiting={waitingForLocation}
             onRetry={() => void load()}
           />
-        )}
-        {cursor && items.length ? (
-          <ActivityIndicator style={{ margin: space.xl }} color={t.muted} />
-        ) : null}
-      </Animated.ScrollView>
+        }
+        ListFooterComponent={
+          cursor && items.length ? (
+            <ActivityIndicator style={{ margin: space.xl }} color={t.muted} />
+          ) : null
+        }
+      />
 
       {/* Scope chip: the active area is always visible (plan §6); tap for area and filters. */}
       <Animated.View
-        style={{
-          position: 'absolute',
-          top: insets.top + 8,
-          left: space.md,
-          right: space.md,
-          flexDirection: 'row',
-          transform: [{ translateY: headerY }],
-        }}
+        style={[
+          {
+            position: 'absolute',
+            top: insets.top + 8,
+            left: space.md,
+            right: space.md,
+            flexDirection: 'row',
+          },
+          chipStyle,
+        ]}
       >
         <Tap
           accessibilityRole="button"

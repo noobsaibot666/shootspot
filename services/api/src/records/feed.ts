@@ -9,7 +9,13 @@ import {
 } from '@shootspot/shared';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, requireViewer, type AppDeps } from '../http/context';
-import { ATTRIBUTION_JOIN, PUBLIC_COLUMNS, toPublicRecord, type PublicRow } from './dto';
+import {
+  ATTRIBUTION_JOIN,
+  PUBLIC_COLUMNS,
+  likedColumn,
+  toPublicRecord,
+  type PublicRow,
+} from './dto';
 
 /** Keyset cursor over (published_at, id); opaque to clients. */
 export function encodeCursor(publishedAt: Date, id: string): string {
@@ -35,7 +41,7 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
    * Without: everything (manual browsing, D-15). Filters: Good for / best light (any match).
    */
   app.get('/v1/feed', { config: { rateLimit: SEARCH_LIMIT } }, async (req, reply) => {
-    await requireViewer(deps, req); // D-05: sign-in required to see anything
+    const viewer = await requireViewer(deps, req); // D-05: sign-in required to see anything
     const q = feedQuerySchema.parse(req.query);
     if ((q.lat == null) !== (q.lon == null)) throw new HttpError(400, 'lat_lon_pair');
     const cursor = q.cursor ? decodeCursor(q.cursor) : null;
@@ -57,8 +63,9 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
     if (cursor)
       where.push(`(l.published_at, l.id) < (${p(cursor.at)}::timestamptz, ${p(cursor.id)}::uuid)`);
 
+    const liked = likedColumn(p(viewer.userId));
     const { rows } = await pool.query<PublicRow>(
-      `select ${PUBLIC_COLUMNS}, ${distance} as distance_m
+      `select ${PUBLIC_COLUMNS}, ${distance} as distance_m, ${liked}
        from locations l join media m on m.location_id = l.id and m.state = 'ready'
        ${ATTRIBUTION_JOIN}
        where ${where.join(' and ')}
