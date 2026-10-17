@@ -24,6 +24,11 @@ export const APP_ORIGIN_HEADER = 'expo-origin';
  */
 export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer }) {
   const { pool, config, mailer } = deps;
+  const isReviewer = (email: string, type: string) =>
+    type === 'sign-in' &&
+    !!config.REVIEW_EMAIL &&
+    !!config.REVIEW_CODE &&
+    email.toLowerCase() === config.REVIEW_EMAIL;
   return betterAuth({
     appName: 'ShootSpot',
     baseURL: config.PUBLIC_API_URL,
@@ -50,7 +55,11 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     advanced: {
       database: { generateId: 'uuid' },
       cookiePrefix: 'shootspot',
-      useSecureCookies: config.PUBLIC_API_URL.startsWith('https://'),
+      // Cookies are only used by the admin web (the app uses bearer tokens), so they follow the
+      // admin origins: it stays on plain HTTP on the LAN even when the API is public over HTTPS.
+      useSecureCookies:
+        config.TRUSTED_ORIGINS.length > 0 &&
+        config.TRUSTED_ORIGINS.every((o) => o.startsWith('https://')),
       // Better Auth silently skips origin/CSRF checks when NODE_ENV=test. Keep them on everywhere
       // so tests exercise exactly what production does.
       disableOriginCheck: false,
@@ -71,8 +80,11 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
         expiresIn: 600,
         allowedAttempts: 5,
         storeOTP: 'hashed',
+        // Store review account (D-34): a fixed code, nothing emailed. Same attempt limits apply.
+        generateOTP: ({ email, type }) =>
+          isReviewer(email, type) ? config.REVIEW_CODE : undefined,
         async sendVerificationOTP({ email, otp, type }) {
-          if (type !== 'sign-in') return;
+          if (type !== 'sign-in' || isReviewer(email, type)) return;
           try {
             await mailer.send({
               to: email,

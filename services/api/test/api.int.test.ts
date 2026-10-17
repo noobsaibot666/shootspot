@@ -97,6 +97,50 @@ describe('auth and onboarding', () => {
     expect(env.mailer.sent.filter((m) => m.to === 'victim@example.com')).toHaveLength(1);
   });
 
+  it('store review account signs in with its fixed code, gets no email, and stays a member (D-34)', async () => {
+    const app = { 'expo-origin': 'shootspot://', 'sec-fetch-mode': 'cors' };
+    const sent = env.mailer.sent.length;
+    const send = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/send-verification-otp',
+      headers: app,
+      payload: { email: 'review@example.com', type: 'sign-in' },
+    });
+    expect(send.statusCode).toBe(200);
+    expect(env.mailer.sent.length).toBe(sent);
+    const wrong = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email-otp',
+      headers: app,
+      payload: { email: 'review@example.com', otp: '111111' },
+    });
+    expect(wrong.statusCode).not.toBe(200);
+    // A wrong guess spends an attempt; request the code again, as the app does.
+    await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/send-verification-otp',
+      headers: app,
+      payload: { email: 'review@example.com', type: 'sign-in' },
+    });
+    const ok = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email-otp',
+      headers: app,
+      payload: { email: 'review@example.com', otp: '246810' },
+    });
+    expect(ok.statusCode).toBe(200);
+    const token = ok.headers['set-auth-token'] as string;
+    const blocked = await env.app.inject({
+      method: 'GET',
+      url: '/admin/v1/summary',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(blocked.statusCode).toBe(403);
+    // Everyone else still gets a random emailed code, never the review code.
+    await signIn(env, 'notreview@example.com');
+    expect(env.mailer.lastCodeFor('notreview@example.com')).not.toBe('246810');
+  });
+
   it('signs in with an emailed code; no passwords exist', async () => {
     const headers = await signIn(env, 'ana@example.com');
     const me = (await env.app.inject({ method: 'GET', url: '/v1/me', headers })).json();

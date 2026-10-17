@@ -74,7 +74,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://shootspot:${POSTGRES_PASSWORD}@db:5432/shootspot
       S3_ENDPOINT: http://s3:8333
-      S3_PUBLIC_ENDPOINT: http://${LAN_IP}:${S3_PORT:-4402}
+      # Host in presigned photo URLs: the LAN by default, the tunnel's media hostname once public.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://${LAN_IP}:${S3_PORT:-4402}}
       SENTRY_DSN: ${SENTRY_DSN_API:-}
       SMTP_URL: ${SMTP_URL:-smtp://mail:1025}
     depends_on:

@@ -61,6 +61,8 @@ export async function createTestEnv(): Promise<TestEnv> {
     S3_BUCKET_QUARANTINE: `t-${suffix}-quarantine`,
     S3_BUCKET_PUBLIC: `t-${suffix}-public`,
     TRUSTED_ORIGINS: 'http://localhost:3000',
+    REVIEW_EMAIL: 'Review@Example.com',
+    REVIEW_CODE: '246810',
   });
   const pool = createPool(databaseUrl);
   const storage = createStorage(config);

@@ -12,7 +12,6 @@ import { feedRoutes } from './records/feed';
 import { recordRoutes } from './records/routes';
 import { captureError } from './sentry';
 import { vocabularyRoutes } from './vocabulary/routes';
-
 export type { AppDeps } from './http/context';
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -151,7 +150,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   projectRoutes(app, deps);
   adminRoutes(app, deps);
   vocabularyRoutes(app, deps);
-
   return app;
 }
 
