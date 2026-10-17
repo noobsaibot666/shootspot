@@ -5,3 +5,4 @@ dist
 apps/mobile/ios
 apps/mobile/android
 docs/production
+.astro

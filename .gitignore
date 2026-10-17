@@ -39,3 +39,6 @@ android/app/build/
 # Next.js generated
 next-env.d.ts
 *.tsbuildinfo
+
+# Astro generated types (docs-site)
+.astro/

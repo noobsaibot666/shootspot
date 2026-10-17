@@ -3,7 +3,8 @@
 Source text for ShootSpot's pages on the shared docs hub (`https://docs.alan-design.com/shootspot/`, D-35). The Mac side ports these into the Starlight site under `legal/` and `user-guide/`. Based on [03-rights-privacy-data-ownership.md](../phase-0/03-rights-privacy-data-ownership.md) and [privacy-declarations.md](privacy-declarations.md).
 
 - **Status:** draft, version `2026-10-draft` (matches `services/api/src/legal.ts`). Counsel review is HANDWORK 4.1. When the wording changes, bump the version in `legal.ts` so that members are asked to accept it again.
-- **Operator:** expose-u. The owner fills in the legal name, legal form and address exactly as on the Impressum: `[OPERATOR — name, legal form, address]`.
+- **Operator:** Alan Alves, trading as expose.u (sole proprietorship / Einzelunternehmen), Dudenstraße 24, 10965 Berlin, Germany; VAT ID DE461275084. Taken from the expose.u finance portal; the owner confirms it matches the Impressum. It replaces `[OPERATOR — name, legal form, address]` below.
+- **Published:** `docs-site/` (Starlight), live at https://docs.alan-design.com/shootspot/. When these drafts change, update the pages there too and redeploy (see `docs-site/README.md`).
 - **Contact:** hello@expose-u.com (as CineFlow).
 
 ---

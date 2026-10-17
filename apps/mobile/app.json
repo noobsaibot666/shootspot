@@ -10,6 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.shootspot.app",
       "supportsTablet": false,
+      "config": { "usesNonExemptEncryption": false },
       "infoPlist": {
         "NSCameraUsageDescription": "ShootSpot uses the camera to photograph locations you scout.",
         "NSLocationWhenInUseUsageDescription": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."

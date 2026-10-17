@@ -32,14 +32,6 @@ Rules:
 
 ## Open requests
 
-- 2026-10-17 → mac: **ShootSpot pages on the docs hub (D-35), owner's request: you have access to the hub and hosts.** Store submission needs a public Privacy policy URL and Google Play's web account-deletion URL.
-  1. Create `shootspot/docs-site/` (Astro + Starlight, same versions and layout as `darkwave/docs` and `framecraft-pc/docs-site`): `site: "https://docs.alan-design.com"`, `base: "/shootspot"`, title "ShootSpot". Publish **only public pages**: `legal/` (privacy, terms, image-licence, delete-account) and `user-guide/` (getting-started, support). The repo's `docs/` (runbooks, NAS, security review) stays internal and must not be published.
-  2. Port the texts from [docs/store/legal-drafts.md](../docs/store/legal-drafts.md) (contact `hello@expose-u.com`, as CineFlow). The owner gives you the operator line (expose-u: legal name, legal form, address, as on the Impressum). Add a short getting-started guide (sign in, browse, capture and publish, likes and projects).
-  3. Build, place `dist/` under the hub's `docs-site/dist/shootspot/`, and add a ShootSpot card to the hub homepage (web_three `docs-site/homepage/`) using the usual web_three deploy flow.
-  4. Log the live URLs here (e.g. `https://docs.alan-design.com/shootspot/legal/privacy/`). Windows then links them from the app's onboarding and Settings and from the store listings.
-  5. **Public API hostnames (D-33).** If you also manage the Cloudflare side: the NAS needs two tunnel hostnames, one for the API (`http://192.168.178.146:4400`) and one for photos (`http://192.168.178.146:4402`). They must be first-level subdomains, or the free certificate won't cover them. Ask the owner which domain (expose-u.com or alan-design.com, to match the other apps). Log the chosen names here; Windows then gives the owner the NAS `.env` block (`PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `CLIENT_IP_HEADER=cf-connecting-ip`). Never route the admin web (`:4401`) through the tunnel.
-
-- 2026-10-17 → mac: **iOS Release build for the owner's outdoor test (HANDWORK 3.9).** The dev build loads JS from Metro on the Mac, so away from home it can't start. Build the **Release** configuration from the latest `main`; it bundles the JS, so no Metro is needed. Use the same `xcodebuild … -allowProvisioningUpdates` command as before, but with `-configuration Release`, then `devicectl` install from `build/Build/Products/Release-iphoneos/ShootSpot.app`. Keep `SENTRY_DISABLE_AUTO_UPLOAD=true`. `apps/mobile/.env` must stay `EXPO_PUBLIC_API_URL=http://192.168.178.146:4400`: app.config then adds the ATS exception for plain HTTP. On the iPhone, the **Tailscale** app must be connected (the NAS's tailnet showed `iphone172` offline for 113 days). The NAS advertises only `192.168.178.146/32`. Check: with Wi-Fi off and Tailscale on, Safari opens `http://192.168.178.146:4400/ready`. Log the result here. Note: Android release builds crashed with R8 on; the iOS Release build has no equivalent, but report any crash at launch.
 - 2026-10-17 → mac, re your note: `tools/phone-e2e.mjs` should run against the **local stack** only (local Mailpit). Real email on the NAS stays. Windows will add a guard next fix round.
 
 - 2026-10-17 → mac: **New iOS dev build needed (`43acc49` or later).** The owner's polish round adds native modules: `react-native-reanimated` 4.7 + `react-native-worklets`, `@shopify/flash-list` 2.3, and `expo-build-properties`. `@expo/vector-icons` is gone. `git pull && pnpm install`, `npx expo prebuild --platform ios --clean`, rebuild, and restart Metro with `--clear`. **Needs NAS images `43acc49`** (likes table, migration 0006); Windows has them on the share and the owner loads them. Then test on the iPhone and log the results:
@@ -73,6 +65,20 @@ Rules:
   6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
 
 ## Log
+
+- 2026-10-17 mac: **Docs hub pages live (D-35).** New `docs-site/` (Astro 5.18.2 + Starlight 0.30.6, same as framecraft/darkwave; standalone npm, not in the pnpm workspace; deploy steps in `docs-site/README.md`). Published only `legal/` and `user-guide/`. Hub homepage card added (web_three `e3eb03a`). Live URLs, all 200:
+  - Privacy: https://docs.alan-design.com/shootspot/legal/privacy/
+  - Terms: https://docs.alan-design.com/shootspot/legal/terms/
+  - Image licence: https://docs.alan-design.com/shootspot/legal/image-licence/
+  - Delete account (Google Play web deletion URL): https://docs.alan-design.com/shootspot/legal/delete-account/
+  - Getting started: https://docs.alan-design.com/shootspot/user-guide/getting-started/
+  - Support: https://docs.alan-design.com/shootspot/user-guide/support/
+
+  Operator line, taken from the expose.u finance portal (owner to confirm against the Impressum): "Alan Alves, trading as expose.u (sole proprietorship), Dudenstraße 24, 10965 Berlin, Germany", VAT ID DE461275084. Also filled in `docs/store/legal-drafts.md`. The in-app links came from both sides in parallel; the rebase kept Windows' `41d42f1` versions, and the Mac added only `usesNonExemptEncryption: false` (iOS export compliance). If the legal wording changes, update `docs-site/` too and redeploy.
+
+- 2026-10-17 mac: **iOS Release build installed (HANDWORK 3.9).** `prebuild --clean`, then `xcodebuild -configuration Release` with `SENTRY_DISABLE_AUTO_UPLOAD=true`; installed via `devicectl`. The JS is bundled (`main.jsbundle`, NAS URL `http://192.168.178.146:4400`), and the Info.plist has the ATS exception. Launch check pending: the phone was locked. Tailscale + mobile data check is with the owner.
+
+- 2026-10-17 mac: **Public API hostnames (D-33): the owner chose `alan-design.com`.** Proposed names (both unused in DNS): `shootspot-api.alan-design.com` → `http://192.168.178.146:4400` and `shootspot-media.alan-design.com` → `http://192.168.178.146:4402`. Both are first-level subdomains. The tunnel itself is **not** created yet. **→ windows:** send the owner the NAS `.env` block for these names. The Cloudflare tunnel routes are set up together with the owner (never `:4401`).
 
 - 2026-10-17 mac: **iOS rebuilt at `17af7e6` (polish round `43acc49` + camera permission fix `55c0c32`)**; installed and running. The compiled `Info.plist` has `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` and `NSLocationWhenInUseUsageDescription`. Reanimated/Worklets pods linked; the AppIcon is still P3. The NAS has the likes routes (`PUT /v1/records/:id/like` → 401, not 404). **Mac fix:** `ui/chrome.tsx` `useAnimatedScrollHandler(…, [onScrollY])` logged "[Reanimated] Dependencies should only be used on the web"; dropped the array. **→ windows:** with Mailpit stopped (real email via Brevo), `tools/phone-e2e.mjs` can't read sign-in codes on the NAS. It needs a test-only code path, a test mailbox it can read, or it should only run against the local stack. Also reformatted this file (Prettier was failing on it).
 
