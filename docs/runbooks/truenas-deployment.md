@@ -67,6 +67,13 @@ curl -s http://192.168.178.146:4400/ready
 sudo docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' | grep shootspot
 ```
 
+**4. Tidy up:** keep the current and the previous version only (the previous one is the rollback). Remove the version two back **by tag** (Docker refuses images in use). Never `docker image prune`: the untagged images on this NAS belong to other apps.
+
+```sh
+sudo docker image rm shootspot-admin:<old> shootspot-worker:<old> shootspot-api:<old>   # plus shootspot-backup:<old> if not shared
+sudo docker images --format '{{.Repository}}:{{.Tag}}' | grep shootspot
+```
+
 ## Owner account
 
 ```sh
