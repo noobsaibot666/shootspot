@@ -14,7 +14,27 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [resent, setResent] = useState(false);
+
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+
+  async function resend() {
+    setError(null);
+    try {
+      await auth.sendCode(email.trim().toLowerCase());
+      setCode('');
+      setResent(true);
+      // Allow another try after 30 s (the server also rate-limits).
+      setTimeout(() => setResent(false), 30_000);
+    } catch (err) {
+      const c = err instanceof ApiError ? err.code : '';
+      setError(
+        c === 'rate_limited'
+          ? 'Too many attempts. Wait a minute and try again.'
+          : 'Could not send the code. Try again.',
+      );
+    }
+  }
 
   async function submit() {
     setBusy(true);
@@ -88,14 +108,23 @@ export default function SignIn() {
           onPress={() => void submit()}
         />
         {step === 'code' ? (
-          <Button
-            label="Use a different email"
-            kind="secondary"
-            onPress={() => {
-              setStep('email');
-              setCode('');
-            }}
-          />
+          <>
+            <Body muted>No email after a minute? Check your spam folder, or send a new code.</Body>
+            <Button
+              label={resent ? 'New code sent' : 'Send a new code'}
+              kind="secondary"
+              disabled={busy || resent}
+              onPress={() => void resend()}
+            />
+            <Button
+              label="Use a different email"
+              kind="ghost"
+              onPress={() => {
+                setStep('email');
+                setCode('');
+              }}
+            />
+          </>
         ) : null}
       </Screen>
     </KeyboardAvoidingView>

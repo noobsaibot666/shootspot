@@ -170,7 +170,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 - [x] **3.2 Email sender: Brevo (D-26).** Done 2026-10-17, on the free plan:
   - Sign-in codes are sent via Brevo SMTP (login `be94a2001@smtp-brevo.com`). The key is only in the NAS `.env`, set with `infra/nas/scripts/email-setup.sh`.
   - Mailpit is stopped.
-  - Brevo blocks SMTP from unknown IPs: if your home IP changes, approve the "Verify a new IP" email, or turn off IP blocking in Brevo → Security.
+  - Brevo blocks SMTP from unknown IPs, and the home IP (Telefonica) changes. On 2026-10-17 sign-in codes stopped (`525 Unauthorized IP`); fixed by authorizing `77.183.215.215` in Brevo → Security → Authorized IPs. **Recommended:** "Deactivate for SMTP keys" there, so the next IP change doesn't block sign-in again. Failed sends now also reach Sentry (shootspot-api).
   - **Later, with the domain:** steps 2 and 4 below switch the sender from `alanxalves@me.com` to `no-reply@<domain>` (DKIM and DMARC, so codes don't land in spam).
 
   Original steps:

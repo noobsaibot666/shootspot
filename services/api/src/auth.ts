@@ -4,6 +4,7 @@ import type pg from 'pg';
 import type { Config } from './config';
 import { INTERNAL_IP_HEADER } from './http/client-ip';
 import type { Mailer } from './mailer';
+import { captureError } from './sentry';
 
 /** The mobile app's URL scheme (app.json "scheme"). */
 export const APP_ORIGIN = 'shootspot://';
@@ -72,13 +73,20 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
         storeOTP: 'hashed',
         async sendVerificationOTP({ email, otp, type }) {
           if (type !== 'sign-in') return;
-          await mailer.send({
-            to: email,
-            subject: `${otp} is your ShootSpot code`,
-            text:
-              `Your ShootSpot sign-in code is ${otp}\n\n` +
-              `It expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
-          });
+          try {
+            await mailer.send({
+              to: email,
+              subject: `${otp} is your ShootSpot code`,
+              text:
+                `Your ShootSpot sign-in code is ${otp}\n\n` +
+                `It expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
+            });
+          } catch (err) {
+            // Better Auth only logs failed sends (the app always sees success), so report them:
+            // a blocked SMTP login (e.g. Brevo's IP check) otherwise goes unnoticed.
+            captureError(err);
+            throw err;
+          }
         },
       }),
       bearer(),
