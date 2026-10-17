@@ -221,7 +221,12 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   - [x] NAS `.env` switched to the public addresses (Block 3, 2026-10-17); `.env.bak-<stamp>` kept
   - [x] EAS production `EXPO_PUBLIC_API_URL=https://shootspot-api.expose-u.com` (set from the Mac, 2026-10-17)
 - [ ] **4.7 Sign-in email from your domain**: in Brevo → Senders, Domains → add `expose-u.com` and add its DNS records in Cloudflare (DKIM, DMARC). Then the sender becomes e.g. `ShootSpot <no-reply@expose-u.com>` and codes stop landing in spam. Also in Brevo → Security → Authorized IPs, **Deactivate for SMTP keys**.
-- [ ] **4.8 App records**: create ShootSpot in App Store Connect (bundle `com.exposeu.shootspot`; `com.shootspot.app` belongs to another Apple developer, D-36) and Play Console (package `com.shootspot.app`). Claude guides you, then runs the EAS production builds and submissions (TestFlight, Play internal track).
+- [ ] **4.8 App records**: App Store Connect and Play Console. Builds are made locally (iOS on the Mac, Android locally), not on Expo's cloud.
+  - [x] **Apple, done 2026-10-17:** app "ShootSpot – Location Scouting" (Apple ID `6824017223`, bundle `com.exposeu.shootspot`, D-36; plain "ShootSpot" was taken). App Privacy published. Through the API (`tools/asc.mjs`, `tools/asc-listing.mjs`, key `UZC482Y6WF`): listing, categories Photo & Video + Travel, age rating 16+ (user-generated content), Free, all countries except mainland China (needs an ICP filing), review contact and notes, TestFlight group "Team" with both of your Apple IDs. Build 1.0.0 (1) uploaded from the Mac and processed (VALID).
+  - [ ] Test the TestFlight build on mobile data, Tailscale off
+  - [ ] Screenshots (at least 3, iPhone 6.9"), captured from your phone over USB and uploaded by Claude
+  - [ ] Reviewer account (4.9), then Claude submits for review
+  - [ ] **Google Play:** create the app (ShootSpot, English (US), App, Free), the App content forms, and optionally the Play API service account
 - [ ] **4.9 Review account (D-34)**: just before submitting, Claude gives the NAS block for `REVIEW_EMAIL`/`REVIEW_CODE`; listing and review notes are in [store/listing.md](store/listing.md).
 - [ ] **4.4 Pick a cloud host for launch.** The NAS is for testing only and should not be the public production server.
 

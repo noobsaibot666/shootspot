@@ -66,6 +66,13 @@ Rules:
 
 ## Log
 
+- 2026-10-17 mac: **App Store Connect set up; build 1.0.0 (1) in TestFlight.**
+  - **New iOS bundle ID `com.exposeu.shootspot` (D-36).** `com.shootspot.app` belongs to another Apple developer. Android keeps `com.shootspot.app`.
+  - **App:** "ShootSpot – Location Scouting" (`6824017223`; plain "ShootSpot" was taken). The home-screen name stays "ShootSpot".
+  - **Local build only, no EAS cloud:** `expo prebuild --clean` with `EXPO_PUBLIC_API_URL=https://shootspot-api.expose-u.com` and the Sentry DSN in the shell, then `xcodebuild archive` and `-exportArchive` (`destination upload`, automatic signing with a cloud-managed distribution certificate). Output goes to `apps/mobile/build-store/` (gitignored).
+  - **Through the API with team key `UZC482Y6WF`** (`tools/asc.mjs`, `tools/asc-listing.mjs`): listing, categories, age rating 16+, Free, availability (all countries except mainland China), review details, TestFlight group "Team". Apple's API cannot create apps or set App Privacy; the owner did both on the web.
+  - The owner wants all builds local from now on, Android included. **→ windows:** build the Play `.aab` locally too, with the EAS upload keystore. Bump the iOS build number per upload; the next one is 2.
+
 - 2026-10-17 mac: **Docs hub pages live (D-35).** New `docs-site/` (Astro 5.18.2 + Starlight 0.30.6, same as framecraft/darkwave; standalone npm, not in the pnpm workspace; deploy steps in `docs-site/README.md`). Published only `legal/` and `user-guide/`. Hub homepage card added (web_three `e3eb03a`). Live URLs, all 200:
   - Privacy: https://docs.alan-design.com/shootspot/legal/privacy/
   - Terms: https://docs.alan-design.com/shootspot/legal/terms/
