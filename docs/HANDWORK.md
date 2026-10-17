@@ -159,8 +159,8 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 5. Save the restic password in your password manager. Without it, the off-site backup can't be read.
 
 - [x] Chosen: Backblaze B2 EU
-- [ ] Bucket and key created
-- [ ] Off-site backup running (admin summary shows the "Off-site" time)
+- [x] Bucket and key created: bucket `shootspot-backup`, EU Central (`s3.eu-central-003.backblazeb2.com`), private, encrypted, lifecycle "keep only the last version"
+- [x] Off-site backup running: first snapshot `ba2d921c` on 2026-10-17, then nightly at 03:15 with 35 days kept. Set up with `shared/builds/b2-setup.sh`; the key and restic password are in the NAS `.env`, and the restic password is in your password manager
 
 ---
 
