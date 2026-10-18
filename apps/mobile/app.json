@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.shootspot.app",
+      "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",

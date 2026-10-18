@@ -19,6 +19,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.store.example
 *.pem
 *.p12
 *.keystore

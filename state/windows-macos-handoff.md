@@ -19,52 +19,28 @@ Rules:
 
 ## Current state
 
-| Item               | Value                                                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase              | 5 closed; owner's polish round before the stores (motion, likes, photo tone, cleanup) built at `43acc49`; NAS images `43acc49` on the share for the owner |
-| Latest commit      | see `git log -1`                                                                                                                                          |
-| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                                                         |
-| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                                                         |
-| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (created; `runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md)                        |
-| Android build      | local release APKs on the owner's Nothing phone (`tools/android-local.ps1 -Release`); JS bundled in, no Metro needed                                      |
-| iOS build          | Phase 3 dev build (`69ff6a7`) installed on iPhone 16 Pro Max (iOS 27.2 beta), Xcode 27.1; flow tests pending                                              |
-| Backend for phones | NAS `http://192.168.178.146:4400`                                                                                                                         |
+| Item               | Value                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Phase              | 5 closed; v1 store submission in progress (iOS 1.0.0 (2) in TestFlight; Android `.aab` pending the upload keystore)       |
+| Latest commit      | see `git log -1`                                                                                                          |
+| Expo project       | `@expose.u/shootspot` (ID `43d5bfac-52db-4815-999f-6cd2336d405b`)                                                         |
+| ai-memory          | Windows: local server, Claude Code wired. Mac: not yet; shared NAS server planned                                         |
+| Server folder      | `/Volumes/Gaia/04_DEV/_personal/shootspot` (`runtime/` is hidden from SMB by design, see docs/runbooks/server-folders.md) |
+| Store builds       | local only, see [docs/runbooks/store-builds.md](../docs/runbooks/store-builds.md)                                         |
+| Android build      | test: `tools/android-local.ps1 -Release`; Play: `tools/android-local.ps1 -Store`                                          |
+| iOS build          | Release builds from the Mac; App Store builds via `xcodebuild archive` (bump `ios.buildNumber`, next is 3)                |
+| Backend for phones | store builds `https://shootspot-api.expose-u.com`; test builds NAS `http://192.168.178.146:4400`                          |
 
 ## Open requests
 
-- 2026-10-17 → mac, re your note: `tools/phone-e2e.mjs` should run against the **local stack** only (local Mailpit). Real email on the NAS stays. Windows will add a guard next fix round.
-
-- 2026-10-17 → mac: **New iOS dev build needed (`43acc49` or later).** The owner's polish round adds native modules: `react-native-reanimated` 4.7 + `react-native-worklets`, `@shopify/flash-list` 2.3, and `expo-build-properties`. `@expo/vector-icons` is gone. `git pull && pnpm install`, `npx expo prebuild --platform ios --clean`, rebuild, and restart Metro with `--clear`. **Needs NAS images `43acc49`** (likes table, migration 0006); Windows has them on the share and the owner loads them. Then test on the iPhone and log the results:
-  - **Motion:** feed scroll (the menu hides pill-first, then camera; it returns with a soft spring), the sliding tab highlight, sheets (spring in, quick out), and the Profile tabs underline. Anything that stutters?
-  - **Feed tiles:** location pill (pin · place · distance) and the heart. Like/unlike there and on the location page; check the **Liked** tab in Profile: long-press → Add to a project / Remove from Liked.
-  - **Location page:** opens with the native transition and the photo shows at once (no blank frame).
-  - **Photo look:** newly published photos get a gentle automatic tone balance (D-32). Publish one dark and one bright photo and say whether they look natural.
-
-- 2026-10-16 → mac: **Phase 4 is built (JS only, no new native modules, no rebuild).** `git pull`, restart Metro with `--clear`, and reload. Test on the iPhone:
-  - the floating Feed · Map · Profile bar and the camera button
-  - the Feed's scope chip and filter sheet (Everywhere, Nearby, a searched place, radius, tags)
-  - Map clusters and the preview card
-  - the location detail: Open in Maps, Save to a project, Report, and the owner switch/delete on your own location
-  - Profile: My locations, Projects (create, rename, delete), and Settings (edit profile, request data export, schedule then cancel deletion)
-
-  **Needs the NAS redeploy first** for the Map tab (new `/v1/map` endpoint). Windows prepares the images and the owner loads them. Log the results or issues here.
-
-- 2026-10-16 → mac: **Phase 3 iOS dev build (real app: sign-in, camera, publish).** New native modules (maps, secure store, router, haptics, expo-image), so a fresh build is needed.
-  1. `git pull && pnpm install`
-  2. Create `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.178.63:4000` (the Windows PC on the same Wi-Fi; the Windows side starts the API, worker and Mailpit before testing).
-  3. `cd apps/mobile && npx expo prebuild --platform ios --clean`, then build and install with the `xcodebuild … -allowProvisioningUpdates` workaround from the log below.
-  4. **Icon check (backlog 3.9):** the new `plugins/with-p3-app-icon.js` copies the P3-tagged icon into the AppIcon set. Confirm `ios/…/AppIcon.appiconset/*1024*.png` still has an ICC profile (`sips -g profile <file>` should say Display P3) and that the home-screen icon looks as vivid as in Figma.
-  5. Run the Phase 3 flow and log the results here:
-     - sign in (the code arrives in Mailpit at `http://192.168.178.63:8025`)
-     - onboarding
-     - capture held sideways and held upright
-     - confirm the pin
-     - notes
-     - publish
-     - the status screen shows **Published**
-  6. ~~Heading test C16/C17~~: deferred to Phase 5 by the owner (low priority).
+_None._
 
 ## Log
+
+- 2026-10-18 windows: **Reviewed the Mac's sign-in redesign and Profile fix (`9a4c296`, `ac99b17`).** No changes needed: on Android, RN maps `autoComplete="one-time-code"` to `sms-otp` itself. Format, typecheck and tests pass. Done on Windows:
+  - **Local Play bundle:** `tools/android-local.ps1 -Store` builds a signed `.aab` (all ABIs, HTTPS API, no cleartext) from `apps/mobile/.env.store`. `android.versionCode` is now in app.json (1). Steps for both platforms: [docs/runbooks/store-builds.md](../docs/runbooks/store-builds.md) (closes backlog 3.10). The upload keystore download from EAS is with the owner (HANDWORK 4.8).
+  - **Closed the old open requests:** the e2e guard is in (`tools/phone-e2e.mjs` stops when there's no Mailpit), and the Phase 3, Phase 4 and polish-round iOS requests are all done per the Mac log below.
+  - Backlog rows 3.11, 4.7 and 5.14 are marked done. 5.15 (R8) is out of v1.
 
 - 2026-10-17 mac: **iOS 1.0.0 (2) in TestFlight**, built locally and uploaded from the Mac.
   - **Owner feedback fixed:** the sign-in screens are redesigned (centered, branded, "Create your free account", six digit boxes, auto-submit, resend countdown).
