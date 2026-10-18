@@ -1,0 +1,12 @@
+{
+  "details": {
+    "defaultLanguage": "en-US",
+    "contactEmail": "hello@expose-u.com",
+    "contactWebsite": "https://docs.alan-design.com/shootspot/user-guide/support/"
+  },
+  "listing": {
+    "title": "ShootSpot",
+    "shortDescription": "Find and share photo and film locations, with light, direction and access notes.",
+    "fullDescription": "ShootSpot is a location-scouting app for photographers and filmmakers.\n\nPhotograph a place you'd shoot, and ShootSpot records what matters for the next visit:\n\n• where it is, and which way the camera points\n• where the sun was\n• the best light\n• what it's good for\n• access, permits and practical notes\n\nBrowse locations near you or anywhere else, filter by what you're shooting, and save the best ones into private projects for your next job.\n\n• Scout fast: a minimal camera close to your phone's own. Or import photos you already took; their location and time fill in automatically.\n• Light and direction: each location shows its compass direction and the sun's position when it was shot, so you know when to go.\n• Anonymous by default: nobody sees who added a location unless you choose to show your name.\n• Private projects: collect locations for a shoot. Only you can see them.\n• Your data: export it any time, or delete your account in the app.\n\nShared by the community: access and conditions change, so always check before you go."
+  }
+}

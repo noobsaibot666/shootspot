@@ -16,6 +16,7 @@ import {
 } from '../http/context';
 import { legalVersions } from '../legal';
 import { imageSet } from '../records/dto';
+import { purgeMedia } from '../records/purge';
 
 const idParam = z.object({ id: z.uuid() });
 const consentSchema = z.object({ kind: z.literal('attribution_notice'), version: z.string() });
@@ -177,7 +178,7 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
     const viewer = await requireOnboarded(deps, req);
     const { id } = idParam.parse(req.params);
     const { rows } = await pool.query(
-      `select m.id, m.original_key, m.derivatives from media m join record_ownership o on o.location_id = m.location_id
+      `select 1 from media m join record_ownership o on o.location_id = m.location_id
        where m.location_id = $1 and o.user_id = $2`,
       [id, viewer.userId],
     );
@@ -186,14 +187,7 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
       `update locations set status = 'removed', attributed = false, updated_at = now() where id = $1`,
       [id],
     );
-    for (const m of rows) {
-      await storage.remove('quarantine', m.original_key);
-      for (const d of m.derivatives as { key: string }[]) await storage.remove('public', d.key);
-      await pool.query(
-        `update media set state = 'purged', derivatives = '[]', updated_at = now() where id = $1`,
-        [m.id],
-      );
-    }
+    await purgeMedia(pool, storage, id);
     return reply.code(204).send();
   });
 

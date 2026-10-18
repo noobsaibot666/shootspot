@@ -10,6 +10,7 @@ import {
   type AppDeps,
   type Viewer,
 } from '../http/context';
+import { purgeMedia } from '../records/purge';
 import { decryptSecret, encryptSecret, newTotp, verifyTotp } from './mfa';
 
 const idParam = z.object({ id: z.uuid() });
@@ -304,6 +305,8 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
         to: next,
       });
     });
+    // Remove is final (there is no restore from it), so the photos go too.
+    if (body.action === 'remove') await purgeMedia(pool, storage, id);
     return reply.code(204).send();
   });
 

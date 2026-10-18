@@ -741,6 +741,17 @@ describe('admin (server-side role + MFA)', () => {
       .filter((e: { target_id: string }) => e.target_id === rec)
       .map((e: { action: string }) => e.action);
     expect(actions).toEqual(expect.arrayContaining(['record.hide', 'record.view_creator']));
+
+    // Remove is final: the photos are purged too.
+    const remove = await env.app.inject({
+      method: 'POST',
+      url: `/admin/v1/records/${rec}/moderate`,
+      headers: adminHeaders,
+      payload: { action: 'remove', reason: 'Test content' },
+    });
+    expect(remove.statusCode).toBe(204);
+    const media = await env.pool.query(`select state from media where location_id = $1`, [rec]);
+    expect(media.rows.map((m) => m.state)).toEqual(['purged']);
   });
 });
 

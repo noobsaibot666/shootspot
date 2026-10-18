@@ -84,6 +84,36 @@ if (process.argv[1] && import.meta.url === `file:///${process.argv[1].replace(/\
     });
     await play('POST', `${PACKAGE}/edits/${edit.id}:commit`);
     console.log(`committed: draft release on ${track}`);
+  } else if (cmd === 'image') {
+    // node tools/play.mjs image <icon|featureGraphic|phoneScreenshots> <file.png>... : replaces that set.
+    const [, type, ...files] = process.argv.slice(2);
+    const edit = await play('POST', `${PACKAGE}/edits`);
+    const path = `${PACKAGE}/edits/${edit.id}/listings/en-US/${type}`;
+    await play('DELETE', path);
+    for (const file of files) {
+      const res = await fetch(
+        `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${path}?uploadType=media`,
+        {
+          method: 'POST',
+          headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'image/png' },
+          body: readFileSync(file),
+        },
+      );
+      if (!res.ok) throw new Error(`${type} ${file}: ${res.status} ${await res.text()}`);
+    }
+    await play('POST', `${PACKAGE}/edits/${edit.id}:commit`);
+    console.log(`committed: ${files.length} ${type}`);
+  } else if (cmd === 'listing') {
+    // node tools/play.mjs listing <listing.json>: { details: {...}, listing: { title, shortDescription, fullDescription } }
+    const data = JSON.parse(readFileSync(process.argv[3], 'utf8'));
+    const edit = await play('POST', `${PACKAGE}/edits`);
+    await play('PUT', `${PACKAGE}/edits/${edit.id}/details`, data.details);
+    await play('PUT', `${PACKAGE}/edits/${edit.id}/listings/en-US`, {
+      language: 'en-US',
+      ...data.listing,
+    });
+    await play('POST', `${PACKAGE}/edits/${edit.id}:commit`);
+    console.log('committed: details and en-US listing');
   } else {
     console.log('usage: node tools/play.mjs check [package] | upload <file.aab> [track]');
   }
