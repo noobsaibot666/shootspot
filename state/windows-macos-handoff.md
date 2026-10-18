@@ -33,9 +33,14 @@ Rules:
 
 ## Open requests
 
-_None._
+- 2026-10-18 → mac: **iOS build 3 for TestFlight from `d8f5dac` or later** (JS only, no new native modules). New since build 2: sign-in with an optional password (D-37: "Sign in with a password" on the sign-in screen, Settings → Password). Bump `ios.buildNumber` to 3. The NAS already runs `d8f5dac`.
 
 ## Log
+
+- 2026-10-18 windows: **Play internal testing live; admin sign-in hardened (D-37); NAS on `d8f5dac`.**
+  - Play app `com.shootspot.app` created; 1.0.0 (1) uploaded and rolled out to internal testing through the Play API (`tools/play.mjs`, service account `play-publisher@shootspot-0t76lk`). Listing text and icon set via the API.
+  - Admin web: password + authenticator, for owners in `ADMIN_EMAILS` (NAS `.env`) only; an email code only sets or resets the password. Members may set an optional password. Admin sign-in was reset and set up again by the owner.
+  - Admin **Remove** now purges the photos. The test locations and the 4 Mac E2E accounts are gone from the NAS.
 
 - 2026-10-18 windows: **Reviewed the Mac's sign-in redesign and Profile fix (`9a4c296`, `ac99b17`).** No changes needed: on Android, RN maps `autoComplete="one-time-code"` to `sms-otp` itself. Format, typecheck and tests pass. Done on Windows:
   - **Local Play bundle:** `tools/android-local.ps1 -Store` builds a signed `.aab` (all ABIs, HTTPS API, no cleartext) from `apps/mobile/.env.store`. `android.versionCode` is now in app.json (1). Steps for both platforms: [docs/runbooks/store-builds.md](../docs/runbooks/store-builds.md) (closes backlog 3.10). The upload keystore download from EAS is with the owner (HANDWORK 4.8).
