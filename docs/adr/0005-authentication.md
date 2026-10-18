@@ -33,3 +33,7 @@
 
 - Email delivery is required from day one (HANDWORK 3.2). In development, codes go to a local Mailpit inbox.
 - Phase 2 pins the Better Auth version and checks its installed type definitions before use, because the library moves quickly.
+
+## Amendment 2026-10-18 (D-37)
+
+Members may set an optional password (Settings; `PUT /v1/me/password`) and sign in with `/api/auth/sign-in/email`. There is no password sign-up: accounts are still created only by email-code sign-in. Changing a password needs the current one or a sign-in from the last 15 minutes, and signs out other sessions. The admin web accepts only password sessions (`auth_password_sessions`) plus TOTP, for owners listed in `ADMIN_EMAILS`; an email code only lets an admin set or reset the password. Admin sign-ins and new authenticators are emailed to the admin.

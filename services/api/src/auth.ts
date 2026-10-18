@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { createAuthMiddleware } from 'better-auth/api';
 import { bearer, emailOTP } from 'better-auth/plugins';
 import type pg from 'pg';
 import type { Config } from './config';
@@ -18,10 +19,12 @@ export const APP_ORIGIN_HEADER = 'expo-origin';
 
 /**
  * Authentication (ADR 0005): Better Auth inside the API, tables in our Postgres.
- * Members sign in with a 6-digit email code only; there are no passwords. Mobile clients use
- * bearer tokens, the admin web uses cookies. Admin MFA is enforced by our own admin routes
- * (src/admin/mfa.ts), because email-code sign-in is not challenged by Better Auth's 2FA plugin.
+ * Members sign in with a 6-digit email code, or with a password once they've set one (optional,
+ * set while signed in: src/me/password.ts; there is no password sign-up). Mobile clients use
+ * bearer tokens, the admin web uses cookies. The admin web accepts only password sessions
+ * (recorded in auth_password_sessions) plus TOTP, enforced by our own admin routes (src/admin/mfa.ts).
  */
+export const MIN_PASSWORD = 10;
 export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer }) {
   const { pool, config, mailer } = deps;
   const isReviewer = (email: string, type: string) =>
@@ -38,7 +41,23 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     // Browser origins (admin web) plus the app's own scheme (see APP_ORIGIN_HEADER).
     trustedOrigins: [...config.TRUSTED_ORIGINS, APP_ORIGIN],
     telemetry: { enabled: false },
-    emailAndPassword: { enabled: false },
+    emailAndPassword: {
+      enabled: true,
+      // Accounts are only ever created by email-code sign-in (which proves the address).
+      disableSignUp: true,
+      minPasswordLength: MIN_PASSWORD,
+      maxPasswordLength: 128,
+    },
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        const session = ctx.context.newSession?.session;
+        if (ctx.path === '/sign-in/email' && session) {
+          await pool.query('insert into auth_password_sessions (session_id) values ($1)', [
+            session.id,
+          ]);
+        }
+      }),
+    },
     user: {
       modelName: 'auth_users',
       additionalFields: {

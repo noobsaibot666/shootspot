@@ -30,7 +30,8 @@ export default function SignIn() {
   const { refresh } = useSession();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [step, setStep] = useState<'email' | 'code' | 'password'>('email');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
@@ -69,6 +70,25 @@ export default function SignIn() {
     }
   }
 
+  async function passwordSignIn() {
+    setBusy(true);
+    setError(null);
+    try {
+      await auth.signInWithPassword(address, password);
+      await refresh();
+      router.replace('/');
+    } catch (err) {
+      const c = err instanceof ApiError ? err.code : '';
+      setError(
+        c === 'offline' || c === 'rate_limited'
+          ? message(err, false)
+          : 'Email or password is wrong. No password yet? Use an email code.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function verify(value: string) {
     if (busy) return;
     setBusy(true);
@@ -100,7 +120,7 @@ export default function SignIn() {
           }}
         >
           <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: space.xxl }}>
-            <Brand compact={step === 'code'} />
+            <Brand compact={step !== 'email'} />
 
             {step === 'email' ? (
               <View style={{ gap: space.lg }}>
@@ -136,6 +156,15 @@ export default function SignIn() {
                   disabled={!valid}
                   onPress={() => void sendCode()}
                 />
+                <Button
+                  label="Sign in with a password"
+                  kind="ghost"
+                  size="small"
+                  onPress={() => {
+                    setError(null);
+                    setStep('password');
+                  }}
+                />
                 <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
                   By continuing you agree to the{' '}
                   <Text
@@ -155,6 +184,54 @@ export default function SignIn() {
                   </Text>
                   .
                 </Text>
+              </View>
+            ) : step === 'password' ? (
+              <View style={{ gap: space.lg }}>
+                <Text
+                  accessibilityRole="header"
+                  style={[type.title, { color: t.ink, textAlign: 'center' }]}
+                >
+                  Sign in with your password
+                </Text>
+                <Field
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  textContentType="username"
+                />
+                <Field
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={() => valid && password && void passwordSignIn()}
+                />
+                {error ? <ErrorNote>{error}</ErrorNote> : null}
+                <Button
+                  label="Sign in"
+                  busy={busy}
+                  disabled={!valid || !password}
+                  onPress={() => void passwordSignIn()}
+                />
+                <Button
+                  label="Use an email code instead"
+                  kind="ghost"
+                  size="small"
+                  onPress={() => {
+                    setError(null);
+                    setPassword('');
+                    setStep('email');
+                  }}
+                />
               </View>
             ) : (
               <View style={{ gap: space.lg }}>

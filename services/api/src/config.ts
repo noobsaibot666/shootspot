@@ -20,6 +20,11 @@ const envSchema = z
     /** Browser origins allowed to call the API with cookies (admin web). Mobile uses bearer tokens. */
     TRUSTED_ORIGINS: csv,
     /**
+     * Who may use the admin web, besides having the owner role in the database. Kept in the
+     * root-only .env, so a database change alone can't create an administrator. Empty: nobody.
+     */
+    ADMIN_EMAILS: csv.transform((list) => list.map((e) => e.toLowerCase())),
+    /**
      * Header carrying the real client IP when behind a proxy (`cf-connecting-ip` behind the
      * Cloudflare Tunnel). Unset in development. Rate limits are per IP, so without this every phone
      * would share the tunnel's single address.

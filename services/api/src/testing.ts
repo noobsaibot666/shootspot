@@ -61,6 +61,7 @@ export async function createTestEnv(): Promise<TestEnv> {
     S3_BUCKET_QUARANTINE: `t-${suffix}-quarantine`,
     S3_BUCKET_PUBLIC: `t-${suffix}-public`,
     TRUSTED_ORIGINS: 'http://localhost:3000',
+    ADMIN_EMAILS: ADMIN_EMAILS.join(','),
     REVIEW_EMAIL: 'Review@Example.com',
     REVIEW_CODE: '246810',
   });
@@ -70,7 +71,7 @@ export async function createTestEnv(): Promise<TestEnv> {
   const mailer = createMemoryMailer();
   const queue = createMemoryQueue();
   const auth = createAuth({ pool, config, mailer });
-  const app = await buildApp({ config, pool, auth, storage, queue });
+  const app = await buildApp({ config, pool, auth, storage, queue, mailer });
 
   return {
     app,
@@ -162,13 +163,44 @@ export async function grantOwner(env: TestEnv, email: string) {
   );
 }
 
+/** Admin-web accounts in the test config's ADMIN_EMAILS (the owner role alone is not enough). */
+export const ADMIN_EMAILS = [
+  'paulo@example.com',
+  'quica@example.com',
+  'quim@example.com',
+  'rita@example.com',
+  'library-admin@example.com',
+  'tags-admin@example.com',
+];
+export const ADMIN_PASSWORD = 'correct horse battery staple';
+
+const browser = {
+  origin: ADMIN_ORIGIN,
+  'sec-fetch-site': 'same-origin',
+  'sec-fetch-mode': 'cors',
+};
+const cookiesOf = (res: { cookies: { name: string; value: string }[] }) => ({
+  cookie: res.cookies.map((c) => `${c.name}=${c.value}`).join('; '),
+});
+
+/** Email + password sign-in from the admin web; returns the session cookie. */
+export async function browserPasswordSignIn(
+  env: TestEnv,
+  email: string,
+  password = ADMIN_PASSWORD,
+): Promise<CookieHeaders> {
+  const res = await env.app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-in/email',
+    headers: browser,
+    payload: { email, password },
+  });
+  if (res.statusCode !== 200) throw new Error(`password sign in ${res.statusCode} ${res.body}`);
+  return cookiesOf(res);
+}
+
 /** Email-code sign-in from the admin web (browser origin); returns the session cookie. */
 export async function browserSignIn(env: TestEnv, email: string): Promise<CookieHeaders> {
-  const browser = {
-    origin: ADMIN_ORIGIN,
-    'sec-fetch-site': 'same-origin',
-    'sec-fetch-mode': 'cors',
-  };
   await env.app.inject({
     method: 'POST',
     url: '/api/auth/email-otp/send-verification-otp',
@@ -183,13 +215,24 @@ export async function browserSignIn(env: TestEnv, email: string): Promise<Cookie
     payload: { email, otp },
   });
   if (res.statusCode !== 200) throw new Error(`browser sign in ${res.statusCode} ${res.body}`);
-  return { cookie: res.cookies.map((c) => `${c.name}=${c.value}`).join('; ') };
+  return cookiesOf(res);
 }
 
-/** Owner signed in on the admin web, with confirmed TOTP and an MFA-verified session. */
+/**
+ * Owner signed in on the admin web the real way: email code → set a password → password sign-in
+ * → TOTP enrolment and an MFA-verified session.
+ */
 export async function admin(env: TestEnv, email: string) {
   await grantOwner(env, email);
-  const headers = await browserSignIn(env, email);
+  const codeSession = await browserSignIn(env, email);
+  const set = await env.app.inject({
+    method: 'POST',
+    url: '/admin/v1/password',
+    headers: codeSession,
+    payload: { newPassword: ADMIN_PASSWORD },
+  });
+  if (set.statusCode !== 204) throw new Error(`set password ${set.statusCode} ${set.body}`);
+  const headers = await browserPasswordSignIn(env, email);
   const enroll = await env.app.inject({ method: 'POST', url: '/admin/v1/mfa/enroll', headers });
   const secret = new URL(enroll.json().otpauthUri).searchParams.get('secret');
   if (!secret) throw new Error('no totp secret');

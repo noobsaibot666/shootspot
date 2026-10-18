@@ -2,7 +2,10 @@ import { currentTotp } from '../src/admin/mfa';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ADMIN_ORIGIN,
+  ADMIN_PASSWORD,
+  APP_HEADERS,
   admin,
+  browserPasswordSignIn,
   browserSignIn,
   createTestEnv,
   draftBody,
@@ -647,12 +650,112 @@ describe('admin (server-side role + MFA)', () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it('requires a verified MFA session even for owners', async () => {
+  it('requires the allowlist, a password session and TOTP', async () => {
+    const summary = async (headers: { cookie: string }) =>
+      env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers });
+
+    // Owner role in the database but not in ADMIN_EMAILS: no admin web at all.
+    await grantOwner(env, 'intruder@example.com');
+    const intruder = await browserSignIn(env, 'intruder@example.com');
+    expect((await summary(intruder)).json().error).toBe('forbidden');
+    const intruderPw = await env.app.inject({
+      method: 'POST',
+      url: '/admin/v1/password',
+      headers: intruder,
+      payload: { newPassword: ADMIN_PASSWORD },
+    });
+    expect(intruderPw.statusCode).toBe(403);
+
+    // Listed owner on an email-code session: may set a password, nothing else.
     await grantOwner(env, 'quica@example.com');
-    const web = await browserSignIn(env, 'quica@example.com');
-    const res = await env.app.inject({ method: 'GET', url: '/admin/v1/summary', headers: web });
+    const code = await browserSignIn(env, 'quica@example.com');
+    expect((await summary(code)).json().error).toBe('password_required');
+    expect(
+      (await env.app.inject({ method: 'POST', url: '/admin/v1/mfa/enroll', headers: code }))
+        .statusCode,
+    ).toBe(403);
+    const set = await env.app.inject({
+      method: 'POST',
+      url: '/admin/v1/password',
+      headers: code,
+      payload: { newPassword: ADMIN_PASSWORD },
+    });
+    expect(set.statusCode).toBe(204);
+
+    // Password session: still needs TOTP.
+    const web = await browserPasswordSignIn(env, 'quica@example.com');
+    const res = await summary(web);
     expect(res.statusCode).toBe(403);
     expect(res.json().error).toBe('mfa_required');
+    // No password sign-up: unknown emails can't create accounts this way.
+    const signUp = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      headers: { origin: ADMIN_ORIGIN },
+      payload: { email: 'new@example.com', password: ADMIN_PASSWORD, name: 'x' },
+    });
+    expect(signUp.statusCode).toBeGreaterThanOrEqual(400);
+  });
+
+  it('members can set a password and sign in with it; a change needs the old one or a fresh code', async () => {
+    const headers = await member(env, 'pw-member@example.com');
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/v1/me', headers })).json().hasPassword,
+    ).toBe(false);
+    const short = await env.app.inject({
+      method: 'PUT',
+      url: '/v1/me/password',
+      headers,
+      payload: { newPassword: 'short' },
+    });
+    expect(short.statusCode).toBe(400);
+    const first = await env.app.inject({
+      method: 'PUT',
+      url: '/v1/me/password',
+      headers,
+      payload: { newPassword: 'first password 1' },
+    });
+    expect(first.statusCode).toBe(204);
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/v1/me', headers })).json().hasPassword,
+    ).toBe(true);
+
+    const signInPw = (password: string) =>
+      env.app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        headers: APP_HEADERS,
+        payload: { email: 'pw-member@example.com', password },
+      });
+    expect((await signInPw('wrong password 1')).statusCode).toBe(401);
+    const ok = await signInPw('first password 1');
+    expect(ok.statusCode).toBe(200);
+    const pwHeaders = { authorization: `Bearer ${ok.headers['set-auth-token']}` };
+
+    // Old sessions are 'fresh' here (just created), so make this one look old: then the current
+    // password is required.
+    await env.pool.query(
+      `update auth_sessions set "createdAt" = now() - interval '1 hour'
+       where "userId" = (select id from auth_users where email = $1)`,
+      ['pw-member@example.com'],
+    );
+    const noCurrent = await env.app.inject({
+      method: 'PUT',
+      url: '/v1/me/password',
+      headers: pwHeaders,
+      payload: { newPassword: 'second password 2' },
+    });
+    expect(noCurrent.json().error).toBe('recent_sign_in_required');
+    const withCurrent = await env.app.inject({
+      method: 'PUT',
+      url: '/v1/me/password',
+      headers: pwHeaders,
+      payload: { newPassword: 'second password 2', currentPassword: 'first password 1' },
+    });
+    expect(withCurrent.statusCode).toBe(204);
+    // The change signed out the other session.
+    expect((await env.app.inject({ method: 'GET', url: '/v1/me', headers })).statusCode).toBe(401);
+    expect((await signInPw('second password 2')).statusCode).toBe(200);
   });
 
   it('MFA is bound to the session and codes cannot be replayed', async () => {

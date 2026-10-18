@@ -13,6 +13,7 @@ export interface Me {
   };
   onboarded: boolean;
   deletionScheduledFor: string | null;
+  hasPassword?: boolean;
 }
 
 type State =

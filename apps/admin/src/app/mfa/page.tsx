@@ -27,7 +27,9 @@ export default function Mfa() {
         setState('enrol');
       })
       .catch((err) => {
-        if (err instanceof ApiError && err.status === 401) router.replace('/sign-in');
+        // Not signed in, or signed in with an email code instead of the password.
+        if (err instanceof ApiError && (err.status === 401 || err.code === 'password_required'))
+          router.replace('/sign-in');
         else setState('forbidden');
       });
   }, [router]);

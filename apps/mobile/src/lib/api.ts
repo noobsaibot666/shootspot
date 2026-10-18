@@ -66,8 +66,20 @@ export async function api<T = unknown>(
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-/** Passwordless sign-in (ADR 0005). */
+/** Email-code sign-in (ADR 0005), or a password the member set in Settings. */
 export const auth = {
+  async signInWithPassword(email: string, password: string) {
+    const res = await fetch(`${API_URL}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...APP_HEADERS },
+      body: JSON.stringify({ email, password }),
+    }).catch(() => null);
+    if (!res) throw new ApiError(0, 'offline');
+    const issued = res.headers.get('set-auth-token');
+    if (!res.ok || !issued)
+      throw new ApiError(res.status, res.status === 429 ? 'rate_limited' : 'invalid_password');
+    await saveToken(issued);
+  },
   async sendCode(email: string) {
     const res = await fetch(`${API_URL}/api/auth/email-otp/send-verification-otp`, {
       method: 'POST',

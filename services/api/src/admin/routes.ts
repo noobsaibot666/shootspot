@@ -6,10 +6,12 @@ import {
   HttpError,
   notFound,
   requireAdmin,
+  requireAdminIdentity,
   requireOwner,
   type AppDeps,
   type Viewer,
 } from '../http/context';
+import { hasPassword, passwordSchema, setPassword } from '../me/password';
 import { purgeMedia } from '../records/purge';
 import { decryptSecret, encryptSecret, newTotp, verifyTotp } from './mfa';
 
@@ -46,7 +48,29 @@ export async function audit(
 export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
   const { pool, storage, config } = deps;
 
-  // ---- MFA (owner role, session not yet verified) -------------------------------------------
+  // ---- Password (admin identity, any session: the email-code path to set or reset it) ---------
+
+  app.get('/admin/v1/account', async (req) => {
+    const viewer = await requireAdminIdentity(deps, req);
+    const { rowCount } = await pool.query(
+      'select 1 from auth_password_sessions where session_id = $1',
+      [viewer.sessionId],
+    );
+    return {
+      email: viewer.email,
+      hasPassword: await hasPassword(deps, viewer.userId),
+      passwordSession: Boolean(rowCount),
+    };
+  });
+
+  app.post('/admin/v1/password', async (req, reply) => {
+    const viewer = await requireAdminIdentity(deps, req);
+    await setPassword(deps, viewer, passwordSchema.parse(req.body));
+    await audit(pool, viewer, 'admin.password_set', { type: 'user', id: viewer.userId });
+    return reply.code(204).send();
+  });
+
+  // ---- MFA (admin identity on a password session, not yet verified) --------------------------
 
   app.get('/admin/v1/mfa', async (req) => {
     const viewer = await requireOwner(deps, req);
@@ -103,6 +127,18 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
       );
       await audit(c, viewer, 'mfa.verified', { type: 'user', id: viewer.userId });
     });
+    // Every admin sign-in (and a new authenticator) is announced to the admin's own inbox.
+    const what = mfa.confirmed_at ? 'New sign-in' : 'New authenticator set up';
+    await deps.mailer
+      ?.send({
+        to: viewer.email,
+        subject: `${what}: ShootSpot admin`,
+        text:
+          `${what} for the ShootSpot admin web, account ${viewer.email}, at ` +
+          `${new Date().toISOString().replace('T', ' ').slice(0, 16)} UTC from ${req.ip}.\n\n` +
+          `If this wasn't you, change your admin password and contact the server owner now.`,
+      })
+      .catch(() => {});
     return reply.code(204).send();
   });
 

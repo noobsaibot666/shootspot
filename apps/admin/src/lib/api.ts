@@ -37,6 +37,10 @@ export const auth = {
     }),
   signIn: (email: string, otp: string) =>
     api('/api/auth/sign-in/email-otp', { method: 'POST', body: { email, otp } }),
+  passwordSignIn: (email: string, password: string) =>
+    api('/api/auth/sign-in/email', { method: 'POST', body: { email, password } }),
+  setPassword: (newPassword: string) =>
+    api('/admin/v1/password', { method: 'POST', body: { newPassword } }),
   session: () => api<{ user: { email: string; role?: string } } | null>('/api/auth/get-session'),
   signOut: () => api('/api/auth/sign-out', { method: 'POST', body: {} }),
 };

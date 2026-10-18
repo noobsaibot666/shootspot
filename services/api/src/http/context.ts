@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth';
 import type { Config } from '../config';
 import type { Pool } from '../db';
+import type { Mailer } from '../mailer';
 import type { JobQueue } from '../queue';
 import type { Storage } from '../storage';
 
@@ -12,6 +13,8 @@ export interface AppDeps {
   auth: Auth;
   storage: Storage;
   queue: JobQueue;
+  /** Security notices (password changes, admin sign-ins). */
+  mailer?: Mailer;
   logger?: boolean;
 }
 
@@ -83,11 +86,27 @@ export async function requireOnboarded(deps: AppDeps, req: FastifyRequest): Prom
   return viewer;
 }
 
-/** Owner role on an admin-web session, no MFA yet: only for the MFA enrol/verify endpoints. */
-export async function requireOwner(deps: AppDeps, req: FastifyRequest): Promise<Viewer> {
+/**
+ * Owner role in the database AND listed in ADMIN_EMAILS (root-only .env), on an admin-web session
+ * of any kind. Only for setting the admin's password (after an email-code sign-in).
+ */
+export async function requireAdminIdentity(deps: AppDeps, req: FastifyRequest): Promise<Viewer> {
   const viewer = await getViewer(deps, req, 'admin');
   if (!viewer) throw new HttpError(401, 'unauthenticated');
-  if (viewer.role !== 'owner') throw new HttpError(403, 'forbidden');
+  if (viewer.role !== 'owner' || !deps.config.ADMIN_EMAILS.includes(viewer.email.toLowerCase())) {
+    throw new HttpError(403, 'forbidden');
+  }
+  return viewer;
+}
+
+/** Admin identity on a password session, no MFA yet: only for the MFA enrol/verify endpoints. */
+export async function requireOwner(deps: AppDeps, req: FastifyRequest): Promise<Viewer> {
+  const viewer = await requireAdminIdentity(deps, req);
+  const { rowCount } = await deps.pool.query(
+    'select 1 from auth_password_sessions where session_id = $1',
+    [viewer.sessionId],
+  );
+  if (!rowCount) throw new HttpError(403, 'password_required');
   return viewer;
 }
 

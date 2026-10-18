@@ -17,6 +17,7 @@ import {
 import { legalVersions } from '../legal';
 import { imageSet } from '../records/dto';
 import { purgeMedia } from '../records/purge';
+import { hasPassword, passwordSchema, setPassword } from './password';
 
 const idParam = z.object({ id: z.uuid() });
 const consentSchema = z.object({ kind: z.literal('attribution_notice'), version: z.string() });
@@ -47,7 +48,15 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
       },
       onboarded: Boolean(p?.onboarded_at),
       deletionScheduledFor: p?.deletion_at ? new Date(p.deletion_at).toISOString() : null,
+      hasPassword: await hasPassword(deps, viewer.userId),
     };
+  });
+
+  /** Optional password (sign in with it instead of an email code). Rules in me/password.ts. */
+  app.put('/v1/me/password', async (req, reply) => {
+    const viewer = await requireViewer(deps, req);
+    await setPassword(deps, viewer, passwordSchema.parse(req.body));
+    return reply.code(204).send();
   });
 
   /** Age gate + versioned consents + name. Versions must match the current ones. */

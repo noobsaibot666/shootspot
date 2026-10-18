@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { listImports, pickPhotos } from '../lib/imports';
 import { links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
@@ -48,6 +48,10 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exports, setExports] = useState<ExportItem[]>([]);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw, setPw] = useState({ current: '', next: '', repeat: '' });
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
   const name = me
     ? me.profile.displayName || `${me.profile.firstName} ${me.profile.lastName}`.trim()
     : '';
@@ -82,6 +86,34 @@ export default function Settings() {
       setError('Could not save. Check the portfolio link is a web address, like example.com');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function savePassword() {
+    if (pw.next.length < 10) return setPwError('Use at least 10 characters.');
+    if (pw.next !== pw.repeat) return setPwError('The two passwords are different.');
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      await api('/v1/me/password', {
+        method: 'PUT',
+        body: { newPassword: pw.next, currentPassword: pw.current || undefined },
+      });
+      await refresh();
+      setPw({ current: '', next: '', repeat: '' });
+      setPwOpen(false);
+      Alert.alert('Password saved', 'You can now sign in with your email and this password.');
+    } catch (err) {
+      const c = err instanceof ApiError ? err.code : '';
+      setPwError(
+        c === 'wrong_password'
+          ? 'The current password is wrong.'
+          : c === 'recent_sign_in_required'
+            ? 'Enter your current password. Forgot it? Sign out, sign in with an email code, and set a new one right after.'
+            : 'Could not save the password. Try again.',
+      );
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -188,6 +220,53 @@ export default function Settings() {
             />
             {error ? <ErrorNote>{error}</ErrorNote> : null}
             <Button label="Save profile" busy={saving} onPress={() => void save()} />
+          </View>
+        ) : null}
+
+        <ListRow
+          icon="lock"
+          label="Password"
+          value={me?.hasPassword ? 'Set' : 'Not set'}
+          onPress={() => setPwOpen((o) => !o)}
+        />
+        {pwOpen ? (
+          <View style={{ paddingHorizontal: space.lg, gap: space.lg, paddingBottom: space.lg }}>
+            <Body muted>
+              Optional. With a password you can sign in without waiting for an email code. Codes
+              keep working.
+            </Body>
+            {me?.hasPassword ? (
+              <Field
+                label="Current password"
+                hint="Not needed if you signed in with an email code in the last 15 minutes."
+                value={pw.current}
+                onChangeText={(v) => setPw({ ...pw, current: v })}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="current-password"
+                textContentType="password"
+              />
+            ) : null}
+            <Field
+              label="New password (at least 10 characters)"
+              value={pw.next}
+              onChangeText={(v) => setPw({ ...pw, next: v })}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            <Field
+              label="Repeat it"
+              value={pw.repeat}
+              onChangeText={(v) => setPw({ ...pw, repeat: v })}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            {pwError ? <ErrorNote>{pwError}</ErrorNote> : null}
+            <Button label="Save password" busy={pwBusy} onPress={() => void savePassword()} />
           </View>
         ) : null}
 

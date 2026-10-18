@@ -54,6 +54,8 @@ const LightningAIcon: PhosphorIcon =
 const LightningSlashIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/LightningSlash').LightningSlashIcon;
 const ListIcon: PhosphorIcon = require('phosphor-react-native/src/icons/List').ListIcon;
+const LockSimpleIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/LockSimple').LockSimpleIcon;
 const MagnifyingGlassIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/MagnifyingGlass').MagnifyingGlassIcon;
 const MapPinIcon: PhosphorIcon = require('phosphor-react-native/src/icons/MapPin').MapPinIcon;
@@ -127,6 +129,7 @@ const ICONS = {
   navigate: NavigationArrowIcon,
   offline: CloudSlashIcon,
   person: UserIcon,
+  lock: LockSimpleIcon,
   pin: MapPinIcon,
   profile: UserCircleIcon,
   rejected: XCircleIcon,

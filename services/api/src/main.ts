@@ -28,7 +28,7 @@ for (let attempt = 1; ; attempt++) {
   }
 }
 
-const app = await buildApp({ config, pool, auth, storage, queue, logger: true });
+const app = await buildApp({ config, pool, auth, storage, queue, mailer, logger: true });
 
 const shutdown = async () => {
   await app.close();
