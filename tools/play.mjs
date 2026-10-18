@@ -53,7 +53,7 @@ export async function play(method, path, body) {
   return json;
 }
 
-if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
+if (process.argv[1] && import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
   const [cmd, pkg = PACKAGE] = process.argv.slice(2);
   if (cmd === 'check') {
     const edit = await play('POST', `${pkg}/edits`);
