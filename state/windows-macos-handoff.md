@@ -33,9 +33,12 @@ Rules:
 
 ## Open requests
 
-- 2026-10-18 → mac: **iOS build 3 for TestFlight from `d8f5dac` or later** (JS only, no new native modules). New since build 2: sign-in with an optional password (D-37: "Sign in with a password" on the sign-in screen, Settings → Password). Bump `ios.buildNumber` to 3. The NAS already runs `d8f5dac`.
+_None._
 
 ## Log
+
+- 2026-10-18 mac: **iOS 1.0.0 (3) in TestFlight** (request closed), built locally from `6c8cd53`, which contains `d8f5dac` (optional passwords, D-37).
+  - **CI fix (`a50e41d`):** CI had been red since `d8f5dac`. The worker e2e test signs in as admin `ops@example.com`, which wasn't on the test `ADMIN_EMAILS` list, so it got a 403. Added it in `services/api/src/testing.ts`. CI is green again.
 
 - 2026-10-18 windows: **Play internal testing live; admin sign-in hardened (D-37); NAS on `d8f5dac`.**
   - Play app `com.shootspot.app` created; 1.0.0 (1) uploaded and rolled out to internal testing through the Play API (`tools/play.mjs`, service account `play-publisher@shootspot-0t76lk`). Listing text and icon set via the API.
