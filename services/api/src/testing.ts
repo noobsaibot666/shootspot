@@ -171,6 +171,7 @@ export const ADMIN_EMAILS = [
   'rita@example.com',
   'library-admin@example.com',
   'tags-admin@example.com',
+  'ops@example.com', // services/worker e2e: admin media retry
 ];
 export const ADMIN_PASSWORD = 'correct horse battery staple';
 
