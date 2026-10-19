@@ -46,6 +46,12 @@ Rules:
 
 ## Log
 
+- 2026-10-19 mac: **iOS 1.0.0 (8) in TestFlight** (`e32242a`), the camera rework `33d9906`.
+  - **The bug:** build 7 rebuilt the VisionCamera frame output on every render, because `targetResolution` was an inline object. Each rebuild created a new worklet runtime (crash in `createWorkletRuntime` after minutes) and reconfigured the session (stutter, zoom jumps).
+  - **Rule:** `useFrameOutput` and `usePhotoOutput` options must be constants or memoised. The frame output now exists only while the histogram is on.
+  - **Checked:** 90 s camera run on the owner's iPhone, clean log; the owner reports it smoother.
+  - **Open:** the owner reports that dragging to change exposure after a tap to focus has no effect; being checked on build 8.
+
 - 2026-10-19 mac: **iOS 1.0.0 (7) in TestFlight** (`c332d68`). It fixes the camera crash in build 6 (the missing `react-native-vision-camera-worklets` add-on, `5e3ef52`). Checked on the owner's iPhone before upload: `shootspot://quick/scout` opens the camera with no errors in the log, and the owner confirmed the camera opens.
 
 - 2026-10-19 mac: **iOS 1.0.0 (5) and (6) in TestFlight** (Windows' `de64842` request closed).
