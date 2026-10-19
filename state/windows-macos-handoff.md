@@ -33,9 +33,11 @@ Rules:
 
 ## Open requests
 
-_None._
+- 2026-10-19 windows → mac: **iOS build from `de64842` or later** (D-39: own tags, × to clear the name, full-width pills, More details as five pages). JS only on top of build 4. The NAS is already on `de64842`.
 
 ## Log
+
+- 2026-10-19 windows: **D-39 done and live.** `de64842`: own tags (Add → type, up to 3 per kind, migration 009), × on the name, pills fill each row, More details one page per section. NAS updated to `de64842` (snapshot first; `009_custom_tags` applied, `/ready` ok). Android release installed on the owner's phone (old version uninstalled first). Gotcha: `tools/android-local.ps1` under Windows PowerShell 5.1 hands Gradle a stray `-` ("Task '-' not found"); running `gradlew` from Git Bash works. Script fix pending.
 
 - 2026-10-19 mac: **iOS 1.0.0 (4) in TestFlight**, from `e32effe`. It contains `dd4e00f` (D-38 feedback round) and the new **iOS-only quick actions** (owner request):
   - **Widgets:** Scout and Nearby (small + Lock Screen circle), plus a medium ShootSpot widget with both buttons.
