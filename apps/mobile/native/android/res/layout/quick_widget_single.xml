@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scout / Nearby home-screen widget: brand at the top, the action at the bottom (as on iOS). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/quick_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/quick_widget_bg"
+  android:orientation="vertical"
+  android:padding="16dp">
+
+  <LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <ImageView
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:importantForAccessibility="no"
+      android:src="@mipmap/ic_launcher_round" />
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="6dp"
+      android:text="ShootSpot"
+      android:textColor="@color/quick_ink"
+      android:textSize="13sp"
+      android:textStyle="bold" />
+  </LinearLayout>
+
+  <FrameLayout
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1" />
+
+  <ImageView
+    android:id="@+id/quick_icon"
+    android:layout_width="30dp"
+    android:layout_height="30dp"
+    android:layout_marginBottom="6dp"
+    android:importantForAccessibility="no"
+    android:tint="@color/quick_ink" />
+  <TextView
+    android:id="@+id/quick_title"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="@color/quick_ink"
+    android:textSize="20sp"
+    android:textStyle="bold" />
+  <TextView
+    android:id="@+id/quick_sub"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:maxLines="1"
+    android:textColor="@color/quick_muted"
+    android:textSize="12sp" />
+</LinearLayout>

@@ -6,8 +6,9 @@ import { useSession } from '../../lib/session';
 import { useTheme } from '../../theme/tokens';
 
 /**
- * iOS quick actions (widgets, Control Center, Siri) open `shootspot://quick/scout` or
- * `shootspot://quick/nearby` (native side: apps/mobile/targets/widget).
+ * Quick actions open `shootspot://quick/scout` or `shootspot://quick/nearby`: on iOS the widgets,
+ * Control Center and Siri (apps/mobile/targets/widget); on Android the home-screen widgets, Quick
+ * Settings tiles and app shortcuts (apps/mobile/native/android, D-40).
  *
  * Signed out, offline or mid-onboarding goes through the usual gate. Otherwise Scout opens the
  * camera: on top of whatever is open, or over the Feed when the app was launched by the action,

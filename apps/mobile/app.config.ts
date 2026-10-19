@@ -47,6 +47,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // iOS only: widgets and Control Center controls (targets/widget), Siri phrases (native/ios).
     '@bacons/apple-targets',
     './plugins/with-app-shortcuts',
+    // Android counterpart: home-screen widgets, Quick Settings tiles, app shortcuts (native/android).
+    './plugins/with-android-quick-actions',
     [
       'expo-build-properties',
       {

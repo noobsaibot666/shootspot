@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon (also launcher search and pinnable to the home screen). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut
+    android:enabled="true"
+    android:icon="@drawable/quick_shortcut_scout"
+    android:shortcutId="scout"
+    android:shortcutLongLabel="@string/quick_scout_long"
+    android:shortcutShortLabel="@string/quick_scout">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="shootspot://quick/scout"
+      android:targetClass="com.shootspot.app.MainActivity"
+      android:targetPackage="com.shootspot.app" />
+  </shortcut>
+  <shortcut
+    android:enabled="true"
+    android:icon="@drawable/quick_shortcut_nearby"
+    android:shortcutId="nearby"
+    android:shortcutLongLabel="@string/quick_nearby_long"
+    android:shortcutShortLabel="@string/quick_nearby">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="shootspot://quick/nearby"
+      android:targetClass="com.shootspot.app.MainActivity"
+      android:targetPackage="com.shootspot.app" />
+  </shortcut>
+</shortcuts>

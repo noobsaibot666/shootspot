@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android quick actions: widgets, Quick Settings tiles, app shortcuts (D-40). -->
+<resources>
+  <string name="quick_scout">Scout</string>
+  <string name="quick_scout_sub">Photograph a spot</string>
+  <string name="quick_scout_long">Scout a location</string>
+  <string name="quick_nearby">Nearby</string>
+  <string name="quick_nearby_sub">Locations around you</string>
+  <string name="quick_nearby_long">Locations nearby</string>
+  <string name="quick_widget_scout">Open the camera to photograph a new location.</string>
+  <string name="quick_widget_nearby">See the locations around where you are.</string>
+  <string name="quick_widget_both">Scout a new location or see what\'s nearby.</string>
+
+  <color name="quick_canvas">#FFFFFF</color>
+  <color name="quick_surface">#F3F3F3</color>
+  <color name="quick_ink">#0A0A0A</color>
+  <color name="quick_muted">#6E6E6E</color>
+  <color name="quick_on_ink">#FFFFFF</color>
+</resources>
