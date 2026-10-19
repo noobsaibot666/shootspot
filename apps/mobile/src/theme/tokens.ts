@@ -52,9 +52,13 @@ export const camera = {
   accent: '#FFD60A',
   mask: 'rgba(0,0,0,0.55)',
   guide: 'rgba(255,255,255,0.9)',
-  gridLine: 'rgba(255,255,255,0.35)',
-  level: '#30D158',
-  panel: '#141414',
+  /** Inactive toggles and the unselected framing. */
+  controlOff: 'rgba(255,255,255,0.42)',
+  gridLine: 'rgba(255,255,255,0.22)',
+  level: '#34C759',
+  levelIdle: 'rgba(255,255,255,0.5)',
+  panel: '#0D0D0D',
+  panelEdge: 'rgba(255,255,255,0.08)',
 } as const;
 
 export const font = {

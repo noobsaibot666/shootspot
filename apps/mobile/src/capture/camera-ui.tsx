@@ -1,17 +1,19 @@
 import type { Framing } from '@shootspot/shared';
 import { File, Paths } from 'expo-file-system';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState, type RefObject } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, { SensorType, useAnimatedSensor, useAnimatedStyle } from 'react-native-reanimated';
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { camera as c } from '../theme/tokens';
+import Svg, { Path, Rect } from 'react-native-svg';
+import type { CameraRef } from 'react-native-vision-camera';
+import { camera as c, font } from '../theme/tokens';
 import { Icon, type IconName } from '../ui/icon';
-import { BINS, type Histogram } from './histogram';
+import { BINS, useHistogramBins, useHistogramOutput } from './histogram';
 
 /**
- * Camera M-style pieces for the capture screen (owner request): framing badge, level, grid,
- * live histogram, exposure readout, quick toggles, zoom wheel and the tinted control panel.
- * Only the look is borrowed: ShootSpot stays a scouting camera (JPEG, 16:9 or 1:1).
+ * Capture screen pieces, Camera M-inspired but quiet (owner review 2026-10-19: "harsh and
+ * tacky"): monochrome chrome, thin type, the photo is the only colour. Each piece that updates
+ * often (level, histogram, exposure readout) renders on its own, so the camera never re-renders
+ * because of them.
  */
 
 // MARK: - Settings (grid / level / histogram), remembered between sessions
@@ -47,36 +49,46 @@ export function useCameraPrefs(): [CameraPrefs, (next: Partial<CameraPrefs>) => 
   return [prefs, update];
 }
 
-// MARK: - Framing badge (top left, where Camera M shows PRO RAW)
+// MARK: - Framing (16:9 · 1:1), top left
 
-export function FramingBadge(props: { framing: Framing; onPress(): void; style?: ViewStyle }) {
-  const next = props.framing === '16:9' ? '1:1' : '16:9';
+export function FramingSwitch(props: {
+  framing: Framing;
+  onChange(f: Framing): void;
+  textStyle?: object;
+}) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Framing ${props.framing}`}
-      accessibilityHint={`Switches to ${next}`}
-      onPress={props.onPress}
-      hitSlop={10}
-      style={[styles.badge, props.style]}
-    >
-      <View style={styles.badgePill}>
-        <Text style={styles.badgePillText}>FRAME</Text>
-      </View>
-      <Text style={styles.badgeValue}>{props.framing}</Text>
-    </Pressable>
+    <View style={styles.framing} accessibilityRole="radiogroup" accessibilityLabel="Framing">
+      {(['16:9', '1:1'] as const).map((f) => {
+        const on = props.framing === f;
+        return (
+          <Pressable
+            key={f}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            onPress={() => props.onChange(f)}
+            hitSlop={8}
+            style={styles.framingItem}
+          >
+            <Text style={[styles.framingText, on && styles.framingTextOn, props.textStyle]}>
+              {f}
+            </Text>
+            <View style={[styles.framingDot, on && styles.framingDotOn]} />
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
-// MARK: - Level (centre of the viewfinder)
+// MARK: - Level (top of the screen)
 
 const LEVEL_OK_DEG = 1;
 const RAD = 180 / Math.PI;
 
 /**
- * Horizon level on the UI thread. The side ticks follow the phone's nearest upright or sideways
- * position; the centre line follows the real horizon and both turn green within 1°. Hidden when
- * the phone lies flat (no horizon to level).
+ * Horizon level in the top bar (where Camera M has it), on the UI thread. The outer segments
+ * stay put; the middle one follows the horizon (relative to the nearest upright or sideways
+ * position) and everything turns green within 1°. Fades out when the phone lies flat.
  */
 export function Level() {
   const gravity = useAnimatedSensor(SensorType.GRAVITY, { interval: 'auto' });
@@ -85,206 +97,173 @@ export function Level() {
     'worklet';
     const { x, y, z } = gravity.sensor.value;
     const roll = Math.atan2(-x, y) * RAD;
-    const snap = Math.round(roll / 90) * 90;
-    const flat = Math.abs(z) > 8.6;
-    return { roll, snap, ok: Math.abs(roll - snap) < LEVEL_OK_DEG, flat };
+    const tilt = roll - Math.round(roll / 90) * 90;
+    return { tilt, ok: Math.abs(tilt) < LEVEL_OK_DEG, flat: Math.abs(z) > 8.6 };
   };
 
-  const frame = useAnimatedStyle(() => {
-    const { snap, flat } = read();
-    return { opacity: flat ? 0 : 1, transform: [{ rotate: `${-snap}deg` }] };
-  });
-  const ticks = useAnimatedStyle(() => ({
-    backgroundColor: read().ok ? c.level : 'rgba(255,255,255,0.75)',
+  const wrap = useAnimatedStyle(() => ({ opacity: read().flat ? 0.25 : 1 }));
+  const sides = useAnimatedStyle(() => ({
+    backgroundColor: read().ok ? c.level : c.levelIdle,
   }));
-  const line = useAnimatedStyle(() => {
-    const { roll, snap, ok } = read();
+  const middle = useAnimatedStyle(() => {
+    const { tilt, ok } = read();
     return {
       backgroundColor: ok ? c.level : c.control,
-      transform: [{ rotate: `${-(roll - snap)}deg` }],
+      transform: [{ rotate: `${-Math.max(-30, Math.min(30, tilt))}deg` }],
     };
   });
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.level, frame]}>
-      <Animated.View style={[styles.levelTick, ticks]} />
-      <Animated.View style={[styles.levelLine, line]} />
-      <Animated.View style={[styles.levelTick, ticks]} />
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.level, wrap]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Animated.View style={[styles.levelSide, sides]} />
+      <Animated.View style={[styles.levelMiddle, middle]} />
+      <Animated.View style={[styles.levelSide, sides]} />
     </Animated.View>
   );
 }
 
 // MARK: - Grid (rule of thirds inside the crop)
 
-export function Grid(props: {
+export const Grid = memo(function Grid(props: {
   rect: { left: number; top: number; width: number; height: number };
 }) {
   const { left, top, width, height } = props.rect;
   const line = { position: 'absolute', backgroundColor: c.gridLine } as const;
+  const hair = StyleSheet.hairlineWidth;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {[1, 2].map((i) => (
         <View
           key={`v${i}`}
-          style={[
-            line,
-            { left: left + (width * i) / 3, top, height, width: StyleSheet.hairlineWidth },
-          ]}
+          style={[line, { left: left + (width * i) / 3, top, height, width: hair }]}
         />
       ))}
       {[1, 2].map((i) => (
         <View
           key={`h${i}`}
-          style={[
-            line,
-            { top: top + (height * i) / 3, left, width, height: StyleSheet.hairlineWidth },
-          ]}
+          style={[line, { top: top + (height * i) / 3, left, width, height: hair }]}
         />
       ))}
     </View>
   );
-}
+});
 
 // MARK: - Histogram
 
-const HIST_W = 180;
-const HIST_H = 54;
+const HIST_W = 112;
+const HIST_H = 34;
 
-function curve(bins: number[], close: boolean): string {
+function curve(bins: number[]): string {
   const dx = HIST_W / (BINS - 1);
   const pts = bins.map((v, i) => `${(i * dx).toFixed(1)},${(HIST_H - v * HIST_H).toFixed(1)}`);
-  const d = `M${pts.join(' L')}`;
-  return close ? `${d} L${HIST_W},${HIST_H} L0,${HIST_H} Z` : d;
+  return `M0,${HIST_H} L${pts.join(' L')} L${HIST_W},${HIST_H} Z`;
 }
 
-const CHANNELS = [
-  { key: 'r', color: '#FF453A' },
-  { key: 'g', color: '#30D158' },
-  { key: 'b', color: '#0A84FF' },
-] as const;
-
-export function HistogramView({ histogram }: { histogram: Histogram | null }) {
+/** The plotted bins; re-renders only itself when new data arrives. */
+function HistogramPlot() {
+  const bins = useHistogramBins();
   return (
-    <View pointerEvents="none" style={styles.histogram} accessibilityElementsHidden>
-      <Svg width={HIST_W} height={HIST_H}>
-        {histogram
-          ? CHANNELS.map(({ key, color }) => (
-              <Path key={`${key}f`} d={curve(histogram[key], true)} fill={color} opacity={0.22} />
-            ))
-          : null}
-        {histogram
-          ? CHANNELS.map(({ key, color }) => (
-              <Path
-                key={key}
-                d={curve(histogram[key], false)}
-                stroke={color}
-                strokeWidth={1.5}
-                fill="none"
-              />
-            ))
-          : null}
-        <Rect x={0} y={HIST_H - 1} width={HIST_W} height={1} fill="rgba(255,255,255,0.35)" />
-      </Svg>
-    </View>
-  );
-}
-
-/** Small RGB curves, the histogram toggle's icon. */
-export function HistogramGlyph({ active }: { active: boolean }) {
-  return (
-    <Svg width={30} height={22} viewBox="0 0 30 22" opacity={active ? 1 : 0.55}>
-      <Path
-        d="M1,19 C5,19 6,6 9,6 C12,6 12,17 15,17 C18,17 19,10 22,10 C25,10 26,19 29,19"
-        stroke="#FF453A"
-        strokeWidth={1.8}
-        fill="none"
+    <Svg width={HIST_W} height={HIST_H}>
+      {bins ? (
+        <Path d={curve(bins)} fill="rgba(255,255,255,0.32)" stroke={c.control} strokeWidth={1} />
+      ) : null}
+      <Rect
+        x={0}
+        y={HIST_H - StyleSheet.hairlineWidth}
+        width={HIST_W}
+        height={1}
+        fill={c.gridLine}
       />
-      <Path
-        d="M1,19 C4,19 6,12 9,12 C12,12 13,4 16,4 C19,4 20,15 23,15 C26,15 27,19 29,19"
-        stroke="#30D158"
-        strokeWidth={1.8}
-        fill="none"
-      />
-      <Path
-        d="M1,19 C4,19 5,15 8,15 C11,15 12,9 15,9 C18,9 19,6 22,6 C25,6 26,19 29,19"
-        stroke="#0A84FF"
-        strokeWidth={1.8}
-        fill="none"
-      />
-      <Rect x={1} y={20.5} width={28} height={1.2} fill={active ? c.control : c.controlMuted} />
     </Svg>
   );
 }
 
-// MARK: - Exposure readout (A · ISO · F · SEC)
-
-export interface Exposure {
-  iso: number | null;
-  seconds: number | null;
-  aperture: number | null;
-}
-
-/** Reads ISO and shutter speed from the running camera a few times a second. */
-export function useExposureReadout(read: () => { iso: number; seconds: number } | null) {
-  const [value, setValue] = useState<{ iso: number | null; seconds: number | null }>({
-    iso: null,
-    seconds: null,
-  });
-  const reader = useRef(read);
-  reader.current = read;
+/**
+ * Mounted only while the histogram is on: owns the frame output (and its worklet thread), so
+ * nothing runs on camera frames otherwise. Hands the output up for the camera to attach.
+ */
+export function HistogramSource(props: { onOutput(output: unknown): void }) {
+  const output = useHistogramOutput();
+  const report = useRef(props.onOutput);
+  report.current = props.onOutput;
   useEffect(() => {
-    const id = setInterval(() => {
-      const v = reader.current();
-      setValue((old) => {
-        const iso = v && v.iso > 0 ? Math.round(v.iso) : null;
-        const seconds = v && v.seconds > 0 ? v.seconds : null;
-        return old.iso === iso && old.seconds === seconds ? old : { iso, seconds };
-      });
-    }, 350);
-    return () => clearInterval(id);
-  }, []);
-  return value;
+    report.current(output);
+    return () => report.current(null);
+  }, [output]);
+  return null;
 }
+
+export function HistogramView() {
+  return (
+    <View pointerEvents="none" style={styles.histogram} accessibilityElementsHidden>
+      <HistogramPlot />
+    </View>
+  );
+}
+
+// MARK: - Exposure readout (AUTO · ISO · ƒ · shutter)
 
 export const formatShutter = (s: number) =>
   s >= 1 ? `${Math.round(s * 10) / 10}"` : `1/${Math.max(1, Math.round(1 / s))}`;
-export const formatAperture = (f: number) => String(Math.round(f * 100) / 100);
+export const formatAperture = (f: number) =>
+  (Math.round(f * 100) / 100).toFixed(2).replace(/0$/, '');
 
-export function ExposureRow(props: {
-  exposure: Exposure;
+/** Reads ISO and shutter from the running camera twice a second; re-renders only this row. */
+export const ExposureReadout = memo(function ExposureReadout(props: {
+  cameraRef: RefObject<CameraRef | null>;
+  aperture: number | null;
   bias: number;
   histogramOn: boolean;
   /** Omitted when frame processing isn't available: no histogram toggle. */
   onHistogram?(): void;
 }) {
-  const { iso, seconds, aperture } = props.exposure;
-  const values = [
-    { label: 'ISO', value: iso == null ? '—' : String(iso) },
-    { label: 'F', value: aperture == null ? '—' : formatAperture(aperture) },
-    { label: 'SEC', value: seconds == null ? '—' : formatShutter(seconds) },
+  const [live, setLive] = useState<{ iso: number | null; sec: number | null }>({
+    iso: null,
+    sec: null,
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      const ctl = props.cameraRef.current?.controller;
+      const iso = ctl && ctl.iso > 0 ? Math.round(ctl.iso) : null;
+      const sec = ctl && ctl.exposureDuration > 0 ? ctl.exposureDuration : null;
+      setLive((old) => (old.iso === iso && old.sec === sec ? old : { iso, sec }));
+    }, 500);
+    return () => clearInterval(id);
+  }, [props.cameraRef]);
+
+  const bias =
+    Math.abs(props.bias) < 0.05
+      ? null
+      : `${props.bias > 0 ? '+' : '−'}${Math.abs(props.bias).toFixed(1)}`;
+  const items = [
+    { label: 'ISO', value: live.iso == null ? '—' : String(live.iso) },
+    { label: 'ƒ', value: props.aperture == null ? '—' : formatAperture(props.aperture) },
+    { label: 'S', value: live.sec == null ? '—' : formatShutter(live.sec) },
   ];
-  const biasText =
-    Math.abs(props.bias) < 0.05 ? null : `${props.bias > 0 ? '+' : ''}${props.bias.toFixed(1)}`;
+
   return (
     <View style={styles.readout}>
-      <View
-        style={styles.readoutSide}
-        accessible
-        accessibilityLabel={biasText ? `Auto exposure, ${biasText} stops` : 'Auto exposure'}
+      <Text
+        style={[styles.readoutMode, bias != null && { color: c.control }]}
+        accessibilityLabel={bias ? `Exposure ${bias} stops` : 'Auto exposure'}
       >
-        <Text style={styles.mode}>A</Text>
-        {biasText ? <Text style={styles.bias}>{biasText}</Text> : null}
-      </View>
+        {bias ? `${bias} EV` : 'AUTO'}
+      </Text>
       <View
         style={styles.readoutValues}
         accessible
-        accessibilityLabel={values.map((v) => `${v.label} ${v.value}`).join(', ')}
+        accessibilityLabel={`ISO ${items[0]!.value}, aperture ${items[1]!.value}, shutter ${items[2]!.value}`}
       >
-        {values.map((v) => (
-          <View key={v.label} style={styles.readoutItem}>
-            <Text style={styles.readoutLabel}>{v.label}</Text>
-            <Text style={styles.readoutValue}>{v.value}</Text>
-          </View>
+        {items.map((v) => (
+          <Text key={v.label} style={styles.readoutItem}>
+            <Text style={styles.readoutLabel}>{v.label} </Text>
+            {v.value}
+          </Text>
         ))}
       </View>
       {props.onHistogram ? (
@@ -294,70 +273,63 @@ export function ExposureRow(props: {
           accessibilityState={{ checked: props.histogramOn }}
           onPress={props.onHistogram}
           hitSlop={10}
-          style={[styles.readoutSide, { alignItems: 'flex-end' }]}
+          style={styles.readoutToggle}
         >
           <HistogramGlyph active={props.histogramOn} />
         </Pressable>
       ) : (
-        <View style={styles.readoutSide} />
+        <View style={styles.readoutToggle} />
       )}
     </View>
   );
-}
+});
 
-// MARK: - Control panel
-
-/** Rounded panel tinted by the scene's average colour (like Camera M's red glow on a red subject). */
-export function Panel(props: {
-  tint: { r: number; g: number; b: number } | null;
-  children: React.ReactNode;
-  style?: ViewStyle;
-}) {
-  const t = props.tint;
-  const color = t ? `rgb(${Math.round(t.r)},${Math.round(t.g)},${Math.round(t.b)})` : '#3A3A3C';
+/** Three bars, the histogram toggle's icon. */
+function HistogramGlyph({ active }: { active: boolean }) {
+  const color = active ? c.control : c.controlMuted;
   return (
-    <View style={[styles.panel, props.style]}>
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <RadialGradient id="tint" cx="20%" cy="0%" rx="90%" ry="120%">
-            <Stop offset="0" stopColor={color} stopOpacity={0.45} />
-            <Stop offset="1" stopColor={color} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#tint)" />
-      </Svg>
-      {props.children}
-    </View>
+    <Svg width={20} height={16} viewBox="0 0 20 16">
+      <Path
+        d="M1,15 L1,10 M5,15 L5,6 M9,15 L9,2 M13,15 L13,7 M17,15 L17,11"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
+
+// MARK: - Panel controls
 
 export function ToggleButton(props: {
   icon: IconName;
   label: string;
+  /** Undefined for actions (flip); true / false for switches. */
   active?: boolean;
   onPress(): void;
   iconStyle?: object;
 }) {
+  const on = props.active !== false;
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={props.active == null ? 'button' : 'switch'}
       accessibilityLabel={props.label}
-      accessibilityState={props.active == null ? undefined : { selected: props.active }}
+      accessibilityState={props.active == null ? undefined : { checked: props.active }}
       onPress={props.onPress}
       hitSlop={6}
       style={styles.toggle}
     >
       <Icon
         name={props.icon}
-        size={26}
-        color={props.active === false ? c.controlMuted : c.control}
+        size={22}
+        color={on ? c.control : c.controlOff}
         style={props.iconStyle}
       />
     </Pressable>
   );
 }
 
-// MARK: - Zoom wheel (right of the shutter)
+// MARK: - Zoom (right of the shutter)
 
 export interface Lens {
   zoom: number;
@@ -365,8 +337,8 @@ export interface Lens {
 }
 
 /**
- * Vertical lens picker: the active lens in a ring, the next lenses faded above (longer) and
- * below (wider). Tap one or swipe up / down to step.
+ * Vertical lens column: the longer lens above, the active one highlighted, the wider below.
+ * Tap a lens or swipe up / down to step; between lenses (after a pinch) it shows the factor.
  */
 export function ZoomWheel(props: {
   lenses: Lens[];
@@ -431,7 +403,7 @@ function WheelStep(props: { lens?: Lens; onSelect(z: number): void; labelStyle?:
       style={styles.wheelStep}
       importantForAccessibility="no"
     >
-      <Text style={[styles.wheelStepText, props.labelStyle]}>{lens.label}×</Text>
+      <Text style={[styles.wheelStepText, props.labelStyle]}>{lens.label}</Text>
     </Pressable>
   );
 }
@@ -441,74 +413,77 @@ export const trim = (z: number) => {
   return r < 1 ? `.${Math.round(r * 10)}` : String(r);
 };
 
+export const panelStyle: ViewStyle = {
+  flex: 1,
+  borderTopLeftRadius: 28,
+  borderTopRightRadius: 28,
+  backgroundColor: c.panel,
+  borderTopWidth: StyleSheet.hairlineWidth,
+  borderColor: c.panelEdge,
+};
+
 const styles = StyleSheet.create({
-  badge: { alignItems: 'center', gap: 1 },
-  badgePill: {
-    backgroundColor: c.accent,
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  badgePillText: { color: '#000', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  badgeValue: { color: c.accent, fontSize: 19, fontWeight: '600', letterSpacing: 0.3 },
-  level: {
-    position: 'absolute',
-    alignSelf: 'center',
-    top: '50%',
-    marginTop: -1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  levelTick: { width: 26, height: 2, borderRadius: 1 },
-  levelLine: { width: 96, height: 2, borderRadius: 1 },
+  framing: { flexDirection: 'row', gap: 16, width: 96 },
+  framingItem: { alignItems: 'center', gap: 4, minHeight: 32, justifyContent: 'center' },
+  framingText: { color: c.controlOff, fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
+  framingTextOn: { color: c.control, fontWeight: '600' },
+  framingDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
+  framingDotOn: { backgroundColor: c.control },
+  level: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  levelSide: { width: 18, height: 1.5, borderRadius: 1 },
+  levelMiddle: { width: 56, height: 1.5, borderRadius: 1 },
   histogram: {
     position: 'absolute',
-    top: 12,
-    alignSelf: 'center',
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    top: 10,
+    left: 10,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  readout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    height: 52,
-  },
-  readoutSide: { width: 56, flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  mode: { color: c.control, fontSize: 22, fontWeight: '400' },
-  bias: { color: c.accent, fontSize: 12, fontWeight: '600' },
-  readoutValues: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 22 },
-  readoutItem: { alignItems: 'center' },
-  readoutLabel: { color: c.controlMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
-  readoutValue: {
-    color: c.control,
-    fontSize: 18,
-    fontWeight: '500',
+  readout: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, height: 40 },
+  readoutMode: {
+    width: 64,
+    color: c.controlMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
     fontVariant: ['tabular-nums'],
   },
-  panel: {
-    flex: 1,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    backgroundColor: c.panel,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
-    overflow: 'hidden',
+  readoutValues: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 18 },
+  readoutItem: {
+    minWidth: 58,
+    textAlign: 'center',
+    color: c.control,
+    fontSize: 13,
+    fontFamily: font.mono,
+    fontVariant: ['tabular-nums'],
   },
+  readoutLabel: { color: c.controlMuted, fontSize: 11 },
+  readoutToggle: { width: 64, alignItems: 'flex-end', justifyContent: 'center', height: 40 },
   toggle: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  wheel: { width: 64, alignItems: 'center', gap: 6 },
+  wheel: { width: 56, alignItems: 'center', gap: 2 },
   wheelActive: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.75)',
+    minWidth: 44,
+    height: 32,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wheelActiveText: { color: c.control, fontSize: 15, fontWeight: '600' },
-  wheelStep: { height: 26, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
-  wheelStepText: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' },
+  wheelActiveText: {
+    color: c.control,
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  wheelStep: { height: 28, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
+  wheelStepText: {
+    color: c.controlOff,
+    fontSize: 12,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+  },
 });
