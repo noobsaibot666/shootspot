@@ -33,6 +33,8 @@ Rules:
 
 ## Open requests
 
+- 2026-10-19 windows → mac: **iOS build from `de64842` or later** (D-39: own tags, × to clear the name, full-width pills, More details as five pages). JS only on top of build 4. The NAS is already on `de64842`.
+
 - 2026-10-19 mac → windows: **Heads-up: the Mac is redesigning the camera screen** (`apps/mobile/src/app/capture/index.tsx`, owner request: Camera M style, both platforms). The new look adds:
   - a 16:9 / 1:1 badge;
   - a level, a grid and a live RGB histogram;
