@@ -224,13 +224,14 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
 - [ ] **4.8 App records**: App Store Connect and Play Console. Builds are made locally (iOS on the Mac, Android locally), not on Expo's cloud.
   - [x] **Apple, done 2026-10-17:** app "ShootSpot – Location Scouting" (Apple ID `6824017223`, bundle `com.exposeu.shootspot`, D-36; plain "ShootSpot" was taken). App Privacy published. Through the API (`tools/asc.mjs`, `tools/asc-listing.mjs`, key `UZC482Y6WF`): listing, categories Photo & Video + Travel, age rating 16+ (user-generated content), Free, all countries except mainland China (needs an ICP filing), review contact and notes, TestFlight group "Team" with both of your Apple IDs. Build 1.0.0 (1) uploaded from the Mac and processed (VALID).
   - [ ] Test the TestFlight build on mobile data, Tailscale off
-  - [ ] Screenshots (at least 3, iPhone 6.9"), captured from your phone over USB and uploaded by Claude
-  - [ ] Reviewer account (4.9), then Claude submits for review
+  - [x] **Screenshots, done 2026-10-19:** 7 × iPhone 6.9" from the owner's phone; name, email, the Dudenstraße address, coordinates and the location dot replaced (originals untouched in Downloads). Uploaded with `tools/asc-screenshots.mjs`.
+  - [x] **Reviewer account, done 2026-10-19:** `REVIEW_EMAIL`/`REVIEW_CODE` set in the NAS `.env`, login tested on the live server, review notes updated, build 9 attached.
+  - [ ] Submit for review: waits for the owner's go
   - [ ] **Google Play:** create the app (ShootSpot, English (US), App, Free), the App content forms, and optionally the Play API service account
   - [x] **Done 2026-10-18:** Play app `com.shootspot.app` created; API service account `play-publisher@shootspot-0t76lk` (key in `%USERPROFILE%\.shootspot\play-key.json`, `tools/play.mjs`); upload key from EAS; 1.0.0 (1) uploaded as an internal draft; Play signing SHA-1 `12:67:6A:…:33:3B` added to the Maps key.
   - [x] ~~**Android upload key** ⏱ 5 min~~: on the PC, `cd apps/mobile; npx eas-cli credentials -p android` → **production** → **Keystore** → **Download**. Move the `.jks` to `%USERPROFILE%\.shootspot\`, save the three passwords/alias in your password manager, and fill in `apps/mobile/.env.store` (copy `.env.store.example`; also paste the production `EXPO_PUBLIC_SENTRY_DSN` from expo.dev). Then Claude runs `tools/android-local.ps1 -Store` and you upload the `.aab` to Play's internal testing. Details: [store-builds.md](runbooks/store-builds.md).
   - [x] ~~**After the first Play upload:**~~ add the Play **App signing key** SHA-1 (Play Console → App integrity) to the Google Maps key (3.4 step 6), or the Map tab stays blank in the Play version.
-- [ ] **4.9 Review account (D-34)**: just before submitting, Claude gives the NAS block for `REVIEW_EMAIL`/`REVIEW_CODE`; listing and review notes are in [store/listing.md](store/listing.md).
+- [x] **4.9 Review account (D-34)**, set 2026-10-19 (remove `REVIEW_*` from the NAS `.env` after approval): just before submitting, Claude gives the NAS block for `REVIEW_EMAIL`/`REVIEW_CODE`; listing and review notes are in [store/listing.md](store/listing.md).
 - [ ] **4.4 Pick a cloud host for launch.** The NAS is for testing only and should not be the public production server.
 
 ---

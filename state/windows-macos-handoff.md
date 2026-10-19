@@ -46,6 +46,10 @@ Rules:
 
 ## Log
 
+- 2026-10-19 mac: **App Store 1.0.0 ready to submit; waits for the owner's go.**
+  - **Done:** 7 iPhone 6.9" screenshots (personal data replaced) uploaded with the new `tools/asc-screenshots.mjs`; build 9 attached; review notes updated.
+  - **Review login:** `review@expose-u.com` with the code from the NAS `.env` (`REVIEW_*`, added by the owner). Tested against the live API.
+
 - 2026-10-19 mac: **iOS 1.0.0 (9) in TestFlight** (`bc32b38`): the exposure drag fix `768f7f6`. The viewfinder PanResponder was rebuilt mid-drag, so the drag distance restarted at zero; it's now created once and reads a ref. The owner confirmed it works on the iPhone.
 
 - 2026-10-19 mac: **iOS 1.0.0 (8) in TestFlight** (`e32242a`), the camera rework `33d9906`.
