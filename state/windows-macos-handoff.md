@@ -37,6 +37,14 @@ _None._
 
 ## Log
 
+- 2026-10-19 mac: **iOS 1.0.0 (4) in TestFlight**, from `e32effe`. It contains `dd4e00f` (D-38 feedback round) and the new **iOS-only quick actions** (owner request):
+  - **Widgets:** Scout and Nearby (small + Lock Screen circle), plus a medium ShootSpot widget with both buttons.
+  - **Controls (iOS 18+):** Control Center / Lock Screen / Action button.
+  - **Siri / Spotlight phrases (iOS 18+).**
+  - **How they connect:** every action opens `shootspot://quick/<scout|nearby>`, handled in `src/app/quick/[action].tsx` (session gate, then the camera, or the Feed scoped to Nearby).
+  - **Native code:** in `apps/mobile/targets/widget` (`@bacons/apple-targets`) and `apps/mobile/native/ios` (added by `plugins/with-app-shortcuts.js`). Android is untouched; Android prebuild was checked.
+  - **For Windows:** if you change the Feed's scope handling or the capture entry, keep `quick/[action].tsx` working.
+
 - 2026-10-19 windows: **Owner feedback round (D-38), JS only for the app (Metro reload, no rebuild).** Stepped Scouting notes (swipe or Confirm, big pills, long-press to hide tags, accent Add), direction no longer asked (nullable), Edit notes for the creator (`PUT /v1/me/records/:id/notes`), Sports tag, Area & filters redesign with a close button, Feed scope chip on the right, softer photo open. **Server change:** migration `…008_notes_flow` + the new route, so the NAS needs new images before the app's Edit and direction-less publishing work there.
   - **NAS updated to `dd4e00f`** the same day (snapshot first): migration 008 applied, `/ready` ok, `sports` in `/v1/vocabulary`. API integration tests 33/33 locally.
 
