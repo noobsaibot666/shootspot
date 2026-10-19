@@ -22,6 +22,7 @@ export const GOOD_FOR_TAGS = [
   'narrative_film',
   'commercial',
   'drone',
+  'sports',
 ] as const;
 
 export const BEST_LIGHT_PERIODS = [
@@ -69,8 +70,8 @@ export const shortInputSchema = z.object({
   goodForNote: shortText(200).optional(),
   bestLight: z.array(bestLightPeriod).min(1),
   bestLightNote: shortText(200).optional(),
-  /** Compass bearing the camera points toward, 0–359. */
-  bearingDeg: z.number().min(0).lt(360),
+  /** Compass bearing the camera points toward, 0–359; null when the device had no reading. */
+  bearingDeg: z.number().min(0).lt(360).nullable(),
 });
 
 const triState = z.enum(['yes', 'no', 'unknown']);

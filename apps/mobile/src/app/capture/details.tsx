@@ -1,261 +1,279 @@
-import { Icon } from '../../ui/icon';
-import { formatBearing, type AdvancedInput } from '@shootspot/shared';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { router, useNavigation } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  BackHandler,
+  KeyboardAvoidingView,
+  PanResponder,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  useSharedValue,
+  withDelay,
+  withTiming,
+  type EntryExitAnimationFunction,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCapture } from '../../capture/context';
-import { useVocabulary } from '../../lib/vocabulary';
-import { space, useTheme } from '../../theme/tokens';
-import { Body, Button, Chip, Field, Label, Mono, Row, Screen } from '../../ui';
+import { haptics } from '../../lib/device';
+import { useReduceMotion } from '../../lib/motion';
+import { space, type, useTheme } from '../../theme/tokens';
+import { Button } from '../../ui';
+import { Icon } from '../../ui/icon';
+import { MoreDetails, Pill, PillInput, TagPicker } from '../../ui/notes';
 
-type Group = keyof AdvancedInput;
+const STEPS = ['name', 'goodFor', 'light', 'more'] as const;
+type Step = (typeof STEPS)[number];
+const EASE = Easing.out(Easing.cubic);
 
-/** Short input (one screen) + optional advanced input (D-16, docs/phase-0/02 §3). */
+/**
+ * Scouting notes as steps (D-38): one question per screen, each confirmed with a tap or a swipe.
+ * Name (prefilled from the pin) → Good for → Best light → optional more details → preview. The
+ * camera direction is never asked: it comes from the compass at capture (or the photo's data).
+ */
 export default function Details() {
-  const { vocab, label } = useVocabulary();
   const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const reduce = useReduceMotion();
   const { state, update } = useCapture();
-  const [open, setOpen] = useState(false);
-  const [bearingText, setBearingText] = useState(
-    state.bearingDeg == null ? '' : String(state.bearingDeg),
-  );
-  const bearing = bearingText === '' ? null : Number(bearingText);
-  const bearingValid =
-    bearing !== null && Number.isFinite(bearing) && bearing >= 0 && bearing < 360;
-  const valid =
-    state.label.trim().length > 0 &&
-    state.goodFor.length > 0 &&
-    state.bestLight.length > 0 &&
-    bearingValid;
+  const [step, setStep] = useState<Step>('name');
+  const index = STEPS.indexOf(step);
+  // +1 forward, -1 back: read by the enter/exit animations on the UI thread.
+  const dir = useSharedValue(1);
 
-  const toggle = <T,>(list: T[], v: T, max = 99) =>
-    list.includes(v) ? list.filter((x) => x !== v) : list.length < max ? [...list, v] : list;
-  const setAdv = <G extends Group>(group: G, patch: NonNullable<AdvancedInput[G]>) =>
-    update({
-      advanced: { ...state.advanced, [group]: { ...(state.advanced[group] ?? {}), ...patch } },
+  const ok: Record<Step, boolean> = {
+    name: state.label.trim().length > 0,
+    goodFor: state.goodFor.length > 0,
+    light: state.bestLight.length > 0,
+    more: true,
+  };
+  const ready = ok.name && ok.goodFor && ok.light;
+
+  function go(to: number) {
+    const next = STEPS[to];
+    if (!next || to === index) return;
+    if (to > index && !ok[step]) return;
+    dir.value = to > index ? 1 : -1;
+    haptics.light();
+    setStep(next);
+  }
+  // Back (header button, Android back) steps back first; from the first step it leaves.
+  const navigation = useNavigation();
+  useEffect(() => {
+    if (index === 0) {
+      navigation.setOptions({ headerLeft: undefined });
+      return;
+    }
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous step"
+          hitSlop={12}
+          onPress={() => goRef.current(indexRef.current - 1)}
+        >
+          <Icon name="back" size={24} color={t.ink} />
+        </Pressable>
+      ),
     });
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goRef.current(indexRef.current - 1);
+      return true;
+    });
+    return () => sub.remove();
+  }, [index, navigation, t.ink]);
+
+  const preview = () => {
+    if (!ready) return;
+    router.push('/capture/publish');
+  };
+
+  // Swipe left for the next step, right for the previous one (no extra native module needed).
+  const goRef = useRef(go);
+  goRef.current = go;
+  const indexRef = useRef(index);
+  indexRef.current = index;
+  const swipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) =>
+          Math.abs(g.dx) > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 1.6,
+        onPanResponderRelease: (_, g) => {
+          if (g.dx < -60 || g.vx < -0.5) goRef.current(Math.min(indexRef.current + 1, 2));
+          else if (g.dx > 60 || g.vx > 0.5) goRef.current(indexRef.current - 1);
+        },
+      }),
+    [],
+  );
+
+  const entering: EntryExitAnimationFunction = () => {
+    'worklet';
+    return {
+      initialValues: { opacity: 0, transform: [{ translateX: dir.value * 48 }] },
+      animations: {
+        opacity: withDelay(90, withTiming(1, { duration: 240, easing: EASE })),
+        transform: [{ translateX: withDelay(90, withTiming(0, { duration: 320, easing: EASE })) }],
+      },
+    };
+  };
+  const exiting: EntryExitAnimationFunction = () => {
+    'worklet';
+    return {
+      initialValues: { opacity: 1, transform: [{ translateX: 0 }] },
+      animations: {
+        opacity: withTiming(0, { duration: 160 }),
+        transform: [{ translateX: withTiming(-dir.value * 48, { duration: 200, easing: EASE }) }],
+      },
+    };
+  };
+
+  const bottom = insets.bottom + space.lg;
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: t.canvas }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      <Screen scroll>
-        <Field
-          label="Name of the place"
-          value={state.label}
-          onChangeText={(label) => update({ label })}
-          maxLength={120}
-          hint="Shown with the photo, e.g. “Miradouro da Graça”."
-        />
-
-        <View style={{ gap: space.sm }}>
-          <Label>Good for (up to 8)</Label>
-          <Row wrap>
-            {vocab.goodFor
-              .map((v) => v.key)
-              .map((tag) => (
-                <Chip
-                  key={tag}
-                  label={label('good_for', tag)}
-                  selected={state.goodFor.includes(tag)}
-                  onPress={() => update({ goodFor: toggle(state.goodFor, tag, 8) })}
-                />
-              ))}
-          </Row>
-          <Field
-            label="Note (optional)"
-            value={state.goodForNote}
-            onChangeText={(goodForNote) => update({ goodForNote })}
-            maxLength={200}
-          />
-        </View>
-
-        <View style={{ gap: space.sm }}>
-          <Label>Best light</Label>
-          <Row wrap>
-            {vocab.bestLight
-              .map((v) => v.key)
-              .map((p) => (
-                <Chip
-                  key={p}
-                  label={label('best_light', p)}
-                  selected={state.bestLight.includes(p)}
-                  onPress={() => update({ bestLight: toggle(state.bestLight, p) })}
-                />
-              ))}
-          </Row>
-          <Field
-            label="Light note (optional)"
-            value={state.bestLightNote}
-            onChangeText={(bestLightNote) => update({ bestLightNote })}
-            maxLength={200}
-          />
-        </View>
-
-        <View style={{ gap: space.sm }}>
-          <Field
-            label="Camera points toward (degrees)"
-            value={bearingText}
-            onChangeText={(v) => setBearingText(v.replace(/[^\d]/g, '').slice(0, 3))}
-            keyboardType="number-pad"
-            error={bearingText !== '' && !bearingValid ? 'Enter 0 to 359.' : null}
-            hint={
-              state.headingDeg == null
-                ? state.origin === 'import'
-                  ? 'This photo has no direction data: enter it, 0 = north, 90 = east.'
-                  : 'No compass reading: enter the direction, 0 = north, 90 = east.'
-                : state.origin === 'import'
-                  ? "From the photo's direction data. Correct it if needed."
-                  : 'From your compass at the moment of capture. Correct it if needed.'
-            }
-          />
-          {bearingValid ? <Mono>{formatBearing(bearing!)}</Mono> : null}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          onPress={() => setOpen((o) => !o)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 44 }}
+      <Progress index={Math.min(index, 2)} done={step === 'more'} />
+      <View style={{ flex: 1 }} {...swipe.panHandlers}>
+        <Animated.View
+          key={step}
+          entering={reduce ? undefined : entering}
+          exiting={reduce ? undefined : exiting}
+          style={StyleSheet.absoluteFill}
         >
-          <Icon name={open ? 'down' : 'forward'} size={18} color={t.ink} />
-          <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600' }}>
-            More details (optional)
-          </Text>
-        </Pressable>
-
-        {open ? (
-          <View style={{ gap: space.lg }}>
-            <Body muted>Access, permits and practical tips help others plan a shoot.</Body>
-            <Choice
-              label="Access"
-              value={state.advanced.access?.type}
-              options={{
-                public: 'Public',
-                permission_needed: 'Permission needed',
-                paid_entry: 'Paid entry',
-                restricted: 'Restricted',
-              }}
-              onChange={(type) => setAdv('access', { type })}
-            />
-            <Choice
-              label="Terrain"
-              value={state.advanced.access?.terrain}
-              options={{ easy: 'Easy', moderate: 'Moderate', difficult: 'Difficult' }}
-              onChange={(terrain) => setAdv('access', { terrain })}
-            />
-            <Field
-              label="Walk from parking (minutes)"
-              keyboardType="number-pad"
-              value={state.advanced.access?.walkInMinutes?.toString() ?? ''}
-              onChangeText={(v) =>
-                setAdv('access', {
-                  walkInMinutes: v ? Math.min(600, Number(v.replace(/\D/g, ''))) : undefined,
-                })
-              }
-            />
-            <Choice
-              label="Permit required"
-              value={state.advanced.rules?.permitRequired}
-              options={TRI}
-              onChange={(permitRequired) => setAdv('rules', { permitRequired })}
-            />
-            <Choice
-              label="Drones"
-              value={state.advanced.rules?.drone}
-              options={{
-                allowed: 'Allowed',
-                restricted: 'Restricted',
-                no_fly: 'No-fly',
-                unknown: 'Unknown',
-              }}
-              onChange={(drone) => setAdv('rules', { drone })}
-            />
-            <Choice
-              label="Tripod allowed"
-              value={state.advanced.rules?.tripodAllowed}
-              options={TRI}
-              onChange={(tripodAllowed) => setAdv('rules', { tripodAllowed })}
-            />
-            <Choice
-              label="Parking"
-              value={state.advanced.practical?.parking}
-              options={TRI}
-              onChange={(parking) => setAdv('practical', { parking })}
-            />
-            <Choice
-              label="Mobile signal"
-              value={state.advanced.practical?.mobileSignal}
-              options={{ good: 'Good', weak: 'Weak', none: 'None', unknown: 'Unknown' }}
-              onChange={(mobileSignal) => setAdv('practical', { mobileSignal })}
-            />
-            <Choice
-              label="Tide-dependent"
-              value={state.advanced.conditions?.tideDependent}
-              options={TRI}
-              onChange={(tideDependent) => setAdv('conditions', { tideDependent })}
-            />
-            <Field
-              label="Hazards / safety"
-              value={state.advanced.conditions?.hazardsNote ?? ''}
-              onChangeText={(hazardsNote) => setAdv('conditions', { hazardsNote })}
-              maxLength={300}
-              multiline
-            />
-            <Field
-              label="Lens used"
-              value={state.advanced.shot?.lensUsed ?? ''}
-              onChangeText={(lensUsed) => setAdv('shot', { lensUsed })}
-              maxLength={60}
-            />
-            <Field
-              label="Shot notes"
-              value={state.advanced.shot?.note ?? ''}
-              onChangeText={(note) => setAdv('shot', { note })}
-              maxLength={500}
-              multiline
-            />
-          </View>
-        ) : null}
-
-        <Button
-          label="Preview"
-          disabled={!valid}
-          onPress={() => {
-            update({ bearingDeg: bearing });
-            router.push('/capture/publish');
-          }}
-        />
-        {!valid ? (
-          <Body muted>Add a name, at least one “Good for”, best light and a direction.</Body>
-        ) : null}
-      </Screen>
+          {step === 'name' ? (
+            <View style={{ flex: 1, paddingHorizontal: space.lg, paddingBottom: bottom }}>
+              <StepTitle title="Name of the place" sub="Check the name, or tap it to change it." />
+              <View style={{ flex: 1, justifyContent: 'center', gap: space.md }}>
+                <PillInput
+                  large
+                  value={state.label}
+                  onChangeText={(label) => update({ label })}
+                  maxLength={120}
+                  returnKeyType="done"
+                  onSubmitEditing={() => go(1)}
+                  placeholder="Name this place"
+                  accessibilityLabel="Name of the place"
+                />
+                <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
+                  Shown with the photo, e.g. “Durdle Door, Dorset” or “Bondi Icebergs, Sydney”.
+                </Text>
+              </View>
+              <Button label="Confirm" disabled={!ok.name} onPress={() => go(1)} />
+            </View>
+          ) : step === 'goodFor' ? (
+            <StepScroll bottom={bottom}>
+              <StepTitle title="Good for" sub="Up to 8. What would you shoot here?" />
+              <TagPicker
+                kind="good_for"
+                selected={state.goodFor}
+                onChange={(goodFor) => update({ goodFor })}
+                max={8}
+              />
+              <View style={{ flex: 1 }} />
+              <Button label="Confirm" disabled={!ok.goodFor} onPress={() => go(2)} />
+            </StepScroll>
+          ) : step === 'light' ? (
+            <StepScroll bottom={bottom}>
+              <StepTitle title="Best light" sub="When does this place look its best?" />
+              <TagPicker
+                kind="best_light"
+                selected={state.bestLight}
+                onChange={(bestLight) => update({ bestLight })}
+              />
+              <PillInput
+                value={state.bestLightNote}
+                onChangeText={(bestLightNote) => update({ bestLightNote })}
+                maxLength={200}
+                placeholder="Light note (optional)"
+                accessibilityLabel="Light note (optional)"
+              />
+              <View style={{ flex: 1 }} />
+              <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+                <Pill label="More details" onPress={() => go(3)} />
+                <Button
+                  label="Preview"
+                  disabled={!ready}
+                  onPress={preview}
+                  style={{ flex: 1, minHeight: 50 }}
+                />
+              </View>
+            </StepScroll>
+          ) : (
+            <StepScroll bottom={bottom}>
+              <StepTitle
+                title="More details"
+                sub="All optional. Access, rules and tips help others plan a shoot."
+              />
+              <MoreDetails
+                value={state.advanced}
+                onChange={(advanced) => update({ advanced })}
+                goodForNote={state.goodForNote}
+                onGoodForNote={(goodForNote) => update({ goodForNote })}
+              />
+              <Button label="Preview" disabled={!ready} onPress={preview} />
+            </StepScroll>
+          )}
+        </Animated.View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
-const TRI = { yes: 'Yes', no: 'No', unknown: 'Unknown' } as const;
-
-function Choice<K extends string>(props: {
-  label: string;
-  value: K | undefined;
-  options: Record<K, string>;
-  onChange(v: K): void;
-}) {
+function StepTitle({ title, sub }: { title: string; sub: string }) {
+  const t = useTheme();
   return (
-    <View style={{ gap: space.sm }}>
-      <Label>{props.label}</Label>
-      <Row wrap>
-        {(Object.keys(props.options) as K[]).map((k) => (
-          <Chip
-            key={k}
-            label={props.options[k]}
-            selected={props.value === k}
-            onPress={() => props.onChange(k)}
-          />
-        ))}
-      </Row>
+    <View style={{ gap: space.sm, paddingTop: space.xl, paddingBottom: space.lg }}>
+      <Text accessibilityRole="header" style={[type.display, { color: t.ink }]}>
+        {title}
+      </Text>
+      <Text style={[type.body, { color: t.muted }]}>{sub}</Text>
+    </View>
+  );
+}
+
+function StepScroll({ children, bottom }: { children: React.ReactNode; bottom: number }) {
+  return (
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{
+        flexGrow: 1,
+        paddingHorizontal: space.lg,
+        paddingBottom: bottom,
+        gap: space.xl,
+      }}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+/** Three thin bars: name, good for, best light. */
+function Progress({ index, done }: { index: number; done: boolean }) {
+  const t = useTheme();
+  return (
+    <View
+      accessibilityLabel={`Step ${index + 1} of 3`}
+      style={{ flexDirection: 'row', gap: 6, paddingHorizontal: space.lg, paddingTop: space.sm }}
+    >
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            flex: 1,
+            height: 3,
+            borderRadius: 2,
+            backgroundColor: done || i <= index ? t.ink : t.divider,
+          }}
+        />
+      ))}
     </View>
   );
 }

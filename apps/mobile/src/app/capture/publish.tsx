@@ -41,7 +41,7 @@ export default function Publish() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { photo, pin } = state;
-  if (!photo || !pin || state.bearingDeg == null || !state.capturedAt) return null;
+  if (!photo || !pin || !state.capturedAt) return null;
 
   const sun = sunAtCapture(new Date(state.capturedAt), pin.lat, pin.lon);
   const me = session.status === 'signed-in' ? session.me : null;
@@ -161,7 +161,9 @@ export default function Publish() {
         <View style={{ gap: 4 }}>
           <Label>Camera points toward</Label>
           <Mono style={{ fontSize: 14 }}>
-            {formatBearing(state.bearingDeg)} · {LIGHT_LABEL[lightAngle(state.bearingDeg, sun)]}
+            {state.bearingDeg == null
+              ? 'Direction unknown'
+              : `${formatBearing(state.bearingDeg)} · ${LIGHT_LABEL[lightAngle(state.bearingDeg, sun)]}`}
           </Mono>
           <Mono>{formatSun(sun)} at capture</Mono>
           <Mono>

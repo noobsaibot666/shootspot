@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AdvancedInput, BestLightPeriod, GoodForTag } from './scout';
-import { bestLightPeriod, goodForTag } from './scout';
+import { advancedInputSchema, bestLightPeriod, goodForTag, shortInputSchema } from './scout';
 
 /**
  * API contract shared by the API and the clients. `PublicRecord` is the anonymity contract
@@ -34,7 +34,7 @@ export interface PublicRecord {
   goodForNote: string | null;
   bestLight: BestLightPeriod[];
   bestLightNote: string | null;
-  bearingDeg: number;
+  bearingDeg: number | null;
   advanced: AdvancedInput;
   capturedAt: string;
   altitudeM: number | null;
@@ -177,3 +177,9 @@ export const attributionUpdateSchema = z.object({
   /** Required when turning attribution on: the responsibility notice version the member accepted. */
   noticeVersion: z.string().optional(),
 });
+
+/** The creator edits the scouting notes of a published record; location, direction and photo stay. */
+export const recordNotesUpdateSchema = shortInputSchema
+  .omit({ bearingDeg: true })
+  .extend({ advanced: advancedInputSchema.default({}) });
+export type RecordNotesUpdate = z.infer<typeof recordNotesUpdateSchema>;

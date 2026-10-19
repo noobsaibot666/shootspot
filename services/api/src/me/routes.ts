@@ -3,6 +3,7 @@ import {
   objectKey,
   onboardingSchema,
   profileUpdateSchema,
+  recordNotesUpdateSchema,
 } from '@shootspot/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ import {
 import { legalVersions } from '../legal';
 import { imageSet } from '../records/dto';
 import { purgeMedia } from '../records/purge';
+import { assertActiveTags } from '../vocabulary/routes';
 import { hasPassword, passwordSchema, setPassword } from './password';
 
 const idParam = z.object({ id: z.uuid() });
@@ -179,6 +181,45 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
       [id, viewer.userId, body.attributed],
     );
     if (!rowCount) throw notFound();
+    return reply.code(204).send();
+  });
+
+  /**
+   * Creator edits the scouting notes (D-38): name, Good for, Best light, their notes and the
+   * advanced input. Location, direction and photo stay as captured. Tags must be active, except
+   * ones the record already has (a hidden tag isn't stripped by an unrelated edit).
+   */
+  app.put('/v1/me/records/:id/notes', async (req, reply) => {
+    const viewer = await requireOnboarded(deps, req);
+    const { id } = idParam.parse(req.params);
+    const body = recordNotesUpdateSchema.parse(req.body);
+    const { rows } = await pool.query(
+      `select l.good_for, l.best_light from locations l
+       join record_ownership o on o.location_id = l.id
+       where l.id = $1 and o.user_id = $2 and l.status <> 'removed'`,
+      [id, viewer.userId],
+    );
+    const current = rows[0] as { good_for: string[]; best_light: string[] } | undefined;
+    if (!current) throw notFound();
+    await assertActiveTags(
+      pool,
+      body.goodFor.filter((k) => !current.good_for.includes(k)),
+      body.bestLight.filter((k) => !current.best_light.includes(k)),
+    );
+    await pool.query(
+      `update locations set label = $2, good_for = $3, good_for_note = $4, best_light = $5,
+         best_light_note = $6, advanced = $7, updated_at = now()
+       where id = $1`,
+      [
+        id,
+        body.label,
+        body.goodFor,
+        body.goodForNote || null,
+        body.bestLight,
+        body.bestLightNote || null,
+        JSON.stringify(body.advanced),
+      ],
+    );
     return reply.code(204).send();
   });
 

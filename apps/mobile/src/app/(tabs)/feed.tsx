@@ -128,6 +128,8 @@ export default function Feed() {
             left: space.md,
             right: space.md,
             flexDirection: 'row',
+            // Right side: within thumb reach when holding the phone in one hand.
+            justifyContent: 'flex-end',
           },
           chipStyle,
         ]}

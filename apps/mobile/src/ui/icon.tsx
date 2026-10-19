@@ -65,6 +65,8 @@ const MinusCircleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/MinusCircle').MinusCircleIcon;
 const NavigationArrowIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/NavigationArrow').NavigationArrowIcon;
+const PencilSimpleIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/PencilSimple').PencilSimpleIcon;
 const PlusIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Plus').PlusIcon;
 const SignOutIcon: PhosphorIcon = require('phosphor-react-native/src/icons/SignOut').SignOutIcon;
 const SlidersHorizontalIcon: PhosphorIcon =
@@ -106,6 +108,7 @@ const ICONS = {
   down: CaretDownIcon,
   download: DownloadSimpleIcon,
   drone: DroneIcon,
+  edit: PencilSimpleIcon,
   film: FilmSlateIcon,
   filmStrip: FilmStripIcon,
   feed: ImagesSquareIcon,

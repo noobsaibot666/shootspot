@@ -309,6 +309,36 @@ describe('records', () => {
       ).toBe(400);
     }
   });
+
+  it('publishes without a direction and lets only the creator edit the notes (D-38)', async () => {
+    const creator = await member(env, 'ines@example.com');
+    const other = await member(env, 'joao@example.com');
+    const id = await publishDirect(creator, {
+      short: { label: 'Durdle Door', goodFor: ['sports'], bestLight: ['night'], bearingDeg: null },
+    });
+    const before = (
+      await env.app.inject({ method: 'GET', url: `/v1/records/${id}`, headers: other })
+    ).json();
+    expect(before.bearingDeg).toBeNull();
+
+    const notes = {
+      label: 'Durdle Door, Dorset',
+      goodFor: ['landscape', 'seascape'],
+      goodForNote: 'Low tide',
+      bestLight: ['golden_pm'],
+      advanced: { access: { type: 'public' } },
+    };
+    const url = `/v1/me/records/${id}/notes`;
+    const put = (headers: { authorization: string }, payload: object) =>
+      env.app.inject({ method: 'PUT', url, headers, payload });
+    expect((await put(other, notes)).statusCode).toBe(404);
+    expect((await put(creator, { ...notes, goodFor: ['selfie'] })).statusCode).toBe(400);
+    expect((await put(creator, notes)).statusCode).toBe(204);
+    const after = (
+      await env.app.inject({ method: 'GET', url: `/v1/records/${id}`, headers: other })
+    ).json();
+    expect(after).toMatchObject({ ...notes, bestLightNote: null, bearingDeg: null });
+  });
 });
 
 describe('anonymity contract (D-06)', () => {

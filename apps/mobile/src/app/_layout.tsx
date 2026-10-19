@@ -65,15 +65,16 @@ function Navigator() {
           name="capture"
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
-        {/* Native transition (UI thread, smooth on both platforms); the photo is painted at once
-            from the tile's cached image. */}
+        {/* A slow, soft cross-fade (UI thread, both platforms); the photo is painted at once from
+            the tile's cached image and settles in with a gentle scale. */}
         <Stack.Screen
           name="records/[id]"
-          options={{ headerShown: false, animation: 'fade_from_bottom' }}
+          options={{ headerShown: false, animation: 'fade', animationDuration: 380 }}
         />
         <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
         <Stack.Screen name="settings" options={{ title: 'Menu' }} />
-        <Stack.Screen name="filters" options={{ title: 'Area & filters', presentation: 'modal' }} />
+        <Stack.Screen name="filters" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="edit/[id]" options={{ title: 'Edit notes', presentation: 'modal' }} />
         <Stack.Screen
           name="save/[id]"
           options={{ title: 'Save to project', presentation: 'modal' }}

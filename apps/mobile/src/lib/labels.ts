@@ -17,6 +17,7 @@ export const GOOD_FOR_LABEL: Record<string, string> = {
   narrative_film: 'Narrative film',
   commercial: 'Commercial',
   drone: 'Drone (where legal)',
+  sports: 'Sports',
 };
 
 export const BEST_LIGHT_LABEL: Record<string, string> = {

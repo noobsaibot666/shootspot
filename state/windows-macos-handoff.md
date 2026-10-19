@@ -37,6 +37,8 @@ _None._
 
 ## Log
 
+- 2026-10-19 windows: **Owner feedback round (D-38), JS only for the app (Metro reload, no rebuild).** Stepped Scouting notes (swipe or Confirm, big pills, long-press to hide tags, accent Add), direction no longer asked (nullable), Edit notes for the creator (`PUT /v1/me/records/:id/notes`), Sports tag, Area & filters redesign with a close button, Feed scope chip on the right, softer photo open. **Server change:** migration `…008_notes_flow` + the new route, so the NAS needs new images before the app's Edit and direction-less publishing work there.
+
 - 2026-10-18 mac: **iOS 1.0.0 (3) in TestFlight** (request closed), built locally from `6c8cd53`, which contains `d8f5dac` (optional passwords, D-37).
   - **CI fix (`a50e41d`):** CI had been red since `d8f5dac`. The worker e2e test signs in as admin `ops@example.com`, which wasn't on the test `ADMIN_EMAILS` list, so it got a 403. Added it in `services/api/src/testing.ts`. CI is green again.
 

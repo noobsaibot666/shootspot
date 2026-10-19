@@ -45,7 +45,7 @@ export interface PublicRow {
   good_for_note: string | null;
   best_light: PublicRecord['bestLight'];
   best_light_note: string | null;
-  bearing_deg: number;
+  bearing_deg: number | null;
   advanced: PublicRecord['advanced'];
   captured_at: Date;
   altitude_m: number | null;

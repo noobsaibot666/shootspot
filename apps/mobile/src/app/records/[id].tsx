@@ -8,8 +8,8 @@ import {
   type RecordStatusResponse,
 } from '@shootspot/shared';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,7 +24,13 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  withTiming,
+  type EntryExitAnimationFunction,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
 import { listDrafts, settleDraft } from '../../lib/drafts';
@@ -57,6 +63,15 @@ const LIGHT = {
 } as const;
 
 const HERO_RADIUS = 24;
+/** Soft arrival for the photo: a slight scale up with a fade, eased, no bounce. */
+const HERO_IN: EntryExitAnimationFunction = () => {
+  'worklet';
+  const ease = { duration: 420, easing: Easing.out(Easing.cubic) };
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.96 }] },
+    animations: { opacity: withTiming(1, ease), transform: [{ scale: withTiming(1, ease) }] },
+  };
+};
 /** Height of the top bar holding the back button. */
 const BAR = 52;
 
@@ -78,6 +93,10 @@ export default function RecordScreen() {
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
   const [preview] = useState(() => getPreview(id));
+  const heroEntered = useRef(false);
+  useEffect(() => {
+    heroEntered.current = true;
+  });
 
   const load = useCallback(async () => {
     const [pub, own] = await Promise.allSettled([
@@ -114,6 +133,15 @@ export default function RecordScreen() {
       clearTimeout(timer);
     };
   }, [id, load]);
+
+  // Coming back from Edit notes: show the changes.
+  const seen = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (seen.current) void load();
+      seen.current = true;
+    }, [load]),
+  );
 
   // More locations around this one (Savee's "more like this").
   useEffect(() => {
@@ -204,16 +232,21 @@ export default function RecordScreen() {
       : record.images.detail
     : preview!.image;
   const heroImage = (
-    <Image
-      source={mediaSource(hero)}
-      // The tile's image is already in the cache: the photo is on screen at once.
-      placeholder={mediaSource(preview?.image ?? record!.images.feed)}
-      placeholderContentFit="cover"
-      style={{ width, height: heroH, borderRadius: HERO_RADIUS, backgroundColor: t.surface }}
-      contentFit="cover"
-      transition={180}
-      accessibilityLabel={record?.label}
-    />
+    <Animated.View
+      // The photo settles in softly once (not again when the details arrive and the tree changes).
+      entering={heroEntered.current ? undefined : HERO_IN}
+    >
+      <Image
+        source={mediaSource(hero)}
+        // The tile's image is already in the cache: the photo is on screen at once.
+        placeholder={mediaSource(preview?.image ?? record!.images.feed)}
+        placeholderContentFit="cover"
+        style={{ width, height: heroH, borderRadius: HERO_RADIUS, backgroundColor: t.surface }}
+        contentFit="cover"
+        transition={180}
+        accessibilityLabel={record?.label}
+      />
+    </Animated.View>
   );
 
   if (!record) {
@@ -271,8 +304,8 @@ export default function RecordScreen() {
         {heroImage}
 
         <Animated.View
-          entering={FadeInDown.duration(260)}
-          style={{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.xl }}
+          entering={FadeInDown.delay(120).duration(380).easing(Easing.out(Easing.cubic))}
+          style={{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.xxl + space.sm }}
         >
           {/* Actions: Savee's row of quiet icons with one strong Save pill. */}
           <Row style={{ justifyContent: 'space-between' }}>
@@ -296,12 +329,21 @@ export default function RecordScreen() {
               />
               <IconButton icon="more" label="More" onPress={() => setMenu(true)} />
             </Row>
-            <Button
-              label="Save"
-              icon="bookmark"
-              size="small"
-              onPress={() => router.push(`/save/${record.id}`)}
-            />
+            {own ? (
+              <Button
+                label="Edit"
+                icon="edit"
+                size="small"
+                onPress={() => router.push(`/edit/${record.id}`)}
+              />
+            ) : (
+              <Button
+                label="Save"
+                icon="bookmark"
+                size="small"
+                onPress={() => router.push(`/save/${record.id}`)}
+              />
+            )}
           </Row>
 
           <View style={{ gap: space.xs }}>
@@ -348,9 +390,9 @@ export default function RecordScreen() {
               <Fact
                 icon="compass"
                 title="Camera faces"
-                value={formatBearing(record.bearingDeg)}
+                value={record.bearingDeg == null ? 'Unknown' : formatBearing(record.bearingDeg)}
                 sub={
-                  record.sun
+                  record.sun && record.bearingDeg != null
                     ? `${LIGHT[lightAngle(record.bearingDeg, record.sun)]} at capture`
                     : undefined
                 }
@@ -499,6 +541,13 @@ export default function RecordScreen() {
       {backButton}
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>
+        {own ? (
+          <SheetAction
+            icon="edit"
+            label="Edit notes"
+            onPress={() => router.push(`/edit/${record.id}`)}
+          />
+        ) : null}
         <SheetAction icon="navigate" label="Open in Maps" onPress={openInMaps} />
         <SheetAction
           icon="bookmark"
