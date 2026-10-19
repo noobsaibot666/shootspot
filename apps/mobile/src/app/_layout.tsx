@@ -80,6 +80,8 @@ function Navigator() {
           options={{ title: 'Save to project', presentation: 'modal' }}
         />
         <Stack.Screen name="report/[id]" options={{ title: 'Report', presentation: 'modal' }} />
+        {/* iOS widgets, Control Center and Siri; hands straight off to the camera or Feed. */}
+        <Stack.Screen name="quick/[action]" options={{ headerShown: false, animation: 'none' }} />
       </Stack>
     </>
   );

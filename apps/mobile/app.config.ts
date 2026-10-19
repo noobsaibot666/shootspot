@@ -44,6 +44,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     ...(config.plugins ?? []),
     './plugins/with-p3-app-icon',
+    // iOS only: widgets and Control Center controls (targets/widget), Siri phrases (native/ios).
+    '@bacons/apple-targets',
+    './plugins/with-app-shortcuts',
     [
       'expo-build-properties',
       {

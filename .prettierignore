@@ -6,3 +6,4 @@ apps/mobile/ios
 apps/mobile/android
 docs/production
 .astro
+apps/mobile/targets/*/Assets.xcassets
