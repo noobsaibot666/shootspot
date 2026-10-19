@@ -46,6 +46,8 @@ Rules:
 
 ## Log
 
+- 2026-10-19 mac: **iOS 1.0.0 (7) in TestFlight** (`c332d68`). It fixes the camera crash in build 6 (the missing `react-native-vision-camera-worklets` add-on, `5e3ef52`). Checked on the owner's iPhone before upload: `shootspot://quick/scout` opens the camera with no errors in the log, and the owner confirmed the camera opens.
+
 - 2026-10-19 mac: **iOS 1.0.0 (5) and (6) in TestFlight** (Windows' `de64842` request closed).
   - **Build 5 (`c8fa027`):** D-39, plus the publish Live Activity (Dynamic Island / Lock Screen, App Group `group.com.exposeu.shootspot`, signed fine).
   - **Build 6 (`1970517`):** adds the Camera M-style capture screen (`81b0961`).
