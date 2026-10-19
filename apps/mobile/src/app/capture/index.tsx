@@ -134,32 +134,46 @@ export default function CameraScreen() {
   const evMax = device?.supportsExposureBias ? device.maxExposureBias : 0;
 
   // One responder for the viewfinder: tap = focus, vertical drag = exposure, pinch = zoom.
-  const gesture = useRef({ ev0: 0, zoom0: 1, dist0: 0, moved: false });
+  // Created once and reads the latest values from a ref. It used to be rebuilt whenever exposure
+  // changed, which swapped handlers mid-drag and restarted the drag distance at zero every few
+  // pixels: the exposure barely moved ("locked", owner report on build 8).
+  const latest = useRef({ exposure, currentZoom, evMin, evMax, applyZoom });
+  latest.current = { exposure, currentZoom, evMin, evMax, applyZoom };
+  const gesture = useRef({ ev0: 0, y0: 0, zoom0: 1, dist0: 0, moved: false });
   const responder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
-          gesture.current = { ev0: exposure, zoom0: currentZoom, dist0: 0, moved: false };
+        onPanResponderGrant: (e) => {
+          gesture.current = {
+            ev0: latest.current.exposure,
+            y0: e.nativeEvent.pageY,
+            zoom0: latest.current.currentZoom,
+            dist0: 0,
+            moved: false,
+          };
         },
-        onPanResponderMove: (e, g) => {
+        onPanResponderMove: (e) => {
           const touches = e.nativeEvent.touches;
+          const g = gesture.current;
           if (touches.length === 2) {
             const [a, b] = touches;
             const dist = Math.hypot(a!.pageX - b!.pageX, a!.pageY - b!.pageY);
-            if (!gesture.current.dist0) gesture.current.dist0 = dist;
-            gesture.current.moved = true;
-            applyZoom(gesture.current.zoom0 * (dist / gesture.current.dist0));
-          } else if (Math.abs(g.dy) > 8 && device?.supportsExposureBias) {
-            gesture.current.moved = true;
-            setExposure(
-              Math.min(evMax, Math.max(evMin, gesture.current.ev0 - g.dy * EV_PER_POINT)),
-            );
+            if (!g.dist0) g.dist0 = dist;
+            g.moved = true;
+            latest.current.applyZoom(g.zoom0 * (dist / g.dist0));
+            return;
+          }
+          const dy = e.nativeEvent.pageY - g.y0;
+          const { evMin: lo, evMax: hi } = latest.current;
+          if ((g.moved || Math.abs(dy) > 8) && hi > lo) {
+            g.moved = true;
+            setExposure(Math.min(hi, Math.max(lo, g.ev0 - dy * EV_PER_POINT)));
           }
         },
-        onPanResponderRelease: (e: GestureResponderEvent, g) => {
-          if (gesture.current.moved || Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8) return;
+        onPanResponderRelease: (e: GestureResponderEvent, gs) => {
+          if (gesture.current.moved || Math.abs(gs.dx) > 8 || Math.abs(gs.dy) > 8) return;
           const { locationX: x, locationY: y } = e.nativeEvent;
           setFocus({ x, y });
           setExposure(0);
@@ -167,8 +181,7 @@ export default function CameraScreen() {
           haptics.selection();
         },
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [exposure, currentZoom, device, evMin, evMax],
+    [],
   );
 
   const outputs = useMemo(
