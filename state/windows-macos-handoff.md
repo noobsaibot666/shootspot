@@ -46,6 +46,8 @@ Rules:
 
 ## Log
 
+- 2026-10-19 mac: **iOS 1.0.0 (build 9) submitted to App Review**, now Waiting for Review. Manual release: the owner presses Release after approval. Content rights set to "uses third-party content" (member photos, Apple Maps) and App Privacy published by the owner. Any build from now on is 1.0.1 or build 10+, and doesn't touch the version in review.
+
 - 2026-10-19 mac: **App Store 1.0.0 ready to submit; waits for the owner's go.**
   - **Done:** 7 iPhone 6.9" screenshots (personal data replaced) uploaded with the new `tools/asc-screenshots.mjs`; build 9 attached; review notes updated.
   - **Review login:** `review@expose-u.com` with the code from the NAS `.env` (`REVIEW_*`, added by the owner). Tested against the live API.
