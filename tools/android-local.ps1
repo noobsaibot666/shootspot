@@ -1,5 +1,5 @@
 # Local Android build on Windows: prebuild -> Gradle -> install over USB.
-# Usage (repo root):  powershell -File tools/android-local.ps1 [-Clean] [-Release]
+# Usage (repo root):  powershell -File tools/android-local.ps1 [-Clean] [-Release] [-Fresh]
 #   -Clean    regenerate android/ (after native dependency or app config changes) and drop native build caches.
 #   -Release  optimised build with the JS bundled in (no Metro): how the app really feels, and it
 #             works away from the PC (e.g. via Tailscale). Signed with the debug key, so it installs
@@ -8,11 +8,12 @@
 #             values in apps/mobile/.env.store (see .env.store.example): HTTPS API, no cleartext.
 #             Always regenerates android/; the next test build regenerates it again. Not installed.
 #             Bump android.versionCode in app.json before each upload.
+#   -Fresh    uninstall the app from the phone before installing (no old version left behind).
 #   default   dev build that loads JS from Metro.
 # Needs: JDK 17, Android SDK (platform 37, build-tools 37.0.0, NDK 27.1.12297006, CMake 3.31.6), a phone with
 # USB debugging, and Metro running (`pnpm --filter @shootspot/mobile start --dev-client`).
 # CMake 3.31 is required: the SDK default 3.22 loops forever ("build.ninja still dirty") on pnpm's linked folders.
-param([switch]$Clean, [switch]$Release, [switch]$Store)
+param([switch]$Clean, [switch]$Release, [switch]$Store, [switch]$Fresh)
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot
@@ -83,18 +84,20 @@ try {
   $task = if ($Store) { 'bundleRelease' } elseif ($Release) { 'assembleRelease' } else { 'assembleDebug' }
   # Store bundles carry every ABI and are signed with the upload key (AGP's injected signing,
   # as Android Studio does), so the generated build.gradle stays untouched.
-  $gradleArgs = if ($Store) {
-    @("-Pandroid.injected.signing.store.file=$env:SHOOTSPOT_UPLOAD_STORE_FILE",
-      "-Pandroid.injected.signing.store.password=$env:SHOOTSPOT_UPLOAD_STORE_PASSWORD",
-      "-Pandroid.injected.signing.key.alias=$env:SHOOTSPOT_UPLOAD_KEY_ALIAS",
-      "-Pandroid.injected.signing.key.password=$env:SHOOTSPOT_UPLOAD_KEY_PASSWORD")
-  } else { @("-PreactNativeArchitectures=$abi") }
+  # Gradle properties go in as ORG_GRADLE_PROJECT_* variables, not -Pname=value arguments:
+  # Windows PowerShell 5.1 mangled those on the way through gradlew.bat ("Task '-' not found").
+  if ($Store) {
+    Set-Item 'env:ORG_GRADLE_PROJECT_android.injected.signing.store.file' $env:SHOOTSPOT_UPLOAD_STORE_FILE
+    Set-Item 'env:ORG_GRADLE_PROJECT_android.injected.signing.store.password' $env:SHOOTSPOT_UPLOAD_STORE_PASSWORD
+    Set-Item 'env:ORG_GRADLE_PROJECT_android.injected.signing.key.alias' $env:SHOOTSPOT_UPLOAD_KEY_ALIAS
+    Set-Item 'env:ORG_GRADLE_PROJECT_android.injected.signing.key.password' $env:SHOOTSPOT_UPLOAD_KEY_PASSWORD
+  } else { $env:ORG_GRADLE_PROJECT_reactNativeArchitectures = $abi }
   # Library build folders on a short path (Windows path limit; see the init script). It must end
   # in `android`: Expo's code generator refuses build folders outside an android directory.
   $env:SHOOTSPOT_GRADLE_BUILD_ROOT = Join-Path $env:USERPROFILE '.ssb\android'
   if ($Clean -and (Test-Path $env:SHOOTSPOT_GRADLE_BUILD_ROOT)) { Remove-Item -Recurse -Force $env:SHOOTSPOT_GRADLE_BUILD_ROOT }
   $init = Join-Path $PSScriptRoot 'android-short-build.gradle'
-  .\gradlew.bat $task --console=plain --init-script $init @gradleArgs
+  .\gradlew.bat $task --console plain --init-script $init
   if ($LASTEXITCODE) { throw "Gradle failed ($LASTEXITCODE)" }
 } finally { Pop-Location }
 
@@ -113,6 +116,10 @@ $apk = if ($Release) { 'android\app\build\outputs\apk\release\app-release.apk' }
 if (-not $phone) {
   Write-Host "Built: $mobile\$apk. Connect the phone and run again (no -Clean) to install."
   exit 0
+}
+if ($Fresh) {
+  Write-Host 'Removing the installed app first (-Fresh). Sign in again afterwards.'
+  adb uninstall com.shootspot.app 2>&1 | Out-Null
 }
 $out = adb install -r $apk 2>&1 | Out-String
 if ($out -match 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match') {

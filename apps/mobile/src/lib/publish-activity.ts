@@ -5,13 +5,14 @@ import { api } from './api';
 import type { LocalDraft } from './drafts';
 
 /**
- * iOS only: publish progress as a Live Activity (Dynamic Island, Lock Screen). Native side:
- * modules/publish-activity (start/update/end) and targets/widget/PublishActivity.swift (views).
+ * Publish progress outside the app. iOS: a Live Activity (Dynamic Island, Lock Screen); native
+ * side modules/publish-activity/ios and targets/widget/PublishActivity.swift (views). Android
+ * (D-40): a progress notification with the photo, modules/publish-activity/android.
  *
  * Follows the draft states from lib/drafts.ts for photos taken with the in-app camera (not
  * gallery imports, which come in batches). After the upload the server processes the photo, so
- * this checks the record's status until it is live or rejected. Missing native module (Android,
- * Expo Go, older builds): every call is a no-op.
+ * this checks the record's status until it is live or rejected. Missing native module (Expo Go,
+ * older builds): every call is a no-op.
  */
 
 type Phase = 'sending' | 'processing' | 'live' | 'rejected' | 'waiting';
@@ -27,7 +28,7 @@ interface PublishActivityNative {
 }
 
 const native =
-  Platform.OS === 'ios'
+  Platform.OS === 'ios' || Platform.OS === 'android'
     ? requireOptionalNativeModule<PublishActivityNative>('PublishActivity')
     : null;
 
