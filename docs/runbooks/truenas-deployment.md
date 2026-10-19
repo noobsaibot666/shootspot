@@ -9,6 +9,8 @@
 - admin redesign with metrics and the Locations page
 - the portfolio-link fix
 
+Updated 2026-10-19 to `dd4e00f`: migration 0008 (direction optional, Sports tag) and the notes-edit route (D-38).
+
 The API takes about 30 s to report healthy after `up -d`, so run checks after that.
 
 ## Rules (other apps run on this NAS)
