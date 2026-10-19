@@ -10,10 +10,15 @@ module.exports = {
   bundleIdentifier: '.widget',
   // Same as the app. Controls (iOS 18) and the Siri hand-off are gated in Swift.
   deploymentTarget: '16.4',
+  // Same App Group as the app (app.json): the publish Live Activity reads photo thumbnails there.
+  entitlements: {
+    'com.apple.security.application-groups': ['group.com.exposeu.shootspot'],
+  },
   colors: {
     $widgetBackground: { light: '#FFFFFF', dark: '#0A0A0A' },
     $accent: { light: '#F0281A', dark: '#FF3B2C' },
     canvas: { light: '#FFFFFF', dark: '#0A0A0A' },
+    accent: { light: '#F0281A', dark: '#FF3B2C' },
     ink: { light: '#0A0A0A', dark: '#F2F2F2' },
     onInk: { light: '#FFFFFF', dark: '#0A0A0A' },
     surface: { light: '#F3F3F3', dark: '#161616' },

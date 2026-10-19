@@ -1,6 +1,7 @@
 import type { CreateRecordResponse, DraftRecord, RecordStatusResponse } from '@shootspot/shared';
 import { Directory, File, Paths } from 'expo-file-system';
 import { ApiError, api } from './api';
+import { trackPublish } from './publish-activity';
 
 /**
  * Local drafts (plan journey 4: "save a draft locally if capture or upload fails").
@@ -39,6 +40,7 @@ async function write(d: LocalDraft) {
   if (!f.exists) f.create({ intermediates: true, overwrite: true });
   await f.write(JSON.stringify(d));
   notify();
+  trackPublish(d, photoFile(d.draft.draftId).uri);
 }
 
 /** Save a new draft with its (already cropped, EXIF-free) photo. */

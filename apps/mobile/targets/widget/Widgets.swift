@@ -15,6 +15,7 @@ struct ShootSpotWidgets: WidgetBundle {
     ScoutWidget()
     NearbyWidget()
     QuickActionsWidget()
+    PublishLiveActivity()
     if #available(iOS 18.0, *) {
       ScoutControl()
       NearbyControl()

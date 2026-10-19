@@ -10,10 +10,14 @@
     "ios": {
       "bundleIdentifier": "com.exposeu.shootspot",
       "appleTeamId": "RD7UU4Z3D2",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "supportsTablet": false,
       "config": { "usesNonExemptEncryption": false },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.exposeu.shootspot"]
+      },
       "infoPlist": {
+        "NSSupportsLiveActivities": true,
         "NSCameraUsageDescription": "ShootSpot uses the camera to photograph locations you scout.",
         "NSLocationWhenInUseUsageDescription": "ShootSpot uses your location to pin the place you photograph and to show locations near you. You can always place the pin manually instead."
       }
