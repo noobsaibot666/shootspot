@@ -1,5 +1,6 @@
 import { Icon, type IconName } from '../../ui/icon';
 import type { Framing } from '@shootspot/shared';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -24,8 +25,22 @@ import {
   type CameraRef,
   type FlashMode,
 } from 'react-native-vision-camera';
+import {
+  ExposureRow,
+  FramingBadge,
+  Grid,
+  HistogramView,
+  Level,
+  Panel,
+  ToggleButton,
+  ZoomWheel,
+  trim,
+  useCameraPrefs,
+  useExposureReadout,
+} from '../../capture/camera-ui';
 import { useCapture } from '../../capture/context';
 import { iconRotation, isSideways, previewCropRect } from '../../capture/crop';
+import { useHistogram } from '../../capture/histogram';
 import { haptics } from '../../lib/device';
 import { listImports, pickPhotos } from '../../lib/imports';
 import { processCapture, toFileUri } from '../../capture/process';
@@ -38,16 +53,21 @@ const FLASH_ICON: Record<FlashMode, IconName> = {
   auto: 'flashAuto',
   on: 'flash.fill',
 };
+const TOP_BAR = 56;
+const READOUT = 52;
+const PANEL_MIN = 200;
 
 /**
- * Capture screen (D-22): minimal and close to the native Camera app. Viewfinder, shutter, lens
- * pills, tap-to-focus with drag-to-adjust exposure, pinch to zoom, a quiet 16:9 / 1:1 switch,
- * flash only when the device has one, flip, and a thumbnail of the last shot. GPS and heading are
- * captured silently. Controls rotate with the device; the UI itself stays portrait.
+ * Capture screen (D-22), Camera M-style look (owner request, 2026-10-19): framing badge top left,
+ * viewfinder with grid, level and an optional live RGB histogram, an A · ISO · F · SEC readout,
+ * and a rounded panel (tinted by the scene) with quick toggles, last shot / gallery, the shutter
+ * and a vertical zoom wheel. Behaviour is unchanged: tap to focus, drag for exposure, pinch to
+ * zoom, 16:9 / 1:1 crop mask, flash only when the device has one, GPS and heading captured
+ * silently. Controls rotate with the device; the UI itself stays portrait.
  */
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const capture = useCapture();
   const { hasPermission, requestPermission, canRequestPermission } = useCameraPermission();
   const [position, setPosition] = useState<'back' | 'front'>('back');
@@ -55,9 +75,11 @@ export default function CameraScreen() {
     physicalDevices: ['ultra-wide-angle', 'wide-angle', 'telephoto'],
   });
   const photoOutput = usePhotoOutput({ containerFormat: 'jpeg', qualityPrioritization: 'quality' });
+  const { frameOutput, histogram } = useHistogram();
   const orientation = useOrientation('device');
   const sensors = useFieldSensors(hasPermission);
   const cameraRef = useRef<CameraRef>(null);
+  const [prefs, setPrefs] = useCameraPrefs();
 
   const [started, setStarted] = useState(false);
   const [framing, setFraming] = useState<Framing>('16:9');
@@ -75,20 +97,23 @@ export default function CameraScreen() {
   }, [hasPermission, canRequestPermission, requestPermission]);
   useEffect(() => setStarted(false), [position]);
 
-  // Lens pills: physical lens switch points on multi-camera devices; a digital 2× fallback on
+  const live = useExposureReadout(() => {
+    const ctl = cameraRef.current?.controller;
+    return ctl ? { iso: ctl.iso, seconds: ctl.exposureDuration } : null;
+  });
+
+  // Lens steps: physical lens switch points on multi-camera devices; a digital 2× fallback on
   // devices that expose a single camera (seen on Android in the spike).
+  const lensBase = device ? (device.zoomLensSwitchFactors[0] ?? device.minZoom) : 1;
+  const labelBase = device?.zoomLensSwitchFactors.length ? lensBase : (device?.minZoom ?? 1);
   const lenses = useMemo(() => {
     if (!device) return [];
-    const base = device.zoomLensSwitchFactors[0] ?? device.minZoom;
     const stops = device.zoomLensSwitchFactors.length
       ? [device.minZoom, ...device.zoomLensSwitchFactors]
       : [device.minZoom, Math.min(device.minZoom * 2, device.maxZoom)];
-    return [...new Set(stops)].map((z) => ({
-      zoom: z,
-      label: trim(z / (device.zoomLensSwitchFactors.length ? base : device.minZoom)),
-    }));
-  }, [device]);
-  const neutralZoom = device ? (device.zoomLensSwitchFactors[0] ?? device.minZoom) : 1;
+    return [...new Set(stops)].map((z) => ({ zoom: z, label: trim(z / labelBase) }));
+  }, [device, labelBase]);
+  const neutralZoom = lensBase;
   const currentZoom = zoom ?? neutralZoom;
 
   const applyZoom = (z: number) => {
@@ -222,49 +247,36 @@ export default function CameraScreen() {
     );
   }
 
-  const previewH = Math.round((screenW * 4) / 3);
+  // The 4:3 viewfinder fills the width, but gives way on short screens so the panel always fits.
+  const room = screenH - insets.top - TOP_BAR - READOUT - PANEL_MIN - insets.bottom;
+  const previewH = Math.round(Math.max(200, Math.min((screenW * 4) / 3, room)));
   const crop = preview && previewCropRect(preview, orientation, framing);
   const rotate = { transform: [{ rotate: `${iconRotation(orientation)}deg` }] };
   const showRotateCue = framing === '16:9' && !isSideways(orientation);
+  const lastShot = capture.state.photo?.uri;
+  const hasFlash = !!device?.hasFlash && position === 'back';
 
   return (
     <View style={styles.root}>
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <View style={styles.side}>
-          {device?.hasFlash && position === 'back' ? (
-            <IconButton
-              icon={FLASH_ICON[flash]}
-              label={`Flash ${flash}`}
-              tint={flash === 'off' ? c.control : c.accent}
-              style={rotate}
-              onPress={() => setFlash((f) => (f === 'off' ? 'auto' : f === 'auto' ? 'on' : 'off'))}
-            />
-          ) : null}
-        </View>
-        <View style={styles.framing} accessibilityRole="radiogroup">
-          {(['16:9', '1:1'] as const).map((f) => (
-            <Pressable
-              key={f}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: framing === f }}
-              onPress={() => setFraming(f)}
-              hitSlop={8}
-            >
-              <Text style={[styles.framingText, framing === f && { color: c.accent }, rotate]}>
-                {f}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={[styles.side, { alignItems: 'flex-end' }]}>
-          <IconButton
-            icon="close"
-            label="Close camera"
-            onPress={() => router.back()}
-            style={rotate}
-          />
-        </View>
+      {/* Top bar: framing badge, close */}
+      <View style={[styles.topBar, { paddingTop: insets.top, height: insets.top + TOP_BAR }]}>
+        <FramingBadge
+          framing={framing}
+          style={rotate}
+          onPress={() => {
+            haptics.selection();
+            setFraming((f) => (f === '16:9' ? '1:1' : '16:9'));
+          }}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close camera"
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.iconButton}
+        >
+          <Icon name="close" size={24} color={c.control} style={rotate} />
+        </Pressable>
       </View>
 
       {/* Viewfinder */}
@@ -278,7 +290,7 @@ export default function CameraScreen() {
             style={StyleSheet.absoluteFill}
             isActive
             device={device}
-            outputs={[photoOutput]}
+            outputs={[photoOutput, frameOutput]}
             orientationSource="device"
             resizeMode="contain"
             exposure={started ? exposure : undefined}
@@ -288,6 +300,9 @@ export default function CameraScreen() {
           />
         ) : null}
         {crop && preview ? <CropMask preview={preview} crop={crop} /> : null}
+        {crop && prefs.grid ? <Grid rect={crop} /> : null}
+        {prefs.level ? <Level /> : null}
+        {prefs.histogram ? <HistogramView histogram={histogram} /> : null}
         <Animated.View
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: flashOverlay }]}
@@ -304,85 +319,105 @@ export default function CameraScreen() {
             <Icon name="rotate" size={18} color={c.control} />
           </View>
         ) : null}
-        {lenses.length > 1 && started ? (
-          <View style={styles.lenses}>
-            {lenses.map((l) => {
-              const active = Math.abs(currentZoom - l.zoom) < 0.05;
-              return (
-                <Pressable
-                  key={l.zoom}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${l.label} times zoom`}
-                  onPress={() => applyZoom(l.zoom)}
-                  style={[styles.lens, active && styles.lensActive]}
-                >
-                  <Text style={[styles.lensText, active && { color: c.accent }, rotate]}>
-                    {active ? `${l.label}×` : l.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
       </View>
 
-      {/* Bottom bar */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-        <View style={styles.side}>
-          {/* Gallery import (D-28), where native cameras keep the photo library. */}
+      {/* A · ISO · F · SEC, histogram toggle */}
+      <ExposureRow
+        exposure={{
+          iso: live.iso,
+          seconds: live.seconds,
+          aperture: device?.lensAperture ? device.lensAperture : null,
+        }}
+        bias={exposure}
+        histogramOn={prefs.histogram}
+        onHistogram={() => setPrefs({ histogram: !prefs.histogram })}
+      />
+
+      {/* Control panel */}
+      <Panel tint={histogram?.mean ?? null} style={{ paddingBottom: insets.bottom + 12 }}>
+        <View style={styles.toggles}>
+          {hasFlash ? (
+            <ToggleButton
+              icon={FLASH_ICON[flash]}
+              label={`Flash ${flash}`}
+              iconStyle={rotate}
+              onPress={() => setFlash((f) => (f === 'off' ? 'auto' : f === 'auto' ? 'on' : 'off'))}
+            />
+          ) : (
+            <View style={styles.toggleSpacer} />
+          )}
+          <ToggleButton
+            icon="grid"
+            label="Grid"
+            active={prefs.grid}
+            iconStyle={rotate}
+            onPress={() => setPrefs({ grid: !prefs.grid })}
+          />
+          <View style={styles.handle} />
+          <ToggleButton
+            icon="level"
+            label="Level"
+            active={prefs.level}
+            iconStyle={rotate}
+            onPress={() => setPrefs({ level: !prefs.level })}
+          />
+          <ToggleButton
+            icon="flip"
+            label="Switch camera"
+            iconStyle={rotate}
+            onPress={() => setPosition((p) => (p === 'back' ? 'front' : 'back'))}
+          />
+        </View>
+
+        <View style={styles.mainRow}>
+          {/* Last shot, or the gallery: imports open here (D-28), where native cameras keep it. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Import photos from your gallery"
             onPress={() => void openGallery()}
-            style={[styles.gallery, rotate]}
             hitSlop={8}
+            style={[styles.thumb, rotate]}
           >
-            <Icon name="gallery" size={22} color={c.control} />
+            {lastShot ? (
+              <Image
+                source={{ uri: lastShot }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            ) : (
+              <Icon name="gallery" size={24} color={c.control} />
+            )}
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Take photo"
+            disabled={busy || !started}
+            onPress={() => void shoot()}
+            style={({ pressed }) => [
+              styles.shutter,
+              (pressed || busy) && { transform: [{ scale: 0.92 }] },
+            ]}
+          >
+            <View style={styles.shutterInner} />
+          </Pressable>
+          {lenses.length > 1 && started ? (
+            <ZoomWheel
+              lenses={lenses}
+              zoom={currentZoom}
+              displayFactor={currentZoom / labelBase}
+              onSelect={(z) => {
+                haptics.selection();
+                applyZoom(z);
+              }}
+              labelStyle={rotate}
+            />
+          ) : (
+            <View style={styles.wheelSpacer} />
+          )}
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Take photo"
-          disabled={busy || !started}
-          onPress={() => void shoot()}
-          style={({ pressed }) => [
-            styles.shutter,
-            (pressed || busy) && { transform: [{ scale: 0.92 }] },
-          ]}
-        >
-          <View style={styles.shutterInner} />
-        </Pressable>
-        <View style={[styles.side, { alignItems: 'flex-end' }]}>
-          <IconButton
-            icon="flip"
-            label="Switch camera"
-            style={rotate}
-            onPress={() => setPosition((p) => (p === 'back' ? 'front' : 'back'))}
-          />
-        </View>
-      </View>
+      </Panel>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
-  );
-}
-
-function IconButton(props: {
-  icon: IconName;
-  label: string;
-  onPress(): void;
-  tint?: string;
-  style?: object;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={props.label}
-      onPress={props.onPress}
-      hitSlop={12}
-      style={styles.iconButton}
-    >
-      <Icon name={props.icon} size={24} color={props.tint ?? c.control} style={props.style} />
-    </Pressable>
   );
 }
 
@@ -442,11 +477,6 @@ function FocusSquare({ at, exposure }: { at: { x: number; y: number }; exposure:
   );
 }
 
-const trim = (z: number) => {
-  const r = Math.round(z * 10) / 10;
-  return r < 1 ? `.${Math.round(r * 10)}` : String(r);
-};
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: c.background },
   center: { alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -454,70 +484,65 @@ const styles = StyleSheet.create({
   body: { color: c.controlMuted, fontSize: 15, textAlign: 'center', lineHeight: 21 },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
   textButtonLabel: { color: c.accent, fontSize: 17, fontWeight: '600' },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 10 },
-  side: { width: 64 },
-  framing: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 20 },
-  framingText: { color: c.control, fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+  },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   mask: { position: 'absolute', backgroundColor: c.mask },
   guide: { position: 'absolute', borderWidth: StyleSheet.hairlineWidth, borderColor: c.guide },
   rotateCue: {
     position: 'absolute',
-    top: 12,
+    bottom: 12,
     alignSelf: 'center',
     backgroundColor: c.backplate,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  lenses: {
-    position: 'absolute',
-    bottom: 14,
-    alignSelf: 'center',
+  toggles: {
     flexDirection: 'row',
-    gap: 6,
-    backgroundColor: c.backplate,
-    borderRadius: 999,
-    padding: 4,
-  },
-  lens: {
-    minWidth: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-evenly',
+    paddingTop: 14,
+    paddingHorizontal: 12,
   },
-  lensActive: { backgroundColor: 'rgba(0,0,0,0.55)' },
-  lensText: { color: c.control, fontSize: 12, fontWeight: '600' },
-  bottomBar: {
+  toggleSpacer: { width: 48, height: 48 },
+  handle: { width: 40, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' },
+  mainRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 28,
   },
-  gallery: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: c.controlMuted,
+  thumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   shutter: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 4,
-    borderColor: c.control,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shutterInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: c.control },
+  shutterInner: { width: 70, height: 70, borderRadius: 35, backgroundColor: c.control },
+  wheelSpacer: { width: 64 },
   error: {
     position: 'absolute',
-    bottom: 140,
+    bottom: 200,
     alignSelf: 'center',
     color: '#FF453A',
     backgroundColor: c.backplate,

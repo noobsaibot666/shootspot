@@ -29,6 +29,9 @@ const DotsThreeIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/DotsThree').DotsThreeIcon;
 const DownloadSimpleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/DownloadSimple').DownloadSimpleIcon;
+const CrosshairSimpleIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/CrosshairSimple').CrosshairSimpleIcon;
+const GridNineIcon: PhosphorIcon = require('phosphor-react-native/src/icons/GridNine').GridNineIcon;
 const DroneIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Drone').DroneIcon;
 const ExportIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Export').ExportIcon;
 const EyeSlashIcon: PhosphorIcon = require('phosphor-react-native/src/icons/EyeSlash').EyeSlashIcon;
@@ -122,6 +125,7 @@ const ICONS = {
   forward: CaretRightIcon,
   gallery: ImagesIcon,
   globe: GlobeHemisphereWestIcon,
+  grid: GridNineIcon,
   heart: HeartIcon,
   hidden: EyeSlashIcon,
   home: HouseIcon,
@@ -133,6 +137,7 @@ const ICONS = {
   offline: CloudSlashIcon,
   person: UserIcon,
   lock: LockSimpleIcon,
+  level: CrosshairSimpleIcon,
   pin: MapPinIcon,
   profile: UserCircleIcon,
   rejected: XCircleIcon,

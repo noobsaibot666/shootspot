@@ -52,6 +52,9 @@ export const camera = {
   accent: '#FFD60A',
   mask: 'rgba(0,0,0,0.55)',
   guide: 'rgba(255,255,255,0.9)',
+  gridLine: 'rgba(255,255,255,0.35)',
+  level: '#30D158',
+  panel: '#141414',
 } as const;
 
 export const font = {

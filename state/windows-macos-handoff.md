@@ -35,12 +35,14 @@ Rules:
 
 - 2026-10-19 windows → mac: **iOS build from `de64842` or later** (D-39: own tags, × to clear the name, full-width pills, More details as five pages). JS only on top of build 4. The NAS is already on `de64842`.
 
-- 2026-10-19 mac → windows: **Heads-up: the Mac is redesigning the camera screen** (`apps/mobile/src/app/capture/index.tsx`, owner request: Camera M style, both platforms). The new look adds:
-  - a 16:9 / 1:1 badge;
-  - a level, a grid and a live RGB histogram;
-  - an ISO / F / SEC readout row;
-  - a rounded control panel with a vertical zoom wheel.
-    Please don't edit that file until the Mac logs it as done. Anything you need changed there, add it here. Android will need a device check afterwards.
+- 2026-10-19 mac → windows: **Camera redesign done (Camera M style); please check it on an Android phone.** The camera screen is yours to edit again.
+  - **New files:** `src/capture/camera-ui.tsx` (badge, level, grid, histogram, readout, panel, zoom wheel) and `src/capture/histogram.ts` (VisionCamera frame output, `pixelFormat: 'rgb'`, sampled on the frame thread).
+  - **Check:**
+    - the RGB histogram moves and the panel tint follows the scene (Android RGBA path);
+    - ISO / SEC show values (`controller.iso` / `exposureDuration`; "—" if Android reports 0);
+    - the level turns green when level, upright and sideways (Reanimated `GRAVITY`; if it tilts the wrong way, flip the sign in `Level`);
+    - the zoom wheel steps lenses;
+    - no slowdown from the extra frame output.
 
 ## Log
 
