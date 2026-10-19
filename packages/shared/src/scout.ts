@@ -64,15 +64,38 @@ export const pinSchema = z.object({
   source: z.enum(['gps', 'photo', 'manual', 'search']),
 });
 
-export const shortInputSchema = z.object({
+/** A member's own tag (D-39): free text, kept on the record only. */
+const customTags = z.array(z.string().trim().min(1).max(30)).max(3).default([]);
+
+/** The notes a member writes (also what the creator may edit later, D-38). */
+export const notesFields = z.object({
   label: shortText(120).min(1),
-  goodFor: z.array(goodForTag).min(1).max(8),
+  goodFor: z.array(goodForTag).max(8),
+  goodForCustom: customTags,
   goodForNote: shortText(200).optional(),
-  bestLight: z.array(bestLightPeriod).min(1),
+  bestLight: z.array(bestLightPeriod),
+  bestLightCustom: customTags,
   bestLightNote: shortText(200).optional(),
-  /** Compass bearing the camera points toward, 0–359; null when the device had no reading. */
-  bearingDeg: z.number().min(0).lt(360).nullable(),
 });
+
+type TagCounts = Pick<
+  z.infer<typeof notesFields>,
+  'goodFor' | 'goodForCustom' | 'bestLight' | 'bestLightCustom'
+>;
+/** At least one tag of each kind, listed or personal. */
+export function hasTags(s: TagCounts) {
+  return (
+    s.goodFor.length + s.goodForCustom.length > 0 &&
+    s.bestLight.length + s.bestLightCustom.length > 0
+  );
+}
+
+export const shortInputSchema = notesFields
+  .extend({
+    /** Compass bearing the camera points toward, 0–359; null when the device had no reading. */
+    bearingDeg: z.number().min(0).lt(360).nullable(),
+  })
+  .refine(hasTags, { path: ['goodFor'], message: 'needs a Good for and a Best light tag' });
 
 const triState = z.enum(['yes', 'no', 'unknown']);
 

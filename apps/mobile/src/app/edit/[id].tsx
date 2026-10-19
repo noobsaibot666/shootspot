@@ -1,4 +1,9 @@
-import type { AdvancedInput, PublicRecord, RecordNotesUpdate } from '@shootspot/shared';
+import {
+  hasTags,
+  type AdvancedInput,
+  type PublicRecord,
+  type RecordNotesUpdate,
+} from '@shootspot/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -19,8 +24,10 @@ import { MoreDetails, PillInput, TagPicker } from '../../ui/notes';
 interface Notes {
   label: string;
   goodFor: string[];
+  goodForCustom: string[];
   goodForNote: string;
   bestLight: string[];
+  bestLightCustom: string[];
   bestLightNote: string;
   advanced: AdvancedInput;
 }
@@ -44,8 +51,10 @@ export default function EditNotes() {
         setNotes({
           label: r.label,
           goodFor: r.goodFor,
+          goodForCustom: r.goodForCustom ?? [],
           goodForNote: r.goodForNote ?? '',
           bestLight: r.bestLight,
+          bestLightCustom: r.bestLightCustom ?? [],
           bestLightNote: r.bestLightNote ?? '',
           advanced: r.advanced ?? {},
         }),
@@ -66,7 +75,7 @@ export default function EditNotes() {
   }
 
   const set = (patch: Partial<Notes>) => setNotes({ ...notes, ...patch });
-  const valid = notes.label.trim() && notes.goodFor.length && notes.bestLight.length;
+  const valid = notes.label.trim() && hasTags(notes);
 
   async function save() {
     setBusy(true);
@@ -74,8 +83,10 @@ export default function EditNotes() {
     const body: RecordNotesUpdate = {
       label: notes!.label.trim(),
       goodFor: notes!.goodFor,
+      goodForCustom: notes!.goodForCustom,
       goodForNote: notes!.goodForNote.trim() || undefined,
       bestLight: notes!.bestLight,
+      bestLightCustom: notes!.bestLightCustom,
       bestLightNote: notes!.bestLightNote.trim() || undefined,
       advanced: notes!.advanced,
     };
@@ -110,6 +121,7 @@ export default function EditNotes() {
       >
         <Section title="Name of the place">
           <PillInput
+            clearable
             value={notes.label}
             onChangeText={(label) => set({ label })}
             maxLength={120}
@@ -120,7 +132,8 @@ export default function EditNotes() {
           <TagPicker
             kind="good_for"
             selected={notes.goodFor}
-            onChange={(goodFor) => set({ goodFor })}
+            custom={notes.goodForCustom}
+            onChange={(goodFor, goodForCustom) => set({ goodFor, goodForCustom })}
             max={8}
           />
         </Section>
@@ -128,9 +141,11 @@ export default function EditNotes() {
           <TagPicker
             kind="best_light"
             selected={notes.bestLight}
-            onChange={(bestLight) => set({ bestLight })}
+            custom={notes.bestLightCustom}
+            onChange={(bestLight, bestLightCustom) => set({ bestLight, bestLightCustom })}
           />
           <PillInput
+            clearable
             value={notes.bestLightNote}
             onChangeText={(bestLightNote) => set({ bestLightNote })}
             maxLength={200}

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AdvancedInput, BestLightPeriod, GoodForTag } from './scout';
-import { advancedInputSchema, bestLightPeriod, goodForTag, shortInputSchema } from './scout';
+import { advancedInputSchema, bestLightPeriod, goodForTag, hasTags, notesFields } from './scout';
 
 /**
  * API contract shared by the API and the clients. `PublicRecord` is the anonymity contract
@@ -31,8 +31,11 @@ export interface PublicRecord {
   distanceM: number | null;
   framing: '16:9' | '1:1';
   goodFor: GoodForTag[];
+  /** The creator's own tags (D-39), shown as written. */
+  goodForCustom: string[];
   goodForNote: string | null;
   bestLight: BestLightPeriod[];
+  bestLightCustom: string[];
   bestLightNote: string | null;
   bearingDeg: number | null;
   advanced: AdvancedInput;
@@ -179,7 +182,7 @@ export const attributionUpdateSchema = z.object({
 });
 
 /** The creator edits the scouting notes of a published record; location, direction and photo stay. */
-export const recordNotesUpdateSchema = shortInputSchema
-  .omit({ bearingDeg: true })
-  .extend({ advanced: advancedInputSchema.default({}) });
-export type RecordNotesUpdate = z.infer<typeof recordNotesUpdateSchema>;
+export const recordNotesUpdateSchema = notesFields
+  .extend({ advanced: advancedInputSchema.default({}) })
+  .refine(hasTags, { path: ['goodFor'], message: 'needs a Good for and a Best light tag' });
+export type RecordNotesUpdate = z.input<typeof recordNotesUpdateSchema>;

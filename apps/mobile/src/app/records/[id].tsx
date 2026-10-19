@@ -359,7 +359,10 @@ export default function RecordScreen() {
 
           <Row wrap style={{ gap: space.sm }}>
             <Icon name="aperture" size={18} color={t.muted} />
-            {record.goodFor.map((g) => (
+            {[
+              ...record.goodFor.map((g) => label('good_for', g)),
+              ...(record.goodForCustom ?? []),
+            ].map((g) => (
               <View
                 key={g}
                 style={{
@@ -369,9 +372,7 @@ export default function RecordScreen() {
                   paddingVertical: 6,
                 }}
               >
-                <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>
-                  {label('good_for', g)}
-                </Text>
+                <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>{g}</Text>
               </View>
             ))}
           </Row>
@@ -384,7 +385,10 @@ export default function RecordScreen() {
               <Fact
                 icon="sunset"
                 title="Best light"
-                value={record.bestLight.map((b) => label('best_light', b)).join(', ')}
+                value={[
+                  ...record.bestLight.map((b) => label('best_light', b)),
+                  ...(record.bestLightCustom ?? []),
+                ].join(', ')}
                 sub={record.bestLightNote ?? undefined}
               />
               <Fact

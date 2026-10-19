@@ -85,8 +85,10 @@ export default function Publish() {
       short: {
         label: state.label.trim(),
         goodFor: state.goodFor,
+        goodForCustom: state.goodForCustom,
         goodForNote: state.goodForNote.trim() || undefined,
         bestLight: state.bestLight,
+        bestLightCustom: state.bestLightCustom,
         bestLightNote: state.bestLightNote.trim() || undefined,
         bearingDeg: state.bearingDeg,
       },
@@ -147,15 +149,19 @@ export default function Publish() {
       <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
         <Text style={{ color: t.ink, fontSize: 22, fontWeight: '700' }}>{state.label}</Text>
         <Row wrap>
-          {state.goodFor.map((g) => (
-            <Text key={g} style={{ color: t.ink, fontSize: 14 }}>
-              {label('good_for', g)} ·
-            </Text>
-          ))}
+          <Text style={{ color: t.ink, fontSize: 14 }}>
+            {[...state.goodFor.map((g) => label('good_for', g)), ...state.goodForCustom].join(
+              ' · ',
+            )}
+          </Text>
         </Row>
         <View style={{ gap: 4 }}>
           <Label>Best light</Label>
-          <Body>{state.bestLight.map((b) => label('best_light', b)).join(', ')}</Body>
+          <Body>
+            {[...state.bestLight.map((b) => label('best_light', b)), ...state.bestLightCustom].join(
+              ', ',
+            )}
+          </Body>
           {state.bestLightNote ? <Body muted>{state.bestLightNote}</Body> : null}
         </View>
         <View style={{ gap: 4 }}>

@@ -12,8 +12,11 @@ export interface CaptureState {
   pin: Pin | null;
   label: string;
   goodFor: GoodForTag[];
+  /** The member's own typed tags (D-39). */
+  goodForCustom: string[];
   goodForNote: string;
   bestLight: BestLightPeriod[];
+  bestLightCustom: string[];
   bestLightNote: string;
   bearingDeg: number | null;
   advanced: AdvancedInput;
@@ -36,8 +39,10 @@ export const initialCapture: CaptureState = {
   pin: null,
   label: '',
   goodFor: [],
+  goodForCustom: [],
   goodForNote: '',
   bestLight: [],
+  bestLightCustom: [],
   bestLightNote: '',
   bearingDeg: null,
   advanced: {},

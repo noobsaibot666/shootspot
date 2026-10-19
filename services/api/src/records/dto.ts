@@ -11,7 +11,8 @@ import type { Storage } from '../storage';
 /** Columns every public query selects (aliases match PublicRow). */
 export const PUBLIC_COLUMNS = `
   l.id, l.label, st_y(l.point::geometry) as lat, st_x(l.point::geometry) as lon, l.accuracy_m,
-  l.framing, l.good_for, l.good_for_note, l.best_light, l.best_light_note, l.bearing_deg,
+  l.framing, l.good_for, l.good_for_custom, l.good_for_note, l.best_light, l.best_light_custom,
+  l.best_light_note, l.bearing_deg,
   l.advanced, l.captured_at, l.altitude_m, l.focal_length_35mm, l.sun_azimuth_deg,
   l.sun_elevation_deg, l.published_at, m.id as media_id, m.width, m.height,
   attr.name as attr_name, attr.portfolio_url as attr_portfolio, attr.social_handle as attr_social`;
@@ -42,8 +43,10 @@ export interface PublicRow {
   distance_m?: number | null;
   framing: '16:9' | '1:1';
   good_for: PublicRecord['goodFor'];
+  good_for_custom: string[];
   good_for_note: string | null;
   best_light: PublicRecord['bestLight'];
+  best_light_custom: string[];
   best_light_note: string | null;
   bearing_deg: number | null;
   advanced: PublicRecord['advanced'];
@@ -84,8 +87,10 @@ export async function toPublicRecord(storage: Storage, row: PublicRow): Promise<
     distanceM: row.distance_m == null ? null : Math.round(row.distance_m),
     framing: row.framing,
     goodFor: row.good_for,
+    goodForCustom: row.good_for_custom,
     goodForNote: row.good_for_note,
     bestLight: row.best_light,
+    bestLightCustom: row.best_light_custom,
     bestLightNote: row.best_light_note,
     bearingDeg: row.bearing_deg,
     advanced: row.advanced,

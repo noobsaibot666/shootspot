@@ -208,7 +208,8 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
     );
     await pool.query(
       `update locations set label = $2, good_for = $3, good_for_note = $4, best_light = $5,
-         best_light_note = $6, advanced = $7, updated_at = now()
+         best_light_note = $6, advanced = $7, good_for_custom = $8, best_light_custom = $9,
+         updated_at = now()
        where id = $1`,
       [
         id,
@@ -218,6 +219,8 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
         body.bestLight,
         body.bestLightNote || null,
         JSON.stringify(body.advanced),
+        body.goodForCustom,
+        body.bestLightCustom,
       ],
     );
     return reply.code(204).send();

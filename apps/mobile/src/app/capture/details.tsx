@@ -25,16 +25,18 @@ import { useReduceMotion } from '../../lib/motion';
 import { space, type, useTheme } from '../../theme/tokens';
 import { Button } from '../../ui';
 import { Icon } from '../../ui/icon';
-import { MoreDetails, Pill, PillInput, TagPicker } from '../../ui/notes';
+import { DETAIL_PAGES, DetailFields, Pill, PillInput, TagPicker } from '../../ui/notes';
 
-const STEPS = ['name', 'goodFor', 'light', 'more'] as const;
+const MAIN = ['name', 'goodFor', 'light'] as const;
+const STEPS = [...MAIN, ...DETAIL_PAGES.map((p) => p.key)] as const;
 type Step = (typeof STEPS)[number];
 const EASE = Easing.out(Easing.cubic);
 
 /**
  * Scouting notes as steps (D-38): one question per screen, each confirmed with a tap or a swipe.
- * Name (prefilled from the pin) → Good for → Best light → optional more details → preview. The
- * camera direction is never asked: it comes from the compass at capture (or the photo's data).
+ * Name (prefilled from the pin) → Good for → Best light → preview, or on through the optional
+ * detail pages (one section each, nothing required). The camera direction is never asked: it
+ * comes from the compass at capture (or the photo's data).
  */
 export default function Details() {
   const t = useTheme();
@@ -43,25 +45,35 @@ export default function Details() {
   const { state, update } = useCapture();
   const [step, setStep] = useState<Step>('name');
   const index = STEPS.indexOf(step);
+  const detail = DETAIL_PAGES.find((p) => p.key === step);
   // +1 forward, -1 back: read by the enter/exit animations on the UI thread.
   const dir = useSharedValue(1);
 
-  const ok: Record<Step, boolean> = {
-    name: state.label.trim().length > 0,
-    goodFor: state.goodFor.length > 0,
-    light: state.bestLight.length > 0,
-    more: true,
-  };
-  const ready = ok.name && ok.goodFor && ok.light;
+  const ok = [
+    state.label.trim().length > 0,
+    state.goodFor.length + state.goodForCustom.length > 0,
+    state.bestLight.length + state.bestLightCustom.length > 0,
+  ];
+  const ready = ok.every(Boolean);
 
   function go(to: number) {
     const next = STEPS[to];
     if (!next || to === index) return;
-    if (to > index && !ok[step]) return;
+    // The three main steps must be answered before moving past them; detail pages never block.
+    if (to > index && ok.slice(0, Math.min(to, MAIN.length)).some((o) => !o)) return;
     dir.value = to > index ? 1 : -1;
     haptics.light();
     setStep(next);
   }
+  const preview = () => {
+    if (ready) router.push('/capture/publish');
+  };
+
+  const goRef = useRef(go);
+  goRef.current = go;
+  const indexRef = useRef(index);
+  indexRef.current = index;
+
   // Back (header button, Android back) steps back first; from the first step it leaves.
   const navigation = useNavigation();
   useEffect(() => {
@@ -88,23 +100,14 @@ export default function Details() {
     return () => sub.remove();
   }, [index, navigation, t.ink]);
 
-  const preview = () => {
-    if (!ready) return;
-    router.push('/capture/publish');
-  };
-
-  // Swipe left for the next step, right for the previous one (no extra native module needed).
-  const goRef = useRef(go);
-  goRef.current = go;
-  const indexRef = useRef(index);
-  indexRef.current = index;
+  // Swipe left for the next page, right for the previous one (no extra native module needed).
   const swipe = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, g) =>
           Math.abs(g.dx) > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 1.6,
         onPanResponderRelease: (_, g) => {
-          if (g.dx < -60 || g.vx < -0.5) goRef.current(Math.min(indexRef.current + 1, 2));
+          if (g.dx < -60 || g.vx < -0.5) goRef.current(indexRef.current + 1);
           else if (g.dx > 60 || g.vx > 0.5) goRef.current(indexRef.current - 1);
         },
       }),
@@ -133,6 +136,7 @@ export default function Details() {
   };
 
   const bottom = insets.bottom + space.lg;
+  const last = index === STEPS.length - 1;
 
   return (
     <KeyboardAvoidingView
@@ -140,7 +144,11 @@ export default function Details() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      <Progress index={Math.min(index, 2)} done={step === 'more'} />
+      {detail ? (
+        <Progress count={DETAIL_PAGES.length} index={index - MAIN.length} />
+      ) : (
+        <Progress count={MAIN.length} index={index} />
+      )}
       <View style={{ flex: 1 }} {...swipe.panHandlers}>
         <Animated.View
           key={step}
@@ -154,6 +162,7 @@ export default function Details() {
               <View style={{ flex: 1, justifyContent: 'center', gap: space.md }}>
                 <PillInput
                   large
+                  clearable
                   value={state.label}
                   onChangeText={(label) => update({ label })}
                   maxLength={120}
@@ -166,19 +175,20 @@ export default function Details() {
                   Shown with the photo, e.g. “Durdle Door, Dorset” or “Bondi Icebergs, Sydney”.
                 </Text>
               </View>
-              <Button label="Confirm" disabled={!ok.name} onPress={() => go(1)} />
+              <Button label="Confirm" disabled={!ok[0]} onPress={() => go(1)} />
             </View>
           ) : step === 'goodFor' ? (
             <StepScroll bottom={bottom}>
-              <StepTitle title="Good for" sub="Up to 8. What would you shoot here?" />
+              <StepTitle title="Good for" sub="What would you shoot here? Pick up to 8." />
               <TagPicker
                 kind="good_for"
                 selected={state.goodFor}
-                onChange={(goodFor) => update({ goodFor })}
+                custom={state.goodForCustom}
+                onChange={(goodFor, goodForCustom) => update({ goodFor, goodForCustom })}
                 max={8}
               />
               <View style={{ flex: 1 }} />
-              <Button label="Confirm" disabled={!ok.goodFor} onPress={() => go(2)} />
+              <Button label="Confirm" disabled={!ok[1]} onPress={() => go(2)} />
             </StepScroll>
           ) : step === 'light' ? (
             <StepScroll bottom={bottom}>
@@ -186,9 +196,11 @@ export default function Details() {
               <TagPicker
                 kind="best_light"
                 selected={state.bestLight}
-                onChange={(bestLight) => update({ bestLight })}
+                custom={state.bestLightCustom}
+                onChange={(bestLight, bestLightCustom) => update({ bestLight, bestLightCustom })}
               />
               <PillInput
+                clearable
                 value={state.bestLightNote}
                 onChangeText={(bestLightNote) => update({ bestLightNote })}
                 maxLength={200}
@@ -196,41 +208,61 @@ export default function Details() {
                 accessibilityLabel="Light note (optional)"
               />
               <View style={{ flex: 1 }} />
-              <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
-                <Pill label="More details" onPress={() => go(3)} />
-                <Button
-                  label="Preview"
-                  disabled={!ready}
-                  onPress={preview}
-                  style={{ flex: 1, minHeight: 50 }}
-                />
-              </View>
+              <Actions
+                left={<Pill label="More details" onPress={() => go(MAIN.length)} />}
+                onPreview={preview}
+                ready={ready}
+              />
             </StepScroll>
-          ) : (
+          ) : detail ? (
             <StepScroll bottom={bottom}>
               <StepTitle
-                title="More details"
-                sub="All optional. Access, rules and tips help others plan a shoot."
+                eyebrow={`More details · ${index - MAIN.length + 1} of ${DETAIL_PAGES.length}`}
+                title={detail.title}
+                sub={`${detail.sub} All optional.`}
               />
-              <MoreDetails
+              <DetailFields
+                page={detail.key}
                 value={state.advanced}
                 onChange={(advanced) => update({ advanced })}
                 goodForNote={state.goodForNote}
                 onGoodForNote={(goodForNote) => update({ goodForNote })}
               />
-              <Button label="Preview" disabled={!ready} onPress={preview} />
+              <View style={{ flex: 1 }} />
+              <Actions
+                left={last ? null : <Pill label="Next" onPress={() => go(index + 1)} />}
+                onPreview={preview}
+                ready={ready}
+              />
             </StepScroll>
-          )}
+          ) : null}
         </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function StepTitle({ title, sub }: { title: string; sub: string }) {
+function Actions(props: { left: React.ReactNode; onPreview(): void; ready: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+      {props.left}
+      <Button
+        label="Preview"
+        disabled={!props.ready}
+        onPress={props.onPreview}
+        style={{ flex: 1, minHeight: 50 }}
+      />
+    </View>
+  );
+}
+
+function StepTitle({ title, sub, eyebrow }: { title: string; sub: string; eyebrow?: string }) {
   const t = useTheme();
   return (
-    <View style={{ gap: space.sm, paddingTop: space.xl, paddingBottom: space.lg }}>
+    <View style={{ gap: space.sm, paddingTop: space.xl, paddingBottom: space.sm }}>
+      {eyebrow ? (
+        <Text style={[type.label, { color: t.muted, textTransform: 'uppercase' }]}>{eyebrow}</Text>
+      ) : null}
       <Text accessibilityRole="header" style={[type.display, { color: t.ink }]}>
         {title}
       </Text>
@@ -255,22 +287,22 @@ function StepScroll({ children, bottom }: { children: React.ReactNode; bottom: n
   );
 }
 
-/** Three thin bars: name, good for, best light. */
-function Progress({ index, done }: { index: number; done: boolean }) {
+/** Thin bars: the three main steps, or the detail pages. */
+function Progress({ count, index }: { count: number; index: number }) {
   const t = useTheme();
   return (
     <View
-      accessibilityLabel={`Step ${index + 1} of 3`}
+      accessibilityLabel={`Step ${index + 1} of ${count}`}
       style={{ flexDirection: 'row', gap: 6, paddingHorizontal: space.lg, paddingTop: space.sm }}
     >
-      {[0, 1, 2].map((i) => (
+      {Array.from({ length: count }, (_, i) => (
         <View
           key={i}
           style={{
             flex: 1,
             height: 3,
             borderRadius: 2,
-            backgroundColor: done || i <= index ? t.ink : t.divider,
+            backgroundColor: i <= index ? t.ink : t.divider,
           }}
         />
       ))}

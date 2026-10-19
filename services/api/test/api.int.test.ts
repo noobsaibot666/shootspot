@@ -324,8 +324,10 @@ describe('records', () => {
     const notes = {
       label: 'Durdle Door, Dorset',
       goodFor: ['landscape', 'seascape'],
+      goodForCustom: ['Cliff diving'],
       goodForNote: 'Low tide',
-      bestLight: ['golden_pm'],
+      bestLight: [],
+      bestLightCustom: ['Stormy evenings'],
       advanced: { access: { type: 'public' } },
     };
     const url = `/v1/me/records/${id}/notes`;
@@ -333,6 +335,8 @@ describe('records', () => {
       env.app.inject({ method: 'PUT', url, headers, payload });
     expect((await put(other, notes)).statusCode).toBe(404);
     expect((await put(creator, { ...notes, goodFor: ['selfie'] })).statusCode).toBe(400);
+    // At least one Best light, listed or personal.
+    expect((await put(creator, { ...notes, bestLightCustom: [] })).statusCode).toBe(400);
     expect((await put(creator, notes)).statusCode).toBe(204);
     const after = (
       await env.app.inject({ method: 'GET', url: `/v1/records/${id}`, headers: other })
@@ -363,12 +367,14 @@ describe('anonymity contract (D-06)', () => {
         'attribution',
         'bearingDeg',
         'bestLight',
+        'bestLightCustom',
         'bestLightNote',
         'capturedAt',
         'distanceM',
         'focalLength35mm',
         'framing',
         'goodFor',
+        'goodForCustom',
         'goodForNote',
         'id',
         'images',

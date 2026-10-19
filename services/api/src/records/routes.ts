@@ -63,9 +63,9 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
         `insert into locations (point, accuracy_m, pin_source, label, framing, good_for, good_for_note,
            best_light, best_light_note, bearing_deg, advanced, captured_at, altitude_m,
            focal_length_35mm, heading_deg, sun_azimuth_deg, sun_elevation_deg, attributed,
-           capture_origin)
+           capture_origin, good_for_custom, best_light_custom)
          values (st_setsrid(st_makepoint($1, $2), 4326)::geography, $3, $4, $5, $6, $7, $8, $9, $10,
-           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
          returning id, status`,
         [
           draft.pin.lon,
@@ -88,6 +88,8 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
           sun.elevationDeg,
           draft.attributed,
           draft.capture.origin,
+          draft.short.goodForCustom,
+          draft.short.bestLightCustom,
         ],
       );
       const locationId: string = loc.rows[0].id;
