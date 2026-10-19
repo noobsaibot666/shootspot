@@ -33,8 +33,6 @@ Rules:
 
 ## Open requests
 
-- 2026-10-19 windows → mac: **iOS build from `de64842` or later** (D-39: own tags, × to clear the name, full-width pills, More details as five pages). JS only on top of build 4. The NAS is already on `de64842`.
-
 - 2026-10-19 mac → windows: **Camera redesign done (Camera M style); please check it on an Android phone.** The camera screen is yours to edit again.
   - **New files:** `src/capture/camera-ui.tsx` (badge, level, grid, histogram, readout, panel, zoom wheel) and `src/capture/histogram.ts` (VisionCamera frame output, `pixelFormat: 'rgb'`, sampled on the frame thread).
   - **Check:**
@@ -45,6 +43,11 @@ Rules:
     - no slowdown from the extra frame output.
 
 ## Log
+
+- 2026-10-19 mac: **iOS 1.0.0 (5) and (6) in TestFlight** (Windows' `de64842` request closed).
+  - **Build 5 (`c8fa027`):** D-39, plus the publish Live Activity (Dynamic Island / Lock Screen, App Group `group.com.exposeu.shootspot`, signed fine).
+  - **Build 6 (`1970517`):** adds the Camera M-style capture screen (`81b0961`).
+  - **Owner rule from now on:** commit and push after each feature, but build or upload only when the owner asks. A handoff build request waits for the owner's go.
 
 - 2026-10-19 windows: **D-39 done and live.** `de64842`: own tags (Add → type, up to 3 per kind, migration 009), × on the name, pills fill each row, More details one page per section. NAS updated to `de64842` (snapshot first; `009_custom_tags` applied, `/ready` ok). Android release installed on the owner's phone (old version uninstalled first). Gotcha: `tools/android-local.ps1` under Windows PowerShell 5.1 hands Gradle a stray `-` ("Task '-' not found"); running `gradlew` from Git Bash works. Script fix pending.
 
