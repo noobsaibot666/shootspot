@@ -290,7 +290,7 @@ export default function CameraScreen() {
             style={StyleSheet.absoluteFill}
             isActive
             device={device}
-            outputs={[photoOutput, frameOutput]}
+            outputs={frameOutput ? [photoOutput, frameOutput] : [photoOutput]}
             orientationSource="device"
             resizeMode="contain"
             exposure={started ? exposure : undefined}
@@ -302,7 +302,7 @@ export default function CameraScreen() {
         {crop && preview ? <CropMask preview={preview} crop={crop} /> : null}
         {crop && prefs.grid ? <Grid rect={crop} /> : null}
         {prefs.level ? <Level /> : null}
-        {prefs.histogram ? <HistogramView histogram={histogram} /> : null}
+        {prefs.histogram && frameOutput ? <HistogramView histogram={histogram} /> : null}
         <Animated.View
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: flashOverlay }]}
@@ -330,7 +330,7 @@ export default function CameraScreen() {
         }}
         bias={exposure}
         histogramOn={prefs.histogram}
-        onHistogram={() => setPrefs({ histogram: !prefs.histogram })}
+        onHistogram={frameOutput ? () => setPrefs({ histogram: !prefs.histogram }) : undefined}
       />
 
       {/* Control panel */}

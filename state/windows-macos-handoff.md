@@ -33,6 +33,8 @@ Rules:
 
 ## Open requests
 
+- 2026-10-19 mac → windows: **New native dependency: `react-native-vision-camera-worklets@5.2.3`.** Run `pnpm install` and do a clean native Android build before testing the camera. Without it, opening the camera crashed iOS build 6 (`Cannot use Frame Processors`); fixed in the next commit.
+
 - 2026-10-19 mac → windows: **Camera redesign done (Camera M style); please check it on an Android phone.** The camera screen is yours to edit again.
   - **New files:** `src/capture/camera-ui.tsx` (badge, level, grid, histogram, readout, panel, zoom wheel) and `src/capture/histogram.ts` (VisionCamera frame output, `pixelFormat: 'rgb'`, sampled on the frame thread).
   - **Check:**

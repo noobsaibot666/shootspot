@@ -20,10 +20,31 @@ export interface Histogram {
 }
 
 /**
+ * Frame processing needs the native `react-native-vision-camera-worklets` add-on. Without it
+ * `useFrameOutput` throws on render, which crashed the camera in iOS build 6. Checked once:
+ * without the add-on the camera runs without a histogram or panel tint.
+ */
+export const framesAvailable = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return !!require('react-native-vision-camera-worklets')?.provider;
+  } catch {
+    return false;
+  }
+})();
+
+/**
  * Live RGB histogram from a small RGB frame stream next to the photo output. The frame thread
  * samples a grid of pixels a few times a second and hands the bins back to React.
+ * `frameOutput` is null when frame processing isn't available.
  */
-export function useHistogram() {
+export const useHistogram = framesAvailable ? useFrameHistogram : useNoHistogram;
+
+function useNoHistogram() {
+  return { frameOutput: null, histogram: null as Histogram | null };
+}
+
+function useFrameHistogram() {
   const [histogram, setHistogram] = useState<Histogram | null>(null);
   const counter = useMemo(() => createSynchronizable(0), []);
 

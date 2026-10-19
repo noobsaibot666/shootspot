@@ -254,7 +254,8 @@ export function ExposureRow(props: {
   exposure: Exposure;
   bias: number;
   histogramOn: boolean;
-  onHistogram(): void;
+  /** Omitted when frame processing isn't available: no histogram toggle. */
+  onHistogram?(): void;
 }) {
   const { iso, seconds, aperture } = props.exposure;
   const values = [
@@ -286,16 +287,20 @@ export function ExposureRow(props: {
           </View>
         ))}
       </View>
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityLabel="Histogram"
-        accessibilityState={{ checked: props.histogramOn }}
-        onPress={props.onHistogram}
-        hitSlop={10}
-        style={[styles.readoutSide, { alignItems: 'flex-end' }]}
-      >
-        <HistogramGlyph active={props.histogramOn} />
-      </Pressable>
+      {props.onHistogram ? (
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel="Histogram"
+          accessibilityState={{ checked: props.histogramOn }}
+          onPress={props.onHistogram}
+          hitSlop={10}
+          style={[styles.readoutSide, { alignItems: 'flex-end' }]}
+        >
+          <HistogramGlyph active={props.histogramOn} />
+        </Pressable>
+      ) : (
+        <View style={styles.readoutSide} />
+      )}
     </View>
   );
 }
