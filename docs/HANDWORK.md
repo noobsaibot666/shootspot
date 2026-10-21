@@ -230,8 +230,8 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   - [ ] **Rejected 2026-10-21 (Guideline 1.2, user-generated content)**, see [the review](apple_reviews/review_1.txt). Fixed in the app as D-41 (18+, terms switch at sign-in, Block this member, Contact us). To resubmit:
     - [x] NAS update to the D-41 images `ec34779` (migration `010_blocks`), done 2026-10-21
     - [ ] Mac: redeploy the docs site (new terms and privacy, version `2026-10-21`)
-    - [ ] Age rating **18+** in App Store Connect (and Play's content rating when Play is set up)
-    - [ ] Mac: iOS build 10 to TestFlight
+    - [x] Age rating **18+** in App Store Connect, done 2026-10-21 through the API (Play's content rating still to do when Play is set up)
+    - [x] Mac: iOS build 10 to TestFlight, done 2026-10-21 (VALID; also has D-42: Access after Best light, merged light tags)
     - [ ] **You:** screen recording on the iPhone (Settings → Control Center → Screen Recording) showing, signed out: the sign-in screen with the "I'm 18 or older and agree…" switch; then on a location's ⋯ menu: **Report this location** (send one), and **Block this member** (the location disappears from the Feed); then Menu → **Contact us · report abuse** and **Blocked members**
     - [ ] **You:** in App Store Connect, reply to the review message with the recording, paste the same into App Review Information → Notes, attach build 10 and resubmit
   - [ ] **Google Play:** create the app (ShootSpot, English (US), App, Free), the App content forms, and optionally the Play API service account
