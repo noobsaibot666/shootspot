@@ -21,13 +21,12 @@ export const GOOD_FOR_LABEL: Record<string, string> = {
 };
 
 export const BEST_LIGHT_LABEL: Record<string, string> = {
-  blue_hour_am: 'Blue hour (AM)',
-  golden_am: 'Sunrise / golden (AM)',
+  golden_am: 'Sunrise',
   morning: 'Morning',
   midday: 'Midday',
   afternoon: 'Afternoon',
-  golden_pm: 'Golden / sunset (PM)',
-  blue_hour_pm: 'Blue hour (PM)',
+  golden_pm: 'Sunset',
+  blue_hour_am: 'Blue hour',
   night: 'Night',
   overcast: 'Overcast-friendly',
 };

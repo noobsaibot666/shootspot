@@ -25,18 +25,20 @@ import { useReduceMotion } from '../../lib/motion';
 import { space, type, useTheme } from '../../theme/tokens';
 import { Button } from '../../ui';
 import { Icon } from '../../ui/icon';
-import { DETAIL_PAGES, DetailFields, Pill, PillInput, TagPicker } from '../../ui/notes';
+import { DETAIL_PAGES, DetailFields, PillInput, TagPicker } from '../../ui/notes';
 
-const MAIN = ['name', 'goodFor', 'light'] as const;
-const STEPS = [...MAIN, ...DETAIL_PAGES.map((p) => p.key)] as const;
+const REQUIRED = ['name', 'goodFor', 'light'] as const;
+const STEPS = [...REQUIRED, ...DETAIL_PAGES.map((p) => p.key)] as const;
 type Step = (typeof STEPS)[number];
+// Access (public or not) is always shown after Best light, so it counts as a main step (D-42).
+const MAIN = REQUIRED.length + 1;
 const EASE = Easing.out(Easing.cubic);
 
 /**
  * Scouting notes as steps (D-38): one question per screen, each confirmed with a tap or a swipe.
- * Name (prefilled from the pin) → Good for → Best light → preview, or on through the optional
- * detail pages (one section each, nothing required). The camera direction is never asked: it
- * comes from the compass at capture (or the photo's data).
+ * Name (prefilled from the pin) → Good for → Best light → Access (optional) → preview, or on
+ * through the optional detail pages (one section each, nothing required). The camera direction
+ * is never asked: it comes from the compass at capture (or the photo's data).
  */
 export default function Details() {
   const t = useTheme();
@@ -59,8 +61,8 @@ export default function Details() {
   function go(to: number) {
     const next = STEPS[to];
     if (!next || to === index) return;
-    // The three main steps must be answered before moving past them; detail pages never block.
-    if (to > index && ok.slice(0, Math.min(to, MAIN.length)).some((o) => !o)) return;
+    // The three required steps must be answered before moving past them; the rest never block.
+    if (to > index && ok.slice(0, Math.min(to, REQUIRED.length)).some((o) => !o)) return;
     dir.value = to > index ? 1 : -1;
     haptics.light();
     setStep(next);
@@ -144,10 +146,10 @@ export default function Details() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      {detail ? (
-        <Progress count={DETAIL_PAGES.length} index={index - MAIN.length} />
+      {index >= MAIN ? (
+        <Progress count={STEPS.length - MAIN} index={index - MAIN} />
       ) : (
-        <Progress count={MAIN.length} index={index} />
+        <Progress count={MAIN} index={index} />
       )}
       <View style={{ flex: 1 }} {...swipe.panHandlers}>
         <Animated.View
@@ -208,16 +210,16 @@ export default function Details() {
                 accessibilityLabel="Light note (optional)"
               />
               <View style={{ flex: 1 }} />
-              <Actions
-                left={<Pill label="More details" onPress={() => go(MAIN.length)} />}
-                onPreview={preview}
-                ready={ready}
-              />
+              <Actions onPreview={preview} ready={ready} onNext={() => go(index + 1)} />
             </StepScroll>
           ) : detail ? (
             <StepScroll bottom={bottom}>
               <StepTitle
-                eyebrow={`More details · ${index - MAIN.length + 1} of ${DETAIL_PAGES.length}`}
+                eyebrow={
+                  index >= MAIN
+                    ? `More details · ${index - MAIN + 1} of ${STEPS.length - MAIN}`
+                    : undefined
+                }
                 title={detail.title}
                 sub={`${detail.sub} All optional.`}
               />
@@ -230,9 +232,9 @@ export default function Details() {
               />
               <View style={{ flex: 1 }} />
               <Actions
-                left={last ? null : <Pill label="Next" onPress={() => go(index + 1)} />}
                 onPreview={preview}
                 ready={ready}
+                onNext={last ? undefined : () => go(index + 1)}
               />
             </StepScroll>
           ) : null}
@@ -242,16 +244,24 @@ export default function Details() {
   );
 }
 
-function Actions(props: { left: React.ReactNode; onPreview(): void; ready: boolean }) {
+/** Preview and Next side by side at the same size, Next on the right (where the swipe leads). */
+function Actions(props: { onPreview(): void; ready: boolean; onNext?: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
-      {props.left}
+    <View style={{ flexDirection: 'row', gap: space.md }}>
       <Button
         label="Preview"
         disabled={!props.ready}
         onPress={props.onPreview}
         style={{ flex: 1, minHeight: 50 }}
       />
+      {props.onNext ? (
+        <Button
+          label="Next"
+          kind="secondary"
+          onPress={props.onNext}
+          style={{ flex: 1, minHeight: 50 }}
+        />
+      ) : null}
     </View>
   );
 }

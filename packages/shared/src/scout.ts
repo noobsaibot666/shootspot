@@ -26,13 +26,12 @@ export const GOOD_FOR_TAGS = [
 ] as const;
 
 export const BEST_LIGHT_PERIODS = [
-  'blue_hour_am',
   'golden_am',
   'morning',
   'midday',
   'afternoon',
   'golden_pm',
-  'blue_hour_pm',
+  'blue_hour_am',
   'night',
   'overcast',
 ] as const;

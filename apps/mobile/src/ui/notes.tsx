@@ -378,7 +378,7 @@ const TRI = { yes: 'Yes', no: 'No', unknown: 'Not sure' } as const;
 
 /** The optional detail pages (D-16 advanced input), one section per page in the capture flow. */
 export const DETAIL_PAGES = [
-  { key: 'access', title: 'Access', sub: 'How do people get there?' },
+  { key: 'access', title: 'Access', sub: 'Is it public or private, and how do people get there?' },
   { key: 'rules', title: 'Rules', sub: 'Permits, drones and tripods.' },
   { key: 'practical', title: 'Practical', sub: 'Parking and mobile signal.' },
   { key: 'conditions', title: 'Conditions', sub: 'Tides and safety.' },
