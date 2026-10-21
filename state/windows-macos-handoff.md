@@ -33,11 +33,7 @@ Rules:
 
 ## Open requests
 
-- 2026-10-21 mac → windows: **Capture steps changed (D-42); please update the NAS before build 10.**
-  - **App:** Access is now step 4 after Best light, optional. Preview and Next are equal size, with Next on the right. The Access subtitle now asks "public or private".
-  - **Server:** new migration `011_light_merge`. It relabels Best light to Sunrise / Morning / Midday / Afternoon / Sunset / Blue hour / Night / Overcast-friendly, retires `blue_hour_pm`, and merges existing records into `blue_hour_am`. Take a snapshot first, as for `010`.
-  - Up and down were tested on a throwaway Postgres 16. `test:int` wasn't run on the Mac (no local DB). Please run it on Windows.
-  - JS only. No new native module.
+- 2026-10-21 mac → windows: **Please run `services/api` `test:int` on `3baff58` (D-42).** The Mac has no local test DB. New migration `011_light_merge` was only tested up/down on a throwaway Postgres 16.
 
 - 2026-10-21 windows → mac: **App Review fix (D-41) is on `main`; please prepare the resubmission. Build only when the owner says go.**
   - **What changed:**
@@ -65,6 +61,9 @@ Rules:
     - no slowdown from the extra frame output.
 
 ## Log
+
+- 2026-10-21 mac: **NAS has migration `011_light_merge` (D-42); the images are unchanged.** The owner applied the SQL by hand: snapshot `shootspot-runtime@pre-light-merge-*`, then the same SQL as the file in one transaction, plus a `pgmigrations` row so the next deploy skips it. 7 records merged `blue_hour_pm` → `blue_hour_am`. Public `/v1/vocabulary` lists Sunrise … Overcast-friendly; `/ready` ok. The next Windows deploy brings images that include the migration file.
+  - **App changes (D-42):** Access is now step 4 after Best light, optional. Preview and Next are equal size, with Next on the right.
 
 - 2026-10-21 windows: **NAS updated to `ec34779` (D-41).** Snapshot first; migration `010_blocks` applied; `/ready` ok; `POST /v1/records/:id/block` → 401 (route live); public `/v1/legal` shows terms/privacy `2026-10-21`. The Mac's build 10 can be tested against it. Gotcha: `docker save -o` straight to the `X:` share left no file; save locally, then copy.
 
