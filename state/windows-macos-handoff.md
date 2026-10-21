@@ -60,6 +60,8 @@ Rules:
 
 ## Log
 
+- 2026-10-21 windows: **NAS updated to `ec34779` (D-41).** Snapshot first; migration `010_blocks` applied; `/ready` ok; `POST /v1/records/:id/block` → 401 (route live); public `/v1/legal` shows terms/privacy `2026-10-21`. The Mac's build 10 can be tested against it. Gotcha: `docker save -o` straight to the `X:` share left no file; save locally, then copy.
+
 - 2026-10-19 mac: **iOS 1.0.0 (build 9) submitted to App Review**, now Waiting for Review. Manual release: the owner presses Release after approval. Content rights set to "uses third-party content" (member photos, Apple Maps) and App Privacy published by the owner. Any build from now on is 1.0.1 or build 10+, and doesn't touch the version in review.
 
 - 2026-10-19 mac: **App Store 1.0.0 ready to submit; waits for the owner's go.**

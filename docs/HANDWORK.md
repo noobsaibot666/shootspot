@@ -228,7 +228,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   - [x] **Reviewer account, done 2026-10-19:** `REVIEW_EMAIL`/`REVIEW_CODE` set in the NAS `.env`, login tested on the live server, review notes updated, build 9 attached.
   - [x] **Submitted for review 2026-10-19 19:32** (build 9, manual release, content rights: uses third-party content with rights). When approved: press **Release** in App Store Connect when ready, then remove `REVIEW_*` from the NAS `.env`.
   - [ ] **Rejected 2026-10-21 (Guideline 1.2, user-generated content)**, see [the review](apple_reviews/review_1.txt). Fixed in the app as D-41 (18+, terms switch at sign-in, Block this member, Contact us). To resubmit:
-    - [ ] NAS update to the D-41 images (migration `010_blocks`); Claude gives the guarded block
+    - [x] NAS update to the D-41 images `ec34779` (migration `010_blocks`), done 2026-10-21
     - [ ] Mac: redeploy the docs site (new terms and privacy, version `2026-10-21`)
     - [ ] Age rating **18+** in App Store Connect (and Play's content rating when Play is set up)
     - [ ] Mac: iOS build 10 to TestFlight
