@@ -1,0 +1,56 @@
+Hello, 
+
+Thank you for submitting the new app, ShootSpot – Location Scouting, for review. We noticed some issues that require your attention. Please see below for additional information.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+Review Environment
+Submission ID: 27caec00-bde9-486f-86b0-06b27d6f9394
+Review date: October 21, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 1.0.0 (9)
+
+Guideline 1.2 - Safety - User-Generated Content
+
+Issue Description
+
+We found in our review that the app includes user-generated content but does not have all the required precautions. Apps with user-generated content must take specific steps to moderate content and prevent abusive behavior.
+
+Next Steps
+
+To resolve this issue, revise the app to implement the following precautions: require that users agree to terms (EULA) and these terms must make it clear that there is no tolerance for objectionable content or abusive users and a mechanism for users to block abusive users (blocking should also notify the developer of the inappropriate content and should remove it from the user's feed instantly).
+
+Once the required precautions have been implemented, or if they are already in place, reply to this message with a screen recording captured on a physical device that demonstrates:
+
+- The EULA or terms of use agreement presented to users before registering or logging in
+- The mechanism for users to flag objectionable content
+- The mechanism for users to block abusive users
+
+Include the recording in the Notes field of the App Review Information section in App Store Connect for future submissions.
+
+Resources
+
+- Learn more about our policies for user-generated content in guideline 1.2.
+- Learn more about providing information for a complete review.
+Guideline 1.2 - Safety - User Generated Content
+
+Issue Description
+
+The app enables users to post content anonymously but does not have the proper precautions in place.
+
+Next Steps
+
+To resolve this issue, please revise the app to implement all of the following precautions:
+
+- Age rating must reflect 18+
+- Require that users agree to terms (EULA) and these terms must make it clear that there is no tolerance for objectionable content or abusive users
+- A mechanism for users to block abusive users
+- Developer must provide contact information in the app itself, giving users the ability to report inappropriate activity
+
+Resources
+
+Learn more about user-generated content requirements in guideline 1.2.
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.
