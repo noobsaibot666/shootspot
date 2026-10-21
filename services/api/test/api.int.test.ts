@@ -171,7 +171,7 @@ describe('auth and onboarding', () => {
       url: '/v1/me/onboarding',
       headers,
       payload: {
-        ageConfirmed16: true,
+        ageConfirmed18: true,
         accept: { terms: 'old', privacy: 'old', image_license: 'old' },
         firstName: 'B',
       },
@@ -181,7 +181,7 @@ describe('auth and onboarding', () => {
       method: 'POST',
       url: '/v1/me/onboarding',
       headers,
-      payload: { ageConfirmed16: false, accept: {}, firstName: 'B' },
+      payload: { ageConfirmed18: false, accept: {}, firstName: 'B' },
     });
     expect(underage.statusCode).toBe(400);
   });
@@ -629,6 +629,92 @@ describe('reports', () => {
         })
       ).statusCode,
     ).toBe(409);
+  });
+});
+
+describe('blocking (D-41)', () => {
+  it("hides all of the author's locations at once, files a report, keeps the author anonymous, and can be undone", async () => {
+    const author = await member(env, 'block-author@example.com');
+    const viewer = await member(env, 'block-viewer@example.com');
+    const other = await member(env, 'block-other@example.com');
+    const a1 = await publishDirect(author, {
+      pin: { lat: 41.15, lon: -8.61, accuracyM: 5, source: 'gps' },
+    });
+    const a2 = await publishDirect(author, {
+      pin: { lat: 41.151, lon: -8.611, accuracyM: 5, source: 'gps' },
+    });
+    const o1 = await publishDirect(other, {
+      pin: { lat: 41.152, lon: -8.612, accuracyM: 5, source: 'gps' },
+    });
+    const get = (url: string, headers = viewer) => env.app.inject({ method: 'GET', url, headers });
+    const feedIds = async (headers = viewer) =>
+      (
+        (await get('/v1/feed?lat=41.15&lon=-8.61&radiusKm=5&limit=30', headers)).json().items as {
+          id: string;
+        }[]
+      ).map((r) => r.id);
+    const mapIds = async () =>
+      (
+        (await get('/v1/map?minLat=41.1&minLon=-8.7&maxLat=41.2&maxLon=-8.5')).json().items as {
+          id: string;
+        }[]
+      ).map((r) => r.id);
+    await env.app.inject({ method: 'PUT', url: `/v1/records/${a2}/like`, headers: viewer });
+
+    expect(
+      (await env.app.inject({ method: 'POST', url: `/v1/records/${a1}/block`, headers: author }))
+        .statusCode,
+    ).toBe(400);
+    const block = await env.app.inject({
+      method: 'POST',
+      url: `/v1/records/${a1}/block`,
+      headers: viewer,
+    });
+    expect(block.statusCode).toBe(204);
+    // Idempotent.
+    expect(
+      (await env.app.inject({ method: 'POST', url: `/v1/records/${a1}/block`, headers: viewer }))
+        .statusCode,
+    ).toBe(204);
+
+    expect(await feedIds()).toEqual(expect.not.arrayContaining([a1, a2]));
+    expect(await feedIds()).toContain(o1);
+    expect(await mapIds()).toEqual(expect.not.arrayContaining([a1, a2]));
+    expect((await get(`/v1/records/${a2}`)).statusCode).toBe(404);
+    expect((await get('/v1/me/likes')).json().items).toEqual([]);
+    // Nobody else is affected.
+    expect(await feedIds(other)).toEqual(expect.arrayContaining([a1, a2, o1]));
+
+    const { rows } = await env.pool.query(
+      `select reason from reports where location_id = $1 and status = 'open'`,
+      [a1],
+    );
+    expect(rows.map((r) => r.reason)).toContain('blocked_user');
+
+    const list = (await get('/v1/me/blocks')).json();
+    expect(list.items).toHaveLength(1);
+    expect(Object.keys(list.items[0]).sort()).toEqual(['createdAt', 'id', 'label']);
+    expect(JSON.stringify(list)).not.toContain('block-author');
+
+    expect(
+      (
+        await env.app.inject({
+          method: 'DELETE',
+          url: `/v1/me/blocks/${list.items[0].id}`,
+          headers: other,
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await env.app.inject({
+          method: 'DELETE',
+          url: `/v1/me/blocks/${list.items[0].id}`,
+          headers: viewer,
+        })
+      ).statusCode,
+    ).toBe(204);
+    expect(await feedIds()).toEqual(expect.arrayContaining([a1, a2, o1]));
   });
 });
 

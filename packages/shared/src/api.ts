@@ -146,8 +146,8 @@ export const profileUpdateSchema = z.object({
 });
 
 export const onboardingSchema = z.object({
-  /** Self-declared age gate (D-02). Must be literally true. */
-  ageConfirmed16: z.literal(true),
+  /** Self-declared age gate, 18+ (D-41, was 16+ in D-02). Must be literally true. */
+  ageConfirmed18: z.literal(true),
   accept: z.object({ terms: z.string(), privacy: z.string(), image_license: z.string() }),
   firstName: z.string().trim().min(1).max(60),
   lastName: z.string().trim().max(60).default(''),

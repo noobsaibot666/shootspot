@@ -86,7 +86,7 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps) {
         ]);
       }
       await c.query(
-        `insert into consents (user_id, kind, version) values ($1, 'age_16', 'self-declared')`,
+        `insert into consents (user_id, kind, version) values ($1, 'age_18', 'self-declared')`,
         [viewer.userId],
       );
     });

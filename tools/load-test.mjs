@@ -56,7 +56,7 @@ async function member(i) {
     method: 'POST',
     headers: h,
     body: JSON.stringify({
-      ageConfirmed16: true,
+      ageConfirmed18: true,
       accept: { terms: legal.terms, privacy: legal.privacy, image_license: legal.image_license },
       firstName: `Load ${i}`,
     }),

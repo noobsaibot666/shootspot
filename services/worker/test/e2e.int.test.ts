@@ -207,7 +207,7 @@ describe('account lifecycle', () => {
     expect(archive.profile.first_name).toBe('Exporter');
     expect(archive.records).toHaveLength(1);
     expect(archive.consents.map((c: { kind: string }) => c.kind)).toEqual(
-      expect.arrayContaining(['terms', 'privacy', 'image_license', 'age_16']),
+      expect.arrayContaining(['terms', 'privacy', 'image_license', 'age_18']),
     );
   });
 

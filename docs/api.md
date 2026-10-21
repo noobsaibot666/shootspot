@@ -38,7 +38,7 @@ The app must send `expo-origin: shootspot://`. Browsers must come from a trusted
 | ------------- | -------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | GET           | `/v1/legal`          | none      | Current versions: `terms`, `privacy`, `image_license`, `attribution_notice`                                                  |
 | GET           | `/v1/me`             | signed in | `{ user, profile, onboarded, deletionScheduledFor }`                                                                         |
-| POST          | `/v1/me/onboarding`  | signed in | `{ ageConfirmed16: true, accept: { terms, privacy, image_license }, firstName, lastName? }`. Versions must equal `/v1/legal` |
+| POST          | `/v1/me/onboarding`  | signed in | `{ ageConfirmed18: true, accept: { terms, privacy, image_license }, firstName, lastName? }`. Versions must equal `/v1/legal` |
 | PATCH         | `/v1/me/profile`     | onboarded | firstName, lastName, displayName, bio, portfolioUrl, socialHandle                                                            |
 | POST          | `/v1/me/consents`    | onboarded | `{ kind: "attribution_notice", version }`                                                                                    |
 | GET           | `/v1/me/records`     | onboarded | The member's own records in every state, with status                                                                         |

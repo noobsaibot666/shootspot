@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ApiError, api } from '../../lib/api';
+import { SUPPORT_EMAIL, emailSupport } from '../../lib/links';
 import { space, useTheme } from '../../theme/tokens';
 import { Body, Button, ErrorNote, Field, Screen, Title } from '../../ui';
 
@@ -94,6 +95,17 @@ export default function Report() {
       />
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       <Button label="Send report" busy={busy} disabled={!reason} onPress={() => void send()} />
+      <Text style={{ color: t.muted, fontSize: 13 }}>
+        Something urgent, or about a member rather than a location? Email{' '}
+        <Text
+          accessibilityRole="link"
+          onPress={() => emailSupport('ShootSpot: report')}
+          style={{ color: t.ink, textDecorationLine: 'underline' }}
+        >
+          {SUPPORT_EMAIL}
+        </Text>
+        . To stop seeing this member's locations, use Block in the ⋯ menu.
+      </Text>
     </Screen>
   );
 }

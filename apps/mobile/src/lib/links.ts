@@ -13,6 +13,11 @@ export const links = {
 
 export const SUPPORT_EMAIL = 'hello@expose-u.com';
 
+/** Opens the mail app to the support address (App Review 1.2: a way to report abuse in-app). */
+export function emailSupport(subject = 'ShootSpot') {
+  openLink(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`);
+}
+
 export function openLink(url: string) {
   void Linking.openURL(url).catch(() => {});
 }

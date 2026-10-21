@@ -33,6 +33,8 @@ const CrosshairSimpleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/CrosshairSimple').CrosshairSimpleIcon;
 const GridNineIcon: PhosphorIcon = require('phosphor-react-native/src/icons/GridNine').GridNineIcon;
 const DroneIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Drone').DroneIcon;
+const EnvelopeSimpleIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/EnvelopeSimple').EnvelopeSimpleIcon;
 const ExportIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Export').ExportIcon;
 const EyeSlashIcon: PhosphorIcon = require('phosphor-react-native/src/icons/EyeSlash').EyeSlashIcon;
 const FilmSlateIcon: PhosphorIcon =
@@ -71,6 +73,7 @@ const NavigationArrowIcon: PhosphorIcon =
 const PencilSimpleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/PencilSimple').PencilSimpleIcon;
 const PlusIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Plus').PlusIcon;
+const ProhibitIcon: PhosphorIcon = require('phosphor-react-native/src/icons/Prohibit').ProhibitIcon;
 const SignOutIcon: PhosphorIcon = require('phosphor-react-native/src/icons/SignOut').SignOutIcon;
 const SlidersHorizontalIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/SlidersHorizontal').SlidersHorizontalIcon;
@@ -100,6 +103,7 @@ const ICONS = {
   alert: WarningCircleIcon,
   aperture: ApertureIcon,
   back: CaretLeftIcon,
+  block: ProhibitIcon,
   boards: SquaresFourIcon,
   bookmark: BookmarkSimpleIcon,
   camera: CameraIcon,
@@ -130,6 +134,7 @@ const ICONS = {
   hidden: EyeSlashIcon,
   home: HouseIcon,
   locate: CrosshairIcon,
+  mail: EnvelopeSimpleIcon,
   map: MapTrifoldIcon,
   menu: ListIcon,
   more: DotsThreeIcon,

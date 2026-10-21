@@ -2,7 +2,7 @@
 
 Source text for ShootSpot's pages on the shared docs hub (`https://docs.alan-design.com/shootspot/`, D-35). The Mac side ports these into the Starlight site under `legal/` and `user-guide/`. Based on [03-rights-privacy-data-ownership.md](../phase-0/03-rights-privacy-data-ownership.md) and [privacy-declarations.md](privacy-declarations.md).
 
-- **Status:** draft, version `2026-10-draft` (matches `services/api/src/legal.ts`). Counsel review is HANDWORK 4.1. When the wording changes, bump the version in `legal.ts` so that members are asked to accept it again.
+- **Status:** draft; terms and privacy version `2026-10-21`, others `2026-10-draft` (matches `services/api/src/legal.ts`). The live terms text (with the D-41 zero-tolerance, reporting and blocking sections) is `docs-site/src/content/docs/legal/terms.md`. Counsel review is HANDWORK 4.1. When the wording changes, bump the version in `legal.ts` so that members are asked to accept it again.
 - **Operator:** Alan Alves, trading as expose.u (sole proprietorship / Einzelunternehmen), Dudenstraße 24, 10965 Berlin, Germany; VAT ID DE461275084. Owner confirmed 2026-10-17: "Alan Alves", as on the expose-u.com Impressum (not the full legal name, for privacy). The privacy notice and terms also link to https://expose-u.com/impressum. It replaces `[OPERATOR — name, legal form, address]` below.
 - **Published:** `docs-site/` (Starlight), live at https://docs.alan-design.com/shootspot/. When these drafts change, update the pages there too and redeploy (see `docs-site/README.md`).
 - **Contact:** hello@expose-u.com (as CineFlow).
@@ -63,7 +63,7 @@ You can access, correct, export, restrict or delete your data, object to process
 
 ### Age
 
-ShootSpot is for people aged 16 and over.
+ShootSpot is for people aged 18 and over.
 
 ---
 
@@ -75,7 +75,7 @@ ShootSpot is for people aged 16 and over.
 
 ### The service
 
-ShootSpot lets members publish and find photo and film locations. You must be 16 or older and sign in with your email address. The service is free. We may change or end features, and we tell members about important changes in the app.
+ShootSpot lets members publish and find photo and film locations. You must be 18 or older and sign in with your email address. The service is free. We may change or end features, and we tell members about important changes in the app.
 
 ### What you publish
 

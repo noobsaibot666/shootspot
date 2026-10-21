@@ -11,6 +11,7 @@ import {
   ATTRIBUTION_JOIN,
   PUBLIC_COLUMNS,
   likedColumn,
+  notBlocked,
   toPublicRecord,
   type PublicRow,
 } from '../records/dto';
@@ -100,7 +101,8 @@ export function projectRoutes(app: FastifyInstance, deps: AppDeps) {
     const { id } = idParam.parse(req.params);
     await ownProject(id, viewer.userId);
     const { rows } = await pool.query<PublicRow & { item_location_id: string; available: boolean }>(
-      `select i.location_id as item_location_id, (l.status = 'published' and m.id is not null) as available,
+      `select i.location_id as item_location_id,
+              (l.status = 'published' and m.id is not null and ${notBlocked('$2')}) as available,
               ${PUBLIC_COLUMNS}, ${likedColumn('$2')}
        from project_items i join locations l on l.id = i.location_id
        left join media m on m.location_id = l.id and m.state = 'ready'

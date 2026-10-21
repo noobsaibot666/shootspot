@@ -25,6 +25,14 @@ export const PUBLIC_COLUMNS = `
 export const likedColumn = (viewerParam: string) =>
   `exists (select 1 from likes lk where lk.location_id = l.id and lk.user_id = ${viewerParam}) as liked`;
 
+/**
+ * Hides every location whose author the viewer blocked (D-41). Add it to the `where` of any query
+ * that shows other members' locations. `viewerParam` is the placeholder holding the viewer's id.
+ */
+export const notBlocked = (viewerParam: string) =>
+  `not exists (select 1 from record_ownership bo join blocks b on b.blocked_user_id = bo.user_id
+     where bo.location_id = l.id and b.blocker_user_id = ${viewerParam})`;
+
 /** Attribution join: only when the record is attributed AND an owner still exists. */
 export const ATTRIBUTION_JOIN = `
   left join lateral (

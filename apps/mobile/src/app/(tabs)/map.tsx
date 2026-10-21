@@ -2,7 +2,7 @@ import { Icon } from '../../ui/icon';
 import type { MapPin } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
@@ -100,7 +100,10 @@ export default function MapTab() {
     [scope],
   );
 
-  useEffect(() => load(region), [load]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reload on focus too: a member blocked from a location page expects that author's pins gone.
+  const regionRef = useRef(region);
+  regionRef.current = region;
+  useFocusEffect(useCallback(() => load(regionRef.current), [load]));
   // Follow the scope when it changes (filters sheet).
   useEffect(() => {
     if (center)

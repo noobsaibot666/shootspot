@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -35,6 +36,9 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
+  // App Review 1.2: the terms (zero tolerance for objectionable content and abusive members) are
+  // agreed to before anyone signs up or signs in (D-41).
+  const [agreed, setAgreed] = useState(false);
 
   const address = email.trim().toLowerCase();
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address);
@@ -147,43 +151,26 @@ export default function SignIn() {
                   keyboardType="email-address"
                   textContentType="emailAddress"
                   returnKeyType="send"
-                  onSubmitEditing={() => valid && void sendCode()}
+                  onSubmitEditing={() => valid && agreed && void sendCode()}
                 />
+                <Agreement value={agreed} onChange={setAgreed} />
                 {error ? <ErrorNote>{error}</ErrorNote> : null}
                 <Button
                   label="Continue"
                   busy={busy}
-                  disabled={!valid}
+                  disabled={!valid || !agreed}
                   onPress={() => void sendCode()}
                 />
                 <Button
                   label="Sign in with a password"
                   kind="ghost"
                   size="small"
+                  disabled={!agreed}
                   onPress={() => {
                     setError(null);
                     setStep('password');
                   }}
                 />
-                <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
-                  By continuing you agree to the{' '}
-                  <Text
-                    accessibilityRole="link"
-                    onPress={() => openLink(links.terms)}
-                    style={{ color: t.ink, textDecorationLine: 'underline' }}
-                  >
-                    Terms
-                  </Text>{' '}
-                  and the{' '}
-                  <Text
-                    accessibilityRole="link"
-                    onPress={() => openLink(links.privacy)}
-                    style={{ color: t.ink, textDecorationLine: 'underline' }}
-                  >
-                    Privacy notice
-                  </Text>
-                  .
-                </Text>
               </View>
             ) : step === 'password' ? (
               <View style={{ gap: space.lg }}>
@@ -296,6 +283,37 @@ export default function SignIn() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * The terms agreement, required before signing up or in. The rules that matter most to App
+ * Review are spelled out, not only linked.
+ */
+function Agreement(props: { value: boolean; onChange(v: boolean): void }) {
+  const t = useTheme();
+  const link = (label: string, url: string) => (
+    <Text
+      accessibilityRole="link"
+      onPress={() => openLink(url)}
+      style={{ color: t.ink, textDecorationLine: 'underline' }}
+    >
+      {label}
+    </Text>
+  );
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+      <Switch
+        value={props.value}
+        onValueChange={props.onChange}
+        accessibilityLabel="I agree to the Terms of use and the Privacy notice"
+      />
+      <Text style={[type.caption, { color: t.muted, flex: 1 }]}>
+        I'm 18 or older and agree to the {link('Terms of use', links.terms)} and the{' '}
+        {link('Privacy notice', links.privacy)}. ShootSpot has zero tolerance for objectionable
+        content and abusive members: such content is removed and those accounts are closed.
+      </Text>
+    </View>
   );
 }
 

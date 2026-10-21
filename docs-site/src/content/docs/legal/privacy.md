@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Version 2026-10-draft · last updated 17 October 2026
+Version 2026-10-21 · last updated 21 October 2026
 
 ShootSpot is a location-scouting app for photographers and filmmakers. Our principle is that we publish **places, not people**. Nobody should be able to learn where a specific person goes.
 
@@ -61,4 +61,4 @@ You can access, correct, export, restrict or delete your data, object to process
 
 ## Age
 
-ShootSpot is for people aged 16 and over.
+ShootSpot is for people aged 18 and over.

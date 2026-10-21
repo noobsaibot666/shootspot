@@ -10,7 +10,7 @@ Draft copy for the App Store and Google Play. The owner edits and submits it. Pr
 | Subtitle (iOS, 30)           | Location scouting for creatives                                                  |
 | Short description (Play, 80) | Find and share photo and film locations, with light, direction and access notes. |
 | Category                     | Photo & Video (secondary: Travel)                                                |
-| Age rating                   | 12+ / Teen (user-generated photos, moderated); the app requires 16+ at sign-up   |
+| Age rating                   | 18+ on both stores (D-41, App Review 1.2); the app requires 18+ at sign-up       |
 | Price                        | Free                                                                             |
 | Support URL                  | https://docs.alan-design.com/shootspot/user-guide/support/ (D-35)                |
 | Support email                | hello@expose-u.com                                                               |

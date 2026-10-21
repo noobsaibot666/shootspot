@@ -16,6 +16,7 @@ import {
   ATTRIBUTION_JOIN,
   PUBLIC_COLUMNS,
   likedColumn,
+  notBlocked,
   toPublicRecord,
   type PublicRow,
 } from './dto';
@@ -155,7 +156,10 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
     return reply.send(await statusOf(id));
   });
 
-  /** Public detail. Only published records, plus the owner's own record in any visible state. */
+  /**
+   * Public detail. Only published records, plus the owner's own record in any visible state.
+   * A blocked author's records are 404 for the blocker (D-41).
+   */
   app.get('/v1/records/:id', async (req, reply) => {
     const viewer = await getViewer(deps, req);
     if (!viewer) throw new HttpError(401, 'unauthenticated');
@@ -165,7 +169,8 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
        from locations l join media m on m.location_id = l.id and m.state = 'ready'
        ${ATTRIBUTION_JOIN}
        where l.id = $1 and (l.status = 'published' or (l.status in ('hidden') and exists (
-         select 1 from record_ownership o where o.location_id = l.id and o.user_id = $2)))`,
+         select 1 from record_ownership o where o.location_id = l.id and o.user_id = $2)))
+         and ${notBlocked('$2')}`,
       [id, viewer.userId],
     );
     if (!rows[0]) throw notFound();
@@ -212,7 +217,7 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
        from likes lk join locations l on l.id = lk.location_id and l.status = 'published'
        join media m on m.location_id = l.id and m.state = 'ready'
        ${ATTRIBUTION_JOIN}
-       where lk.user_id = $1 order by lk.created_at desc limit 500`,
+       where lk.user_id = $1 and ${notBlocked('$1')} order by lk.created_at desc limit 500`,
       [viewer.userId],
     );
     return { items: await Promise.all(rows.map((r) => toPublicRecord(storage, r))) };

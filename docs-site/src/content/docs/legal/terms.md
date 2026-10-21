@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-Version 2026-10-draft · last updated 17 October 2026
+Version 2026-10-21 · last updated 21 October 2026
 
 ## Provider
 
@@ -17,7 +17,7 @@ Legal notice (Impressum): [expose-u.com/impressum](https://expose-u.com/impressu
 
 ## The service
 
-ShootSpot lets members publish and find photo and film locations. You must be 16 or older and sign in with your email address. The service is free. We may change or end features, and we tell members about important changes in the app.
+ShootSpot lets members publish and find photo and film locations. You must be 18 or older and sign in with your email address. The service is free. We may change or end features, and we tell members about important changes in the app.
 
 ## What you publish
 
@@ -31,9 +31,17 @@ ShootSpot lets members publish and find photo and film locations. You must be 16
 - Access to a place is your own responsibility. A location in ShootSpot does not mean you may enter it.
 - Locations are anonymous unless you turn on "show my name". If you do, you are responsible for showing your name with that place and time.
 
-## Moderation
+## Zero tolerance for objectionable content and abusive members
 
-Members can report locations. We may hide or remove content and suspend accounts that break these terms. If we act on your content and you disagree, write to [hello@expose-u.com](mailto:hello@expose-u.com).
+ShootSpot has **no tolerance** for objectionable content or abusive members. Do not publish anything sexual, violent, hateful, harassing, threatening, defamatory or illegal, and do not use ShootSpot to harass, stalk or intimidate anyone. We remove such content and close the accounts of members who publish it or behave abusively, without notice.
+
+## Reporting, blocking and moderation
+
+- **Report:** use _Report this location_ in the ⋯ menu of any location. Reports are private and reviewed by our moderators.
+- **Block:** use _Block this member_ in the same menu. You stop seeing all of that member's locations at once, and we are notified so we can review their content. Unblock any time in _Menu → Blocked members_.
+- **Contact:** write to [hello@expose-u.com](mailto:hello@expose-u.com) (also in _Menu → Contact us_) to report anything else.
+
+We may hide or remove content and suspend or close accounts that break these terms. If we act on your content and you disagree, write to [hello@expose-u.com](mailto:hello@expose-u.com).
 
 ## Other members' content
 

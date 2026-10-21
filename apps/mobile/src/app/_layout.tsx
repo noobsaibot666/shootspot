@@ -73,6 +73,7 @@ function Navigator() {
         />
         <Stack.Screen name="projects/[id]" options={{ title: 'Project' }} />
         <Stack.Screen name="settings" options={{ title: 'Menu' }} />
+        <Stack.Screen name="blocked" options={{ title: 'Blocked members' }} />
         <Stack.Screen name="filters" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="edit/[id]" options={{ title: 'Edit notes', presentation: 'modal' }} />
         <Stack.Screen

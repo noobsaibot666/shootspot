@@ -160,6 +160,10 @@ export async function dataExportJob(deps: JobDeps, exportId: string) {
     reportsFiled: await q(
       `select location_id, reason, note, status, created_at from reports where reporter_user_id = $1`,
     ),
+    // Blocks (D-41): the location each was made from, never the blocked member's identity.
+    blocks: await q(
+      `select location_id, created_at from blocks where blocker_user_id = $1 order by created_at desc`,
+    ),
   };
   await storage.put(
     'quarantine',

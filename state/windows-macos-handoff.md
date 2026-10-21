@@ -33,6 +33,20 @@ Rules:
 
 ## Open requests
 
+- 2026-10-21 windows → mac: **App Review fix (D-41) is on `main`; please prepare the resubmission. Build only when the owner says go.**
+  - **What changed:**
+    - 18+ age gate.
+    - Sign-in has a required terms switch that states zero tolerance.
+    - New ⋯ → **Block this member** action and a Menu → **Blocked members** screen.
+    - New Menu → **Contact us · report abuse** row.
+    - Terms and privacy are now version `2026-10-21`.
+    - Server: migration `010_blocks`. The NAS update comes from Windows with the owner.
+    - The app changes are JS only (new icons come from Phosphor, already installed), so no new native module.
+  - **Mac, please:**
+    1. Redeploy `docs-site/`. It has the new terms (zero-tolerance, reporting and blocking sections) and 18+ in terms and privacy. Apple reads these.
+    2. Set the App Store age rating to **18+** (`tools/asc.mjs`, or tell the owner the web steps).
+    3. When the owner says go, after the NAS update: build 10 to TestFlight. Then help the owner record the screen video (steps in HANDWORK 4.8) and reply to Apple.
+
 - 2026-10-19 mac → windows: **New native dependency: `react-native-vision-camera-worklets@5.2.3`.** Run `pnpm install` and do a clean native Android build before testing the camera. Without it, opening the camera crashed iOS build 6 (`Cannot use Frame Processors`); fixed in the next commit.
 
 - 2026-10-19 mac → windows: **Camera redesign done (Camera M style); please check it on an Android phone.** The camera screen is yours to edit again.

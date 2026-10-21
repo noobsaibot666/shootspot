@@ -3,6 +3,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { adminRoutes } from './admin/routes';
+import { blockRoutes } from './blocks/routes';
 import { APP_ORIGIN, APP_ORIGIN_HEADER } from './auth';
 import { INTERNAL_IP_HEADER, clientIp } from './http/client-ip';
 import { HttpError, sendError, type AppDeps } from './http/context';
@@ -148,6 +149,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   feedRoutes(app, deps);
   meRoutes(app, deps);
   projectRoutes(app, deps);
+  blockRoutes(app, deps);
   adminRoutes(app, deps);
   vocabularyRoutes(app, deps);
   return app;

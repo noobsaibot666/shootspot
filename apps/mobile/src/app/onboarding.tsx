@@ -11,7 +11,7 @@ import { Body, Button, Card, ErrorNote, Field, Screen, Title } from '../ui';
 type Legal = { terms: string; privacy: string; image_license: string };
 
 /**
- * Onboarding (plan journey 1): anonymity explainer, age gate (D-02, 16+), name, and versioned
+ * Onboarding (plan journey 1): anonymity explainer, age gate (D-41, 18+), name, and versioned
  * acceptance of terms, privacy and the image licence (D-10). Permissions are NOT asked here;
  * camera and location are requested in context when first needed.
  */
@@ -40,7 +40,7 @@ export default function Onboarding() {
       await api('/v1/me/onboarding', {
         method: 'POST',
         body: {
-          ageConfirmed16: true,
+          ageConfirmed18: true,
           accept: {
             terms: legal.terms,
             privacy: legal.privacy,
@@ -67,7 +67,7 @@ export default function Onboarding() {
 
   return (
     <Screen scroll>
-      <Title sub="Before you start, three things.">Welcome to ShootSpot</Title>
+      <Title sub="Before you start, four things.">Welcome to ShootSpot</Title>
 
       <Card>
         <Row icon="hidden" title="Your locations are anonymous">
@@ -80,6 +80,10 @@ export default function Onboarding() {
         <Row icon="pin" title="Location is optional">
           We ask for your location only when you capture or browse nearby. You can always place a
           pin by hand.
+        </Row>
+        <Row icon="flag" title="Zero tolerance for abuse">
+          Objectionable content and abusive members are not allowed: such content is removed and
+          those accounts are closed. Report a location or block its author from the ⋯ menu.
         </Row>
       </Card>
 
@@ -98,7 +102,7 @@ export default function Onboarding() {
         textContentType="familyName"
       />
 
-      <Toggle value={age} onChange={setAge} label="I am 16 or older" />
+      <Toggle value={age} onChange={setAge} label="I am 18 or older" />
       <Toggle
         value={accept}
         onChange={setAccept}
@@ -129,7 +133,7 @@ export default function Onboarding() {
       />
       {!age ? (
         <Text style={{ color: t.muted, fontSize: 13 }}>
-          ShootSpot is for people aged 16 and over.
+          ShootSpot is for people aged 18 and over.
         </Text>
       ) : null}
     </Screen>

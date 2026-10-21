@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../lib/api';
 import { listImports, pickPhotos } from '../lib/imports';
-import { links, openLink } from '../lib/links';
+import { SUPPORT_EMAIL, emailSupport, links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
 import { space, type, useTheme } from '../theme/tokens';
 import { Avatar, Body, Button, Card, ErrorNote, Field, ListRow } from '../ui';
@@ -278,7 +278,17 @@ export default function Settings() {
           onPress={() => (ready ? void Linking.openURL(ready.downloadUrl!) : void requestExport())}
         />
 
+        <ListRow icon="block" label="Blocked members" onPress={() => router.push('/blocked')} />
+
         <View style={{ height: space.lg }} />
+        <ListRow
+          icon="mail"
+          label="Contact us · report abuse"
+          onPress={() => emailSupport('ShootSpot: report')}
+        />
+        <Text style={[type.caption, { color: t.muted, paddingHorizontal: space.lg }]}>
+          {SUPPORT_EMAIL} · to report a location, use Report on its page.
+        </Text>
         <ListRow icon="globe" label="Help & support" onPress={() => openLink(links.support)} />
         <ListRow icon="hidden" label="Privacy notice" onPress={() => openLink(links.privacy)} />
         <ListRow icon="flag" label="Terms of use" onPress={() => openLink(links.terms)} />

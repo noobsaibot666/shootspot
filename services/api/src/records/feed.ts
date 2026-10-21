@@ -13,6 +13,7 @@ import {
   ATTRIBUTION_JOIN,
   PUBLIC_COLUMNS,
   likedColumn,
+  notBlocked,
   toPublicRecord,
   type PublicRow,
 } from './dto';
@@ -51,7 +52,7 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
       params.push(v);
       return `$${params.length}`;
     };
-    const where = [`l.status = 'published'`];
+    const where = [`l.status = 'published'`, notBlocked(p(viewer.userId))];
     let distance = 'null::float8';
     if (q.lat != null && q.lon != null) {
       const origin = `st_setsrid(st_makepoint(${p(q.lon)}, ${p(q.lat)}), 4326)::geography`;
@@ -91,12 +92,13 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
    * (the detail screen fetches the full record). No creator data, same as the feed.
    */
   app.get('/v1/map', { config: { rateLimit: SEARCH_LIMIT } }, async (req, reply) => {
-    await requireViewer(deps, req);
+    const viewer = await requireViewer(deps, req);
     const q = mapQuerySchema.parse(req.query);
-    const params: unknown[] = [q.minLon, q.minLat, q.maxLon, q.maxLat];
+    const params: unknown[] = [q.minLon, q.minLat, q.maxLon, q.maxLat, viewer.userId];
     const where = [
       `l.status = 'published'`,
       `l.point && st_makeenvelope($1, $2, $3, $4, 4326)::geography`,
+      notBlocked('$5'),
     ];
     if (q.goodFor?.length) {
       params.push(q.goodFor);

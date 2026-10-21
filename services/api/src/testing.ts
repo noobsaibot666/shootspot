@@ -136,7 +136,7 @@ export async function onboard(env: TestEnv, headers: AuthHeaders, firstName = 'T
     url: '/v1/me/onboarding',
     headers,
     payload: {
-      ageConfirmed16: true,
+      ageConfirmed18: true,
       accept: { terms: legal.terms, privacy: legal.privacy, image_license: legal.image_license },
       firstName,
     },

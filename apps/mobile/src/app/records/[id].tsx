@@ -565,8 +565,41 @@ export default function RecordScreen() {
             onPress={() => router.push(`/report/${record.id}`)}
           />
         ) : null}
+        {!own ? (
+          <SheetAction
+            icon="block"
+            label="Block this member"
+            onPress={() => confirmBlock(record.id)}
+          />
+        ) : null}
       </Sheet>
     </View>
+  );
+}
+
+/**
+ * Block the author (D-41): all their locations disappear for this member at once, and the
+ * location goes to moderators. The author stays anonymous and isn't told.
+ */
+function confirmBlock(id: string) {
+  Alert.alert(
+    'Block this member?',
+    "You won't see any of their locations again. They won't be told, and they stay anonymous to you. We'll also review this location. You can unblock in Menu → Blocked members.",
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api(`/v1/records/${id}/block`, { method: 'POST' });
+            router.back();
+          } catch {
+            Alert.alert('Could not block', 'Check your connection and try again.');
+          }
+        },
+      },
+    ],
   );
 }
 
