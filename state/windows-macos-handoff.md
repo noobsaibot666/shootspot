@@ -64,6 +64,8 @@ Rules:
 
 ## Log
 
+- 2026-10-22 mac: **Email codes fixed.** Cause: `MAIL_FROM` was an @me.com address (DMARC). `expose-u.com` is now authenticated in Brevo: DNS records added with the Mac's Cloudflare token, and the existing records were left untouched. The NAS `.env` now has `MAIL_FROM=ShootSpot <no-reply@expose-u.com>`; only `api`/`worker` were recreated, and a test code arrived.
+
 - 2026-10-22 mac: **Sign-in screen reworked** (`d3fbba3`). The brand and the question sit in the middle; the agreement and actions sit at the bottom. "Sign in with a password" was disabled until the 18+ switch was on (tapping it did nothing); it now always opens, and the agreement is required on the password path too. Shorter copy. **iOS 1.0.0 (11) in TestFlight** (VALID); it's the build for the App Review resubmission. **Docs site redeployed** (terms/privacy `2026-10-21` live).
 
 - 2026-10-21 mac: **iOS 1.0.0 (10) in TestFlight** (`60b9950`: D-41 + D-42), VALID, export compliance set. App Store age rating set to **18+** through the API. Docs site rebuilt; the copy to the share waits for the Gaia mount.
