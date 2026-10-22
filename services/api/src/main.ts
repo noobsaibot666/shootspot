@@ -2,9 +2,9 @@ import { buildApp } from './app';
 import { createAuth } from './auth';
 import { loadConfig } from './config';
 import { createPool } from './db';
-import { createSmtpMailer } from './mailer';
+import { createSmtpMailer, senderProblem } from './mailer';
 import { createJobQueue } from './queue';
-import { initSentry } from './sentry';
+import { captureError, initSentry } from './sentry';
 import { createStorage } from './storage';
 
 const config = loadConfig();
@@ -13,6 +13,20 @@ const pool = createPool(config.DATABASE_URL);
 const storage = createStorage(config);
 const mailer = createSmtpMailer(config.SMTP_URL, config.MAIL_FROM);
 const auth = createAuth({ pool, config, mailer });
+
+// Sign-in depends on email, and a relay accepts mail it can't deliver: say so loudly at startup.
+const badSender = senderProblem(config.MAIL_FROM);
+if (badSender) {
+  console.error(`MAIL: ${badSender}`);
+  captureError(new Error(badSender));
+}
+mailer.verify().then(
+  () => console.log('MAIL: SMTP login ok'),
+  (err: unknown) => {
+    console.error(`MAIL: SMTP login failed: ${err instanceof Error ? err.message : String(err)}`);
+    captureError(err);
+  },
+);
 const queue = await createJobQueue(config.DATABASE_URL);
 
 // Idempotent: creates the two buckets on a fresh store (first NAS start), otherwise no-op.

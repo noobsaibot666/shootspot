@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decryptSecret, encryptSecret, verifyTotp, currentTotp, newTotp } from './admin/mfa';
 import { loadConfig } from './config';
+import { senderProblem } from './mailer';
 import { decodeCursor, encodeCursor } from './records/feed';
 
 describe('config', () => {
@@ -36,5 +37,14 @@ describe('admin mfa', () => {
     expect(verifyTotp(base32, currentTotp(base32))).toBe(true);
     expect(verifyTotp(base32, '000000')).toBe(currentTotp(base32) === '000000');
     expect(verifyTotp(base32, 'abc')).toBe(false);
+  });
+});
+
+describe('mail sender', () => {
+  it('flags free-mail senders a relay cannot authenticate', () => {
+    expect(senderProblem('ShootSpot <someone@me.com>')).toMatch(/DMARC/);
+    expect(senderProblem('x@Gmail.com')).toMatch(/DMARC/);
+    expect(senderProblem('ShootSpot')).toMatch(/no email address/);
+    expect(senderProblem('ShootSpot <no-reply@expose-u.com>')).toBeNull();
   });
 });
