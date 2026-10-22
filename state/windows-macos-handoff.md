@@ -64,6 +64,8 @@ Rules:
 
 ## Log
 
+- 2026-10-22 mac: **iOS 1.0.0 (13) in TestFlight** (VALID, `99c0c93`). Sign-in no longer jumps when switching tabs. This is the build for the App Review resubmission.
+
 - 2026-10-22 mac: **iOS 1.0.0 (12) in TestFlight** (VALID, `0f9bc13`): email + password sign-in (D-43). This is the build for the App Review resubmission.
 
 - 2026-10-22 mac: **NAS API on `73f4b8c` (D-43 sign-up live). Only the API image changed**; worker, admin and backup are still `ec34779`. The Mac built the image (`--platform linux/amd64`) and put it on the share as `shootspot-api-73f4b8c.tar`. The owner checked the hash, took a snapshot `pre-deploy-*`, loaded the image and ran `up -d api`; the log shows `MAIL: SMTP login ok`. Live checks: short password 400, existing email 422, admin-web sign-up 403. Rollback: `shootspot-api:ec34779`. Next full Windows deploy: build all four from `main`.
