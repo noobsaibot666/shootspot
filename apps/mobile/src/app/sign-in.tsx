@@ -22,9 +22,9 @@ const RESEND_SECONDS = 30;
 const CODE_LENGTH = 6;
 
 /**
- * Passwordless entry (ADR 0005): email → 6-digit code. The same flow creates the account for a
- * new email and signs in an existing one, so the copy says both. Centered and branded: this is the
- * first screen anyone sees.
+ * Entry (ADR 0005, D-37): email → 6-digit code, which creates the account for a new email and
+ * signs in an existing one; members who set a password in Settings can use it instead. Brand and
+ * question in the middle, the agreement (D-41, required on both paths) and actions at the bottom.
  */
 export default function SignIn() {
   const t = useTheme();
@@ -109,6 +109,13 @@ export default function SignIn() {
     }
   }
 
+  const back = (to: 'email') => {
+    setError(null);
+    setPassword('');
+    setCode('');
+    setStep(to);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.canvas }}>
       <KeyboardAvoidingView
@@ -117,148 +124,124 @@ export default function SignIn() {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            flexGrow: 1,
-            justifyContent: 'center',
-            padding: space.xl,
-          }}
+          contentContainerStyle={{ flexGrow: 1, padding: space.xl }}
         >
-          <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: space.xxl }}>
-            <Brand compact={step !== 'email'} />
+          <View style={{ flex: 1, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
+            {/* Brand and the question in the middle; the agreement and actions at the bottom. */}
+            <View style={{ flex: 1, justifyContent: 'center', gap: space.xxl * 1.5 }}>
+              <Brand compact={step !== 'email'} />
 
-            {step === 'email' ? (
-              <View style={{ gap: space.lg }}>
-                <View style={{ gap: space.xs }}>
-                  <Text
-                    accessibilityRole="header"
-                    style={[type.title, { color: t.ink, textAlign: 'center' }]}
-                  >
-                    Create your free account
-                  </Text>
-                  <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
-                    We'll email you a 6-digit code, no password needed. Already a member? Use the
-                    same email to sign in.
-                  </Text>
+              {step === 'email' ? (
+                <View style={{ gap: space.xl }}>
+                  <Heading
+                    title="Sign in or create an account"
+                    sub="We'll email you a 6-digit code."
+                  />
+                  <Field
+                    label="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                    returnKeyType="send"
+                    onSubmitEditing={() => valid && agreed && void sendCode()}
+                  />
                 </View>
-                <Field
-                  label="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  returnKeyType="send"
-                  onSubmitEditing={() => valid && agreed && void sendCode()}
-                />
-                <Agreement value={agreed} onChange={setAgreed} />
-                {error ? <ErrorNote>{error}</ErrorNote> : null}
-                <Button
-                  label="Continue"
-                  busy={busy}
-                  disabled={!valid || !agreed}
-                  onPress={() => void sendCode()}
-                />
-                <Button
-                  label="Sign in with a password"
-                  kind="ghost"
-                  size="small"
-                  disabled={!agreed}
-                  onPress={() => {
-                    setError(null);
-                    setStep('password');
-                  }}
-                />
-              </View>
-            ) : step === 'password' ? (
-              <View style={{ gap: space.lg }}>
-                <Text
-                  accessibilityRole="header"
-                  style={[type.title, { color: t.ink, textAlign: 'center' }]}
-                >
-                  Sign in with your password
-                </Text>
-                <Field
-                  label="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  textContentType="username"
-                />
-                <Field
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="current-password"
-                  textContentType="password"
-                  returnKeyType="go"
-                  onSubmitEditing={() => valid && password && void passwordSignIn()}
-                />
-                {error ? <ErrorNote>{error}</ErrorNote> : null}
-                <Button
-                  label="Sign in"
-                  busy={busy}
-                  disabled={!valid || !password}
-                  onPress={() => void passwordSignIn()}
-                />
-                <Button
-                  label="Use an email code instead"
-                  kind="ghost"
-                  size="small"
-                  onPress={() => {
-                    setError(null);
-                    setPassword('');
-                    setStep('email');
-                  }}
-                />
-              </View>
-            ) : (
-              <View style={{ gap: space.lg }}>
-                <View style={{ gap: space.xs }}>
-                  <Text
-                    accessibilityRole="header"
-                    style={[type.title, { color: t.ink, textAlign: 'center' }]}
-                  >
-                    Check your email
-                  </Text>
-                  <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>
-                    We sent a 6-digit code to{'\n'}
-                    <Text style={{ color: t.ink, fontWeight: '600' }}>{address}</Text>
-                    {'\n'}Enter it to finish creating your account or signing in.
-                  </Text>
+              ) : step === 'password' ? (
+                <View style={{ gap: space.xl }}>
+                  <Heading title="Sign in with your password" />
+                  <Field
+                    label="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    keyboardType="email-address"
+                    textContentType="username"
+                  />
+                  <Field
+                    label="Password"
+                    hint="No password yet? Use an email code, then set one in Settings."
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="current-password"
+                    textContentType="password"
+                    returnKeyType="go"
+                    onSubmitEditing={() => valid && password && agreed && void passwordSignIn()}
+                  />
                 </View>
-                <CodeInput
-                  value={code}
-                  onChange={(v) => {
-                    setCode(v);
-                    setError(null);
-                    if (v.length === CODE_LENGTH) void verify(v);
-                  }}
-                  disabled={busy}
-                />
-                {error ? (
-                  <View style={{ alignItems: 'center' }}>
-                    <ErrorNote>{error}</ErrorNote>
-                  </View>
-                ) : null}
-                <Button
-                  label="Continue"
-                  busy={busy}
-                  disabled={code.length !== CODE_LENGTH}
-                  onPress={() => void verify(code)}
-                />
-                <View style={{ alignItems: 'center', gap: space.sm }}>
+              ) : (
+                <View style={{ gap: space.xl }}>
+                  <Heading title="Check your email" sub={`Enter the code we sent to ${address}.`} />
+                  <CodeInput
+                    value={code}
+                    onChange={(v) => {
+                      setCode(v);
+                      setError(null);
+                      if (v.length === CODE_LENGTH) void verify(v);
+                    }}
+                    disabled={busy}
+                  />
                   <Text style={[type.caption, { color: t.muted, textAlign: 'center' }]}>
                     No email after a minute? Check your spam folder.
                   </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={{ gap: space.lg, paddingTop: space.xxl }}>
+              {step !== 'code' ? <Agreement value={agreed} onChange={setAgreed} /> : null}
+              {error ? <ErrorNote>{error}</ErrorNote> : null}
+              {step === 'email' ? (
+                <>
+                  <Button
+                    label="Continue"
+                    busy={busy}
+                    disabled={!valid || !agreed}
+                    onPress={() => void sendCode()}
+                  />
+                  <Button
+                    label="Sign in with a password"
+                    kind="ghost"
+                    size="small"
+                    onPress={() => {
+                      setError(null);
+                      setStep('password');
+                    }}
+                  />
+                </>
+              ) : step === 'password' ? (
+                <>
+                  <Button
+                    label="Sign in"
+                    busy={busy}
+                    disabled={!valid || !password || !agreed}
+                    onPress={() => void passwordSignIn()}
+                  />
+                  <Button
+                    label="Use an email code instead"
+                    kind="ghost"
+                    size="small"
+                    onPress={() => back('email')}
+                  />
+                </>
+              ) : (
+                <>
+                  <Button
+                    label="Continue"
+                    busy={busy}
+                    disabled={code.length !== CODE_LENGTH}
+                    onPress={() => void verify(code)}
+                  />
                   <Button
                     label={wait > 0 ? `Send a new code in ${wait}s` : 'Send a new code'}
                     kind="secondary"
@@ -270,19 +253,27 @@ export default function SignIn() {
                     label="Use a different email"
                     kind="ghost"
                     size="small"
-                    onPress={() => {
-                      setStep('email');
-                      setCode('');
-                      setError(null);
-                    }}
+                    onPress={() => back('email')}
                   />
-                </View>
-              </View>
-            )}
+                </>
+              )}
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function Heading({ title, sub }: { title: string; sub?: string }) {
+  const t = useTheme();
+  return (
+    <View style={{ gap: space.sm }}>
+      <Text accessibilityRole="header" style={[type.title, { color: t.ink, textAlign: 'center' }]}>
+        {title}
+      </Text>
+      {sub ? <Text style={[type.body, { color: t.muted, textAlign: 'center' }]}>{sub}</Text> : null}
+    </View>
   );
 }
 
@@ -302,16 +293,16 @@ function Agreement(props: { value: boolean; onChange(v: boolean): void }) {
     </Text>
   );
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
       <Switch
         value={props.value}
         onValueChange={props.onChange}
-        accessibilityLabel="I agree to the Terms of use and the Privacy notice"
+        accessibilityLabel="I'm 18 or older and agree to the Terms of use and the Privacy notice"
       />
       <Text style={[type.caption, { color: t.muted, flex: 1 }]}>
-        I'm 18 or older and agree to the {link('Terms of use', links.terms)} and the{' '}
-        {link('Privacy notice', links.privacy)}. ShootSpot has zero tolerance for objectionable
-        content and abusive members: such content is removed and those accounts are closed.
+        I'm 18+ and agree to the {link('Terms', links.terms)} and{' '}
+        {link('Privacy notice', links.privacy)}. Zero tolerance for objectionable content or abusive
+        members.
       </Text>
     </View>
   );
