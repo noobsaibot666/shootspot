@@ -33,8 +33,6 @@ Rules:
 
 ## Open requests
 
-- 2026-10-22 mac → windows: **D-43 email + password sign-up needs the new API on the NAS before build 12.** `services/api` enables sign-up (app only; the admin web gets 403). The Mac builds the amd64 images and puts them on the share; the owner loads them. The `test:int` suite passes on the Mac (36/36, local PostGIS under amd64 emulation).
-
 - 2026-10-22 mac → windows: **Next NAS deploy: API images from `main` or later.** The API now checks mail at startup (it logs `MAIL: SMTP login ok`, or `MAIL: …` with the reason, and sends it to Sentry). Email codes weren't arriving because `MAIL_FROM` was an @me.com address (see HANDWORK, "Email codes not arriving"); the owner is moving it to `no-reply@expose-u.com`.
 
 - 2026-10-21 mac → windows: **Please run `services/api` `test:int` on `3baff58` (D-42).** The Mac has no local test DB. New migration `011_light_merge` was only tested up/down on a throwaway Postgres 16.
@@ -65,6 +63,8 @@ Rules:
     - no slowdown from the extra frame output.
 
 ## Log
+
+- 2026-10-22 mac: **NAS API on `73f4b8c` (D-43 sign-up live). Only the API image changed**; worker, admin and backup are still `ec34779`. The Mac built the image (`--platform linux/amd64`) and put it on the share as `shootspot-api-73f4b8c.tar`. The owner checked the hash, took a snapshot `pre-deploy-*`, loaded the image and ran `up -d api`; the log shows `MAIL: SMTP login ok`. Live checks: short password 400, existing email 422, admin-web sign-up 403. Rollback: `shootspot-api:ec34779`. Next full Windows deploy: build all four from `main`.
 
 - 2026-10-22 mac: **Email codes fixed.** Cause: `MAIL_FROM` was an @me.com address (DMARC). `expose-u.com` is now authenticated in Brevo: DNS records added with the Mac's Cloudflare token, and the existing records were left untouched. The NAS `.env` now has `MAIL_FROM=ShootSpot <no-reply@expose-u.com>`; only `api`/`worker` were recreated, and a test code arrived.
 
