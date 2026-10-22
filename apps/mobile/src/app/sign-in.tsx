@@ -11,11 +11,21 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, api, auth } from '../lib/api';
+import { haptics } from '../lib/device';
 import { links, openLink } from '../lib/links';
+import { useReduceMotion } from '../lib/motion';
 import { useSession } from '../lib/session';
-import { radius, space, type, useTheme } from '../theme/tokens';
+import { motion, radius, space, type, useTheme } from '../theme/tokens';
 import { Button, ErrorNote, Field } from '../ui';
 
 const RESEND_SECONDS = 30;
@@ -34,6 +44,7 @@ type Step = 'account' | 'code' | 'new-password';
 export default function SignIn() {
   const t = useTheme();
   const { refresh } = useSession();
+  const reduce = useReduceMotion();
   const [mode, setMode] = useState<Mode>('create');
   const [step, setStep] = useState<Step>('account');
   const [email, setEmail] = useState('');
@@ -172,7 +183,10 @@ export default function SignIn() {
         >
           <View style={{ flex: 1, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
             {/* Brand and fields in the middle; the agreement and actions at the bottom. */}
-            <View style={{ flex: 1, justifyContent: 'center', gap: space.xxl * 1.5 }}>
+            <Animated.View
+              layout={reduce ? undefined : LinearTransition.duration(motion.base)}
+              style={{ flex: 1, justifyContent: 'center', gap: space.xxl * 1.5 }}
+            >
               <Brand compact={step !== 'account'} />
 
               {step === 'account' ? (
@@ -181,7 +195,8 @@ export default function SignIn() {
                   {emailField}
                   <Field
                     label="Password"
-                    hint={mode === 'create' ? `At least ${MIN_PASSWORD} characters.` : undefined}
+                    // Same height in both modes, so switching never moves anything.
+                    hint={mode === 'create' ? `At least ${MIN_PASSWORD} characters.` : ' '}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -227,11 +242,22 @@ export default function SignIn() {
                   />
                 </View>
               )}
-            </View>
+            </Animated.View>
 
-            <View style={{ gap: space.lg, paddingTop: space.xxl }}>
+            {/* An error slides in instead of pushing the layout around. */}
+            <Animated.View
+              layout={reduce ? undefined : LinearTransition.duration(motion.base)}
+              style={{ gap: space.lg, paddingTop: space.xxl }}
+            >
               {step === 'account' ? <Agreement value={agreed} onChange={setAgreed} /> : null}
-              {error ? <ErrorNote>{error}</ErrorNote> : null}
+              {error ? (
+                <Animated.View
+                  entering={reduce ? undefined : FadeIn.duration(motion.base)}
+                  exiting={reduce ? undefined : FadeOut.duration(motion.fast)}
+                >
+                  <ErrorNote>{error}</ErrorNote>
+                </Animated.View>
+              ) : null}
               {step === 'account' ? (
                 <>
                   <Button
@@ -248,7 +274,14 @@ export default function SignIn() {
                       disabled={!valid || busy}
                       onPress={() => void sendCode()}
                     />
-                  ) : null}
+                  ) : (
+                    <Button
+                      label="Already have an account? Sign in"
+                      kind="ghost"
+                      size="small"
+                      onPress={() => switchMode('sign-in')}
+                    />
+                  )}
                 </>
               ) : step === 'code' ? (
                 <>
@@ -275,7 +308,7 @@ export default function SignIn() {
                   onPress={() => void savePassword()}
                 />
               )}
-            </View>
+            </Animated.View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -283,9 +316,18 @@ export default function SignIn() {
   );
 }
 
-/** Create account | Sign in, as a two-part switch at the top of the form. */
+/** Create account | Sign in: a two-part switch whose highlight slides between the halves. */
 function Tabs({ value, onChange }: { value: Mode; onChange(m: Mode): void }) {
   const t = useTheme();
+  const reduce = useReduceMotion();
+  const [half, setHalf] = useState(0);
+  const x = useSharedValue(0);
+  const target = value === 'create' ? 0 : half;
+  useEffect(() => {
+    x.value = reduce ? target : withTiming(target, { duration: motion.base });
+  }, [target, reduce, x]);
+  const slide = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+
   const tab = (m: Mode, label: string) => {
     const on = value === m;
     return (
@@ -293,14 +335,11 @@ function Tabs({ value, onChange }: { value: Mode; onChange(m: Mode): void }) {
         key={m}
         accessibilityRole="tab"
         accessibilityState={{ selected: on }}
-        onPress={() => onChange(m)}
-        style={{
-          flex: 1,
-          paddingVertical: space.md,
-          borderRadius: radius.control,
-          alignItems: 'center',
-          backgroundColor: on ? t.ink : 'transparent',
+        onPress={() => {
+          if (!on) haptics.selection();
+          onChange(m);
         }}
+        style={{ flex: 1, paddingVertical: space.md, alignItems: 'center' }}
       >
         <Text style={[type.bodyStrong, { color: on ? t.onInk : t.muted }]}>{label}</Text>
       </Pressable>
@@ -309,6 +348,7 @@ function Tabs({ value, onChange }: { value: Mode; onChange(m: Mode): void }) {
   return (
     <View
       accessibilityRole="tablist"
+      onLayout={(e) => setHalf((e.nativeEvent.layout.width - space.xs * 2) / 2)}
       style={{
         flexDirection: 'row',
         padding: space.xs,
@@ -316,6 +356,23 @@ function Tabs({ value, onChange }: { value: Mode; onChange(m: Mode): void }) {
         backgroundColor: t.surface,
       }}
     >
+      {half > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              top: space.xs,
+              bottom: space.xs,
+              left: space.xs,
+              width: half,
+              borderRadius: radius.control,
+              backgroundColor: t.ink,
+            },
+            slide,
+          ]}
+        />
+      ) : null}
       {tab('create', 'Create account')}
       {tab('sign-in', 'Sign in')}
     </View>

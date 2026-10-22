@@ -233,6 +233,7 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
     - [x] Mac: redeploy the docs site (new terms and privacy, version `2026-10-21`), done 2026-10-22, live at docs.alan-design.com/shootspot
     - [x] Age rating **18+** in App Store Connect, done 2026-10-21 through the API (Play's content rating still to do when Play is set up)
     - [x] Mac: iOS build 10 to TestFlight, done 2026-10-21 (VALID; also has D-42: Access after Best light, merged light tags)
+    - [x] Owner check on build 12, 2026-10-22: account created with email + password and signed in; a location report and an abuse report both reached the admin web
     - [ ] **You:** screen recording on the iPhone (Settings → Control Center → Screen Recording) showing, signed out: the sign-in screen with the "I'm 18 or older and agree…" switch; then on a location's ⋯ menu: **Report this location** (send one), and **Block this member** (the location disappears from the Feed); then Menu → **Contact us · report abuse** and **Blocked members**
     - [ ] **You:** in App Store Connect, reply to the review message with the recording, paste the same into App Review Information → Notes, attach build 12 and resubmit (set the review account's password first: Sign in → Forgot password? → `REVIEW_CODE`)
   - [ ] **Google Play:** create the app (ShootSpot, English (US), App, Free), the App content forms, and optionally the Play API service account
