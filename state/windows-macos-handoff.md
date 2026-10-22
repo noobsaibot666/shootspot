@@ -64,6 +64,8 @@ Rules:
 
 ## Log
 
+- 2026-10-22 mac: **iOS 1.0.0 (13) resubmitted to App Review** (Guideline 1.2 reply with screen recording). Review login is now email + password (`review@expose-u.com`, password only in App Store Connect).
+
 - 2026-10-22 mac: **iOS 1.0.0 (13) in TestFlight** (VALID, `99c0c93`). Sign-in no longer jumps when switching tabs. This is the build for the App Review resubmission.
 
 - 2026-10-22 mac: **iOS 1.0.0 (12) in TestFlight** (VALID, `0f9bc13`): email + password sign-in (D-43). This is the build for the App Review resubmission.
