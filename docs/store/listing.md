@@ -58,7 +58,7 @@ Sizes: iPhone 6.9" (1320 × 2868), Android phone (1080 × 2400). Use real scouti
 
 ## Review notes (for Apple / Google)
 
-- Sign-in uses a 6-digit email code. **Review account (D-34):** before submitting, set `REVIEW_EMAIL` and `REVIEW_CODE` in the NAS `.env` (6 random digits; Claude gives the guarded block), then put both in the review notes: _"Sign in with review@… and, when asked for the code, enter …. No email is needed for this account."_ Remove both from `.env` once the review is approved.
+- Sign-in is email + password (D-43). **Review account:** give the reviewer `review@expose-u.com` and a password (set it once in the app: Sign in → Forgot password? → the `REVIEW_CODE` → new password). Older note, still valid for the code path (D-34): before submitting, set `REVIEW_EMAIL` and `REVIEW_CODE` in the NAS `.env` (6 random digits; Claude gives the guarded block), then put both in the review notes: _"Sign in with review@… and, when asked for the code, enter …. No email is needed for this account."_ Remove both from `.env` once the review is approved.
 - Before sending a review: on a phone outside the home network, sign in with the review account and open a location (the NAS must be public over HTTPS, D-33).
 - Location: when-in-use only, and optional (manual pin and place search work without it).
 - Photos: the picker is only used for imports the member starts. Their GPS metadata is read on the phone and never uploaded.

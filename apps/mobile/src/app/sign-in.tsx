@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError, auth } from '../lib/api';
+import { ApiError, api, auth } from '../lib/api';
 import { links, openLink } from '../lib/links';
 import { useSession } from '../lib/session';
 import { radius, space, type, useTheme } from '../theme/tokens';
@@ -20,19 +20,25 @@ import { Button, ErrorNote, Field } from '../ui';
 
 const RESEND_SECONDS = 30;
 const CODE_LENGTH = 6;
+const MIN_PASSWORD = 10;
+
+type Mode = 'create' | 'sign-in';
+type Step = 'account' | 'code' | 'new-password';
 
 /**
- * Entry (ADR 0005, D-37): email → 6-digit code, which creates the account for a new email and
- * signs in an existing one; members who set a password in Settings can use it instead. Brand and
- * question in the middle, the agreement (D-41, required on both paths) and actions at the bottom.
+ * Entry (D-43): email and password, so nobody waits for an email. Create an account or sign in on
+ * one screen. "Forgot password?" sends a 6-digit code (it proves the address), then asks for a
+ * new password; older code-only accounts use the same path. Brand and fields in the middle, the
+ * agreement (D-41) and actions at the bottom.
  */
 export default function SignIn() {
   const t = useTheme();
   const { refresh } = useSession();
+  const [mode, setMode] = useState<Mode>('create');
+  const [step, setStep] = useState<Step>('account');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState<'email' | 'code' | 'password'>('email');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
@@ -42,6 +48,8 @@ export default function SignIn() {
 
   const address = email.trim().toLowerCase();
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address);
+  const longEnough = password.length >= MIN_PASSWORD;
+  const ready = valid && agreed && (mode === 'create' ? longEnough : password.length > 0);
 
   // Countdown before "Send a new code" is available again (the server also rate-limits).
   useEffect(() => {
@@ -50,71 +58,107 @@ export default function SignIn() {
     return () => clearTimeout(id);
   }, [wait]);
 
-  function message(err: unknown, sending: boolean) {
+  function common(err: unknown) {
     const c = err instanceof ApiError ? err.code : '';
     if (c === 'offline') return 'No connection. Try again when you are online.';
     if (c === 'rate_limited') return 'Too many attempts. Wait a minute and try again.';
-    return sending
-      ? 'Could not send the code. Try again.'
-      : 'That code did not work. Check it, or send a new one.';
+    return null;
   }
 
-  async function sendCode() {
+  async function run(action: () => Promise<void>, fail: (err: unknown) => string) {
     setBusy(true);
     setError(null);
     try {
-      await auth.sendCode(address);
-      setCode('');
-      setStep('code');
-      setWait(RESEND_SECONDS);
+      await action();
     } catch (err) {
-      setError(message(err, true));
+      setError(common(err) ?? fail(err));
     } finally {
       setBusy(false);
     }
   }
 
-  async function passwordSignIn() {
-    setBusy(true);
-    setError(null);
-    try {
-      await auth.signInWithPassword(address, password);
-      await refresh();
-      router.replace('/');
-    } catch (err) {
-      const c = err instanceof ApiError ? err.code : '';
-      setError(
-        c === 'offline' || c === 'rate_limited'
-          ? message(err, false)
-          : 'Email or password is wrong. No password yet? Use an email code.',
-      );
-    } finally {
-      setBusy(false);
-    }
+  async function enter() {
+    await refresh();
+    router.replace('/');
   }
+
+  const submit = () =>
+    run(
+      async () => {
+        if (mode === 'create') await auth.signUp(address, password);
+        else await auth.signInWithPassword(address, password);
+        await enter();
+      },
+      (err) =>
+        mode === 'create'
+          ? err instanceof ApiError && err.code === 'account_exists'
+            ? 'This email already has an account. Sign in instead.'
+            : 'Could not create the account. Try again.'
+          : 'Email or password is wrong. No password yet? Tap “Forgot password?”.',
+    );
+
+  const sendCode = () =>
+    run(
+      async () => {
+        await auth.sendCode(address);
+        setCode('');
+        setStep('code');
+        setWait(RESEND_SECONDS);
+      },
+      () => 'Could not send the code. Try again.',
+    );
 
   async function verify(value: string) {
     if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await auth.verifyCode(address, value);
-      await refresh();
-      router.replace('/');
-    } catch (err) {
-      setError(message(err, false));
-      setCode('');
-    } finally {
-      setBusy(false);
-    }
+    await run(
+      async () => {
+        await auth.verifyCode(address, value);
+        setPassword('');
+        setStep('new-password');
+      },
+      () => {
+        setCode('');
+        return 'That code did not work. Check it, or send a new one.';
+      },
+    );
   }
 
-  const back = (to: 'email') => {
+  // Right after a code sign-in, so the server accepts it without the old password.
+  const savePassword = () =>
+    run(
+      async () => {
+        await api('/v1/me/password', { method: 'PUT', body: { newPassword: password } });
+        await enter();
+      },
+      () => 'Could not save the password. Try again.',
+    );
+
+  function switchMode(next: Mode) {
+    setMode(next);
     setError(null);
-    setPassword('');
+  }
+
+  const back = () => {
+    setError(null);
     setCode('');
-    setStep(to);
+    setPassword('');
+    setStep('account');
   };
+
+  const emailField = (
+    <Field
+      label="Email"
+      value={email}
+      onChangeText={setEmail}
+      placeholder="you@example.com"
+      autoCapitalize="none"
+      autoCorrect={false}
+      autoComplete="email"
+      keyboardType="email-address"
+      textContentType={mode === 'create' ? 'emailAddress' : 'username'}
+      returnKeyType="next"
+    />
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.canvas }}>
@@ -127,59 +171,29 @@ export default function SignIn() {
           contentContainerStyle={{ flexGrow: 1, padding: space.xl }}
         >
           <View style={{ flex: 1, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
-            {/* Brand and the question in the middle; the agreement and actions at the bottom. */}
+            {/* Brand and fields in the middle; the agreement and actions at the bottom. */}
             <View style={{ flex: 1, justifyContent: 'center', gap: space.xxl * 1.5 }}>
-              <Brand compact={step !== 'email'} />
+              <Brand compact={step !== 'account'} />
 
-              {step === 'email' ? (
+              {step === 'account' ? (
                 <View style={{ gap: space.xl }}>
-                  <Heading
-                    title="Sign in or create an account"
-                    sub="We'll email you a 6-digit code."
-                  />
-                  <Field
-                    label="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="you@example.com"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    keyboardType="email-address"
-                    textContentType="emailAddress"
-                    returnKeyType="send"
-                    onSubmitEditing={() => valid && agreed && void sendCode()}
-                  />
-                </View>
-              ) : step === 'password' ? (
-                <View style={{ gap: space.xl }}>
-                  <Heading title="Sign in with your password" />
-                  <Field
-                    label="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="you@example.com"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    keyboardType="email-address"
-                    textContentType="username"
-                  />
+                  <Tabs value={mode} onChange={switchMode} />
+                  {emailField}
                   <Field
                     label="Password"
-                    hint="No password yet? Use an email code, then set one in Settings."
+                    hint={mode === 'create' ? `At least ${MIN_PASSWORD} characters.` : undefined}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
                     autoCapitalize="none"
                     autoCorrect={false}
-                    autoComplete="current-password"
-                    textContentType="password"
+                    autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
+                    textContentType={mode === 'create' ? 'newPassword' : 'password'}
                     returnKeyType="go"
-                    onSubmitEditing={() => valid && password && agreed && void passwordSignIn()}
+                    onSubmitEditing={() => ready && void submit()}
                   />
                 </View>
-              ) : (
+              ) : step === 'code' ? (
                 <View style={{ gap: space.xl }}>
                   <Heading title="Check your email" sub={`Enter the code we sent to ${address}.`} />
                   <CodeInput
@@ -195,46 +209,48 @@ export default function SignIn() {
                     No email after a minute? Check your spam folder.
                   </Text>
                 </View>
+              ) : (
+                <View style={{ gap: space.xl }}>
+                  <Heading title="Choose a new password" sub={address} />
+                  <Field
+                    label="New password"
+                    hint={`At least ${MIN_PASSWORD} characters.`}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    returnKeyType="go"
+                    onSubmitEditing={() => longEnough && void savePassword()}
+                  />
+                </View>
               )}
             </View>
 
             <View style={{ gap: space.lg, paddingTop: space.xxl }}>
-              {step !== 'code' ? <Agreement value={agreed} onChange={setAgreed} /> : null}
+              {step === 'account' ? <Agreement value={agreed} onChange={setAgreed} /> : null}
               {error ? <ErrorNote>{error}</ErrorNote> : null}
-              {step === 'email' ? (
+              {step === 'account' ? (
                 <>
                   <Button
-                    label="Continue"
+                    label={mode === 'create' ? 'Create account' : 'Sign in'}
                     busy={busy}
-                    disabled={!valid || !agreed}
-                    onPress={() => void sendCode()}
+                    disabled={!ready}
+                    onPress={() => void submit()}
                   />
-                  <Button
-                    label="Sign in with a password"
-                    kind="ghost"
-                    size="small"
-                    onPress={() => {
-                      setError(null);
-                      setStep('password');
-                    }}
-                  />
+                  {mode === 'sign-in' ? (
+                    <Button
+                      label="Forgot password?"
+                      kind="ghost"
+                      size="small"
+                      disabled={!valid || busy}
+                      onPress={() => void sendCode()}
+                    />
+                  ) : null}
                 </>
-              ) : step === 'password' ? (
-                <>
-                  <Button
-                    label="Sign in"
-                    busy={busy}
-                    disabled={!valid || !password || !agreed}
-                    onPress={() => void passwordSignIn()}
-                  />
-                  <Button
-                    label="Use an email code instead"
-                    kind="ghost"
-                    size="small"
-                    onPress={() => back('email')}
-                  />
-                </>
-              ) : (
+              ) : step === 'code' ? (
                 <>
                   <Button
                     label="Continue"
@@ -249,19 +265,60 @@ export default function SignIn() {
                     disabled={busy || wait > 0}
                     onPress={() => void sendCode()}
                   />
-                  <Button
-                    label="Use a different email"
-                    kind="ghost"
-                    size="small"
-                    onPress={() => back('email')}
-                  />
+                  <Button label="Back" kind="ghost" size="small" onPress={back} />
                 </>
+              ) : (
+                <Button
+                  label="Save and continue"
+                  busy={busy}
+                  disabled={!longEnough}
+                  onPress={() => void savePassword()}
+                />
               )}
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/** Create account | Sign in, as a two-part switch at the top of the form. */
+function Tabs({ value, onChange }: { value: Mode; onChange(m: Mode): void }) {
+  const t = useTheme();
+  const tab = (m: Mode, label: string) => {
+    const on = value === m;
+    return (
+      <Pressable
+        key={m}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: on }}
+        onPress={() => onChange(m)}
+        style={{
+          flex: 1,
+          paddingVertical: space.md,
+          borderRadius: radius.control,
+          alignItems: 'center',
+          backgroundColor: on ? t.ink : 'transparent',
+        }}
+      >
+        <Text style={[type.bodyStrong, { color: on ? t.onInk : t.muted }]}>{label}</Text>
+      </Pressable>
+    );
+  };
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={{
+        flexDirection: 'row',
+        padding: space.xs,
+        borderRadius: radius.control + space.xs,
+        backgroundColor: t.surface,
+      }}
+    >
+      {tab('create', 'Create account')}
+      {tab('sign-in', 'Sign in')}
+    </View>
   );
 }
 

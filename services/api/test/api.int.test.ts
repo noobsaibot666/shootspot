@@ -819,6 +819,32 @@ describe('admin (server-side role + MFA)', () => {
     expect(signUp.statusCode).toBeGreaterThanOrEqual(400);
   });
 
+  it('the app creates an account with email and password, no code needed (D-43)', async () => {
+    const signUp = (email: string, password: string) =>
+      env.app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-up/email',
+        headers: APP_HEADERS,
+        payload: { email, password, name: '' },
+      });
+    expect((await signUp('new-pw@example.com', 'short')).statusCode).toBe(400);
+    const created = await signUp('new-pw@example.com', 'a good password 1');
+    expect(created.statusCode).toBe(200);
+    const headers = { authorization: `Bearer ${created.headers['set-auth-token']}` };
+    const me = (await env.app.inject({ method: 'GET', url: '/v1/me', headers })).json();
+    expect(me.user.role).toBe('member');
+    expect(me.hasPassword).toBe(true);
+    // The same address again is refused; signing in with the password works.
+    expect((await signUp('new-pw@example.com', 'another password 2')).statusCode).toBe(422);
+    const signIn = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      headers: APP_HEADERS,
+      payload: { email: 'new-pw@example.com', password: 'a good password 1' },
+    });
+    expect(signIn.statusCode).toBe(200);
+  });
+
   it('members can set a password and sign in with it; a change needs the old one or a fresh code', async () => {
     const headers = await member(env, 'pw-member@example.com');
     expect(
@@ -1097,7 +1123,7 @@ describe('admin-managed tags (D-25)', () => {
     expect(add.statusCode).toBe(201);
     const vocab = (await env.app.inject({ method: 'GET', url: '/v1/vocabulary' })).json();
     expect(vocab.goodFor.at(-1)).toEqual({ key: 'rooftop', label: 'Rooftop' });
-    expect(vocab.bestLight.length).toBe(9);
+    expect(vocab.bestLight.length).toBe(8); // blue_hour_pm retired (D-42)
 
     const ok = await env.app.inject({
       method: 'POST',

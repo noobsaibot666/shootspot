@@ -33,6 +33,8 @@ Rules:
 
 ## Open requests
 
+- 2026-10-22 mac → windows: **D-43 email + password sign-up needs the new API on the NAS before build 12.** `services/api` enables sign-up (app only; the admin web gets 403). The Mac builds the amd64 images and puts them on the share; the owner loads them. The `test:int` suite passes on the Mac (36/36, local PostGIS under amd64 emulation).
+
 - 2026-10-22 mac → windows: **Next NAS deploy: API images from `main` or later.** The API now checks mail at startup (it logs `MAIL: SMTP login ok`, or `MAIL: …` with the reason, and sends it to Sentry). Email codes weren't arriving because `MAIL_FROM` was an @me.com address (see HANDWORK, "Email codes not arriving"); the owner is moving it to `no-reply@expose-u.com`.
 
 - 2026-10-21 mac → windows: **Please run `services/api` `test:int` on `3baff58` (D-42).** The Mac has no local test DB. New migration `011_light_merge` was only tested up/down on a throwaway Postgres 16.

@@ -109,7 +109,7 @@ export default function Settings() {
         c === 'wrong_password'
           ? 'The current password is wrong.'
           : c === 'recent_sign_in_required'
-            ? 'Enter your current password. Forgot it? Sign out, sign in with an email code, and set a new one right after.'
+            ? 'Enter your current password. Forgot it? Sign out and tap “Forgot password?” on the sign-in screen.'
             : 'Could not save the password. Try again.',
       );
     } finally {

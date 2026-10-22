@@ -114,6 +114,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const adminWeb = origin !== null && deps.config.TRUSTED_ORIGINS.includes(origin);
       const otpPath = url.pathname.endsWith('/email-otp/send-verification-otp');
       const signInPath = url.pathname.endsWith('/sign-in/email-otp');
+      if (adminWeb && url.pathname.endsWith('/sign-up/email')) {
+        return reply.code(403).send({ code: 'SIGN_UP_DISABLED', message: 'Sign-up is app-only' });
+      }
       if (adminWeb && (otpPath || signInPath)) {
         const email = String(
           (req.body as { email?: unknown } | undefined)?.email ?? '',

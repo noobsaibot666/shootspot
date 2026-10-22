@@ -19,8 +19,9 @@ export const APP_ORIGIN_HEADER = 'expo-origin';
 
 /**
  * Authentication (ADR 0005): Better Auth inside the API, tables in our Postgres.
- * Members sign in with a 6-digit email code, or with a password once they've set one (optional,
- * set while signed in: src/me/password.ts; there is no password sign-up). Mobile clients use
+ * Members create an account and sign in with email and password (D-43, no wait for an email).
+ * The 6-digit email code remains for a forgotten password (sign in with the code, then set a new
+ * one: src/me/password.ts) and for older code-only accounts. Mobile clients use
  * bearer tokens, the admin web uses cookies. The admin web accepts only password sessions
  * (recorded in auth_password_sessions) plus TOTP, enforced by our own admin routes (src/admin/mfa.ts).
  */
@@ -43,8 +44,9 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     telemetry: { enabled: false },
     emailAndPassword: {
       enabled: true,
-      // Accounts are only ever created by email-code sign-in (which proves the address).
-      disableSignUp: true,
+      // App sign-up (D-43); the admin web can't sign up (app.ts). The address isn't proven at
+      // sign-up: the forgot-password code is what proves it, so only its owner can reset.
+      disableSignUp: false,
       minPasswordLength: MIN_PASSWORD,
       maxPasswordLength: 128,
     },

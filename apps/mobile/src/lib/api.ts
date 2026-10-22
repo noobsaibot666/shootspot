@@ -66,8 +66,27 @@ export async function api<T = unknown>(
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-/** Email-code sign-in (ADR 0005), or a password the member set in Settings. */
+/** Email and password (D-43); the email code is for a forgotten password and older accounts. */
 export const auth = {
+  async signUp(email: string, password: string) {
+    const res = await fetch(`${API_URL}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...APP_HEADERS },
+      body: JSON.stringify({ email, password, name: '' }),
+    }).catch(() => null);
+    if (!res) throw new ApiError(0, 'offline');
+    const issued = res.headers.get('set-auth-token');
+    if (!res.ok || !issued)
+      throw new ApiError(
+        res.status,
+        res.status === 429
+          ? 'rate_limited'
+          : res.status === 422
+            ? 'account_exists'
+            : 'sign_up_failed',
+      );
+    await saveToken(issued);
+  },
   async signInWithPassword(email: string, password: string) {
     const res = await fetch(`${API_URL}/api/auth/sign-in/email`, {
       method: 'POST',
