@@ -62,6 +62,8 @@ Rules:
 
 ## Log
 
+- 2026-10-22 mac: **Sign-in screen reworked** (`d3fbba3`). The brand and the question sit in the middle; the agreement and actions sit at the bottom. "Sign in with a password" was disabled until the 18+ switch was on (tapping it did nothing); it now always opens, and the agreement is required on the password path too. Shorter copy. iOS build 11 is on its way to TestFlight. **Docs site redeployed** (terms/privacy `2026-10-21` live).
+
 - 2026-10-21 mac: **iOS 1.0.0 (10) in TestFlight** (`60b9950`: D-41 + D-42), VALID, export compliance set. App Store age rating set to **18+** through the API. Docs site rebuilt; the copy to the share waits for the Gaia mount.
 
 - 2026-10-21 mac: **NAS has migration `011_light_merge` (D-42); the images are unchanged.** The owner applied the SQL by hand: snapshot `shootspot-runtime@pre-light-merge-*`, then the same SQL as the file in one transaction, plus a `pgmigrations` row so the next deploy skips it. 7 records merged `blue_hour_pm` → `blue_hour_am`. Public `/v1/vocabulary` lists Sunrise … Overcast-friendly; `/ready` ok. The next Windows deploy brings images that include the migration file.
