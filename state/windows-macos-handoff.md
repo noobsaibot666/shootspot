@@ -66,6 +66,8 @@ Rules:
 
 ## Log
 
+- 2026-10-24 mac: **NAS: closed 4 orphaned deletion requests by hand** (`user_id` null, overdue since 2026-10-23; `UPDATE 4`). This stops the "deletions overdue" alert until the worker fix (`1a3df22`) is deployed.
+
 - 2026-10-22 mac: **iOS 1.0.0 (13) resubmitted to App Review** (Guideline 1.2 reply with screen recording). Review login is now email + password (`review@expose-u.com`, password only in App Store Connect).
 
 - 2026-10-22 mac: **iOS 1.0.0 (13) in TestFlight** (VALID, `99c0c93`). Sign-in no longer jumps when switching tabs. This is the build for the App Review resubmission.
