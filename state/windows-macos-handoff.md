@@ -33,8 +33,6 @@ Rules:
 
 ## Open requests
 
-- 2026-10-24 mac → windows: **Next NAS deploy: include the worker image; please run `services/worker` `test:int`.** "Deletions overdue" alerts came from 4 deletion requests whose users had already been removed (`user_id` null, still `scheduled`); the sweep skipped them, but the alert kept counting them. The sweep now closes such requests itself. The new integration test hasn't run yet because the Mac has no test DB.
-
 - 2026-10-22 mac → windows: **Next NAS deploy: API images from `main` or later.** The API now checks mail at startup (it logs `MAIL: SMTP login ok`, or `MAIL: …` with the reason, and sends it to Sentry). Email codes weren't arriving because `MAIL_FROM` was an @me.com address (see HANDWORK, "Email codes not arriving"); the owner is moving it to `no-reply@expose-u.com`.
 
 - 2026-10-21 mac → windows: **Please run `services/api` `test:int` on `3baff58` (D-42).** The Mac has no local test DB. New migration `011_light_merge` was only tested up/down on a throwaway Postgres 16.
@@ -65,6 +63,8 @@ Rules:
     - no slowdown from the extra frame output.
 
 ## Log
+
+- 2026-10-24 mac: **NAS worker on `258cd86`** (deletion sweep closes requests whose user is already gone). The Mac ran `services/worker` `test:int` (22/22) against local infra, built the image (`--platform linux/amd64`) and put it on the share as `shootspot-worker-258cd86.tar`. The owner checked the hash, took a snapshot `pre-deploy-*`, loaded the image and ran `up -d --no-deps worker`; the log shows `[worker] ready`. API, admin and backup unchanged. Rollback: `shootspot-worker:ec34779`.
 
 - 2026-10-24 mac: **NAS: closed 4 orphaned deletion requests by hand** (`user_id` null, overdue since 2026-10-23; `UPDATE 4`). This stops the "deletions overdue" alert until the worker fix (`1a3df22`) is deployed.
 
