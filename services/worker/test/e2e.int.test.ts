@@ -255,4 +255,15 @@ describe('account lifecycle', () => {
       (await env.app.inject({ method: 'GET', url: '/v1/me', headers: leaving })).statusCode,
     ).toBe(401);
   });
+
+  it('deletion closes a request whose user was already removed', async () => {
+    const gone = await member(env, 'gone@example.com');
+    await env.app.inject({ method: 'POST', url: '/v1/me/deletion', headers: gone });
+    await env.pool.query(`delete from auth_users where email = 'gone@example.com'`);
+
+    expect(await deletionSweep(deps)).toBe(0);
+    expect(
+      (await env.pool.query(`select 1 from account_deletions where status = 'scheduled'`)).rowCount,
+    ).toBe(0);
+  });
 });

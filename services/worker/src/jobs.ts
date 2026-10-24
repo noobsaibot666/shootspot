@@ -93,6 +93,12 @@ export async function processMediaJob(
  */
 export async function deletionSweep(deps: JobDeps): Promise<number> {
   const { pool } = deps;
+  // A user removed outside the sweep leaves its request with no user (on delete set null).
+  // Nothing is left to delete, so close it; otherwise it stays scheduled and alerts forever.
+  await pool.query(
+    `update account_deletions set status = 'completed', completed_at = now()
+     where status = 'scheduled' and user_id is null`,
+  );
   const due = await pool.query(
     `select id, user_id from account_deletions where status = 'scheduled' and execute_after <= now() and user_id is not null`,
   );
