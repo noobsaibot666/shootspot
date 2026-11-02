@@ -64,6 +64,8 @@ Rules:
 
 ## Log
 
+- 2026-11-02 mac: **iOS 1.0.0 (14) resubmitted to App Review** (Waiting for Review). Build 13 was rejected under Guideline 2.1(a): blank Profile tab on iPhone 17 Pro Max and iPad Air (iOS/iPadOS 27.2). Build 14 carries the fix from `fa88715`; review notes now open with that line.
+
 - 2026-11-02 mac: **iOS 1.0.0 (14) uploaded to App Store Connect** (`fa88715`, blank Profile screen fix). Production API URL and Sentry DSN checked in the bundle; processing at Apple.
 
 - 2026-10-24 mac: **NAS worker on `258cd86`** (deletion sweep closes requests whose user is already gone). The Mac ran `services/worker` `test:int` (22/22) against local infra, built the image (`--platform linux/amd64`) and put it on the share as `shootspot-worker-258cd86.tar`. The owner checked the hash, took a snapshot `pre-deploy-*`, loaded the image and ran `up -d --no-deps worker`; the log shows `[worker] ready`. API, admin and backup unchanged. Rollback: `shootspot-worker:ec34779`.
