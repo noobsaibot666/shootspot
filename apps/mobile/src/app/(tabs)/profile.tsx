@@ -38,7 +38,7 @@ import {
   TextTabs,
 } from '../../ui';
 import { Icon, type IconName } from '../../ui/icon';
-import { MasonryList, recordTile, type Tile } from '../../ui/masonry';
+import { MasonryGrid, recordTile, type Tile } from '../../ui/masonry';
 
 interface MyRecord {
   id: string;
@@ -293,30 +293,27 @@ export default function Profile() {
 
   if (tab !== 'projects') {
     return page(
-      <>
-        <MasonryList
-          key={tab}
-          {...listProps}
-          tiles={tab === 'locations' ? myTiles : likedTiles}
-          ListEmptyComponent={
-            pending ??
-            (tab === 'locations' ? (
-              <EmptyState icon="camera" text="Locations you capture or import appear here." />
+      <ScrollView {...listProps} refreshControl={refresh}>
+        {pending ??
+          (tab === 'locations' ? (
+            myTiles.length ? (
+              <MasonryGrid tiles={myTiles} />
             ) : (
-              <EmptyState icon="heart" text="Tap the heart on any location to keep it here." />
-            ))
-          }
-          ListFooterComponent={
-            tab === 'locations' && myTiles.length ? (
-              <View style={{ padding: space.lg }}>
-                <Body muted>
-                  Only you see this list. Your locations are anonymous to others unless you chose to
-                  show your name.
-                </Body>
-              </View>
-            ) : null
-          }
-        />
+              <EmptyState icon="camera" text="Locations you capture or import appear here." />
+            )
+          ) : likedTiles.length ? (
+            <MasonryGrid tiles={likedTiles} />
+          ) : (
+            <EmptyState icon="heart" text="Tap the heart on any location to keep it here." />
+          ))}
+        {tab === 'locations' && myTiles.length ? (
+          <View style={{ padding: space.lg }}>
+            <Body muted>
+              Only you see this list. Your locations are anonymous to others unless you chose to
+              show your name.
+            </Body>
+          </View>
+        ) : null}
         <Sheet visible={manage !== null} onClose={() => setManage(null)}>
           {manage ? (
             <>
@@ -333,7 +330,7 @@ export default function Profile() {
             </>
           ) : null}
         </Sheet>
-      </>,
+      </ScrollView>,
     );
   }
 
