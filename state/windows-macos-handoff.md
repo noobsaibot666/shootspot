@@ -64,6 +64,8 @@ Rules:
 
 ## Log
 
+- 2026-11-02 mac: **iOS 1.0.0 (14) uploaded to App Store Connect** (`fa88715`, blank Profile screen fix). Production API URL and Sentry DSN checked in the bundle; processing at Apple.
+
 - 2026-10-24 mac: **NAS worker on `258cd86`** (deletion sweep closes requests whose user is already gone). The Mac ran `services/worker` `test:int` (22/22) against local infra, built the image (`--platform linux/amd64`) and put it on the share as `shootspot-worker-258cd86.tar`. The owner checked the hash, took a snapshot `pre-deploy-*`, loaded the image and ran `up -d --no-deps worker`; the log shows `[worker] ready`. API, admin and backup unchanged. Rollback: `shootspot-worker:ec34779`.
 
 - 2026-10-24 mac: **NAS: closed 4 orphaned deletion requests by hand** (`user_id` null, overdue since 2026-10-23; `UPDATE 4`). This stops the "deletions overdue" alert until the worker fix (`1a3df22`) is deployed.
