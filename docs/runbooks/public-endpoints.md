@@ -10,6 +10,8 @@
 | `https://shootspot-media.expose-u.com`    | NAS `http://192.168.178.146:4402` (s3)      | Photos, through presigned URLs only. The root returns 403   |
 | `https://docs.alan-design.com/shootspot/` | web_three's `docs-nginx` on the NAS (share) | Privacy, terms, image licence, account deletion, user guide |
 
+**Planned (D-44):** `https://shootspot.expose-u.com` → NAS `http://192.168.178.146:4404` (web), the member web gallery. See [Member web gallery](#member-web-gallery-d-44).
+
 **Not public:** the admin web (`:4401`), Postgres, the S3 admin, backups and the NAS itself. Never add a route for them.
 
 The domain is **expose-u.com**. The owner first chose alan-design.com, but the Mac's Cloudflare token manages DNS only for expose-u.com, so the owner switched (2026-10-17). It also matches the contact `hello@expose-u.com`.
@@ -58,6 +60,17 @@ TRUSTED_ORIGINS=http://192.168.178.146:4401              # unchanged: admin stay
 - **LAN and Tailscale clients keep working.** Without the header, `clientIp()` falls back to the socket address. Presigned photo URLs now always use the public media host. That works from the LAN too, because it goes out through Cloudflare.
 - **Presigned URLs are signed for the public host:** SeaweedFS checks the `Host` that Cloudflare forwards, which is the same name.
 
+## Member web gallery (D-44)
+
+`apps/web` (Next.js, compose service `web`, image target `web`, LAN port `4404`). Signed-in members only, read-only, no exact positions.
+
+- **How it is fenced off:** its own route handlers forward only `/api/auth/sign-in/email`, `/api/auth/get-session`, `/api/auth/sign-out` and `/web/v1/*` to the API. The API repeats the rule for requests from `MEMBER_WEB_ORIGINS` (anything else returns `APP_ONLY`), marks those sessions in `member_web_sessions`, accepts only marked sessions on `/web/v1`, and refuses them on `/admin/v1`.
+- **Cookies:** the API's cookies have no `Secure` (the admin web is plain HTTP on the LAN). The web proxy adds `Secure` (`WEB_SECURE_COOKIES=true` in compose, because Cloudflare ends TLS). So sign-in works only through the HTTPS hostname, not on `http://192.168.178.146:4404`. To test on the LAN, temporarily add `http://192.168.178.146:4404` to `MEMBER_WEB_ORIGINS` and set `WEB_SECURE_COOKIES=false`.
+- **NAS `.env`:** `MEMBER_WEB_ORIGINS=https://shootspot.expose-u.com`. Never put the admin origin here or the web origin in `TRUSTED_ORIGINS`.
+- **Tunnel route:** `python3 infra/cloudflare/tunnel-hostnames.py add shootspot.expose-u.com=http://192.168.178.146:4404` (first-level subdomain, so the free certificate covers it).
+- **Photos** load straight from `shootspot-media.expose-u.com` with presigned URLs (same site as the web, so the `same-site` resource policy allows them).
+- **Check after deploy:** `/web/v1/feed` without a cookie returns 401; `/v1/feed` and `/admin/v1/summary` through the web hostname return 404; sign-in with an app password shows the grid.
+
 ## App builds
 
 | Build                                  | `EXPO_PUBLIC_API_URL`                               | Notes                                                                          |
@@ -71,10 +84,10 @@ Docker Desktop on Apple silicon can build the NAS images (`--platform linux/amd6
 
 ```sh
 sha=$(git rev-parse --short HEAD); OUT=/Volumes/Gaia/04_DEV/_personal/shootspot/shared/builds
-for t in api worker admin backup; do
+for t in api worker admin web backup; do
   docker build --platform linux/amd64 -f infra/docker/Dockerfile --target "$t" -t "shootspot-${t}:latest" -t "shootspot-${t}:${sha}" .
 done
-docker save -o "$OUT/shootspot-images-${sha}.tar" $(for t in api worker admin backup; do echo "shootspot-${t}:latest shootspot-${t}:${sha}"; done)
+docker save -o "$OUT/shootspot-images-${sha}.tar" $(for t in api worker admin web backup; do echo "shootspot-${t}:latest shootspot-${t}:${sha}"; done)
 cp infra/nas/docker-compose.yml "$OUT/docker-compose.yml"; cp infra/nas/.env.example "$OUT/env.example"
 shasum -a 256 "$OUT/shootspot-images-${sha}.tar"
 ```

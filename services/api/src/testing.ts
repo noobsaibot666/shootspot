@@ -61,6 +61,7 @@ export async function createTestEnv(): Promise<TestEnv> {
     S3_BUCKET_QUARANTINE: `t-${suffix}-quarantine`,
     S3_BUCKET_PUBLIC: `t-${suffix}-public`,
     TRUSTED_ORIGINS: 'http://localhost:3000',
+    MEMBER_WEB_ORIGINS: MEMBER_WEB_ORIGIN,
     ADMIN_EMAILS: ADMIN_EMAILS.join(','),
     REVIEW_EMAIL: 'Review@Example.com',
     REVIEW_CODE: '246810',
@@ -152,6 +153,8 @@ export async function member(env: TestEnv, email: string, firstName?: string) {
 }
 
 export const ADMIN_ORIGIN = 'http://localhost:3000';
+/** Member web gallery origin in tests (D-44). */
+export const MEMBER_WEB_ORIGIN = 'http://localhost:3100';
 export type CookieHeaders = { cookie: string };
 
 /** Make an owner account the way scripts/grant-owner.ts does (the admin web can't create one). */
@@ -172,6 +175,8 @@ export const ADMIN_EMAILS = [
   'library-admin@example.com',
   'tags-admin@example.com',
   'ops@example.com', // services/worker e2e: admin media retry
+  'web-admin@example.com', // member web gallery (D-44)
+  'web-owner@example.com',
 ];
 export const ADMIN_PASSWORD = 'correct horse battery staple';
 
@@ -216,6 +221,22 @@ export async function browserSignIn(env: TestEnv, email: string): Promise<Cookie
     payload: { email, otp },
   });
   if (res.statusCode !== 200) throw new Error(`browser sign in ${res.statusCode} ${res.body}`);
+  return cookiesOf(res);
+}
+
+/** Email + password sign-in from the member web gallery (D-44); returns the session cookie. */
+export async function webSignIn(
+  env: TestEnv,
+  email: string,
+  password: string,
+): Promise<CookieHeaders> {
+  const res = await env.app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-in/email',
+    headers: { ...browser, origin: MEMBER_WEB_ORIGIN },
+    payload: { email, password },
+  });
+  if (res.statusCode !== 200) throw new Error(`web sign in ${res.statusCode} ${res.body}`);
   return cookiesOf(res);
 }
 

@@ -95,6 +95,49 @@ export const feedQuerySchema = z.object({
 });
 export type FeedQuery = z.infer<typeof feedQuerySchema>;
 
+/**
+ * Member web gallery (D-44). A location without its exact position: no coordinates, accuracy or
+ * distance; the label is the only "where". The exact spot stays in the app. No like state either
+ * (the web is read-only).
+ */
+export type WebRecord = Omit<PublicRecord, 'lat' | 'lon' | 'accuracyM' | 'distanceM' | 'liked'>;
+
+/** Exactly the keys a WebRecord carries; the API builds it from this list and a test checks it. */
+export const WEB_RECORD_KEYS = [
+  'id',
+  'label',
+  'framing',
+  'goodFor',
+  'goodForCustom',
+  'goodForNote',
+  'bestLight',
+  'bestLightCustom',
+  'bestLightNote',
+  'bearingDeg',
+  'advanced',
+  'capturedAt',
+  'altitudeM',
+  'focalLength35mm',
+  'sun',
+  'images',
+  'attribution',
+] as const satisfies readonly (keyof WebRecord)[];
+
+export function toWebRecord(r: PublicRecord): WebRecord {
+  const out: Record<string, unknown> = {};
+  for (const k of WEB_RECORD_KEYS) out[k] = r[k];
+  return out as WebRecord;
+}
+
+/** Web gallery: newest first, no location search (the web never knows where the viewer is). */
+export const webFeedQuerySchema = feedQuerySchema.pick({
+  goodFor: true,
+  bestLight: true,
+  cursor: true,
+  limit: true,
+});
+export type WebFeedQuery = z.infer<typeof webFeedQuerySchema>;
+
 /** Map tab: pins inside the visible bounding box (anonymous, like PublicRecord). */
 export const mapQuerySchema = z
   .object({

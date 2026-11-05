@@ -20,6 +20,12 @@ const envSchema = z
     /** Browser origins allowed to call the API with cookies (admin web). Mobile uses bearer tokens. */
     TRUSTED_ORIGINS: csv,
     /**
+     * Browser origins of the member web gallery (D-44), e.g. https://shootspot.expose-u.com. Kept
+     * apart from TRUSTED_ORIGINS (admin web): sessions signed in here are marked as web sessions,
+     * read only /web/v1 and can never reach administration.
+     */
+    MEMBER_WEB_ORIGINS: csv,
+    /**
      * Who may use the admin web, besides having the owner role in the database. Kept in the
      * root-only .env, so a database change alone can't create an administrator. Empty: nobody.
      */

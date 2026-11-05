@@ -41,9 +41,19 @@ export const notFound = () => new HttpError(404, 'not_found');
  * Two clients, two channels, never mixed:
  * - `app`: the mobile app. Member routes (/v1) accept ONLY a bearer token; cookies are ignored.
  * - `admin`: the admin web. Admin routes (/admin/v1) accept ONLY the session cookie; a bearer
- *   token is refused, so the app can never reach administration and the web has no member features.
+ *   token is refused, so the app can never reach administration. Member web sessions are refused.
+ * - `web`: the member web gallery (D-44). Read-only routes (/web/v1) accept ONLY a session cookie
+ *   that was signed in on the member web origin (member_web_sessions).
  */
-export type Channel = 'app' | 'admin';
+export type Channel = 'app' | 'admin' | 'web';
+
+async function isWebSession(deps: AppDeps, sessionId: string): Promise<boolean> {
+  const { rowCount } = await deps.pool.query(
+    'select 1 from member_web_sessions where session_id = $1',
+    [sessionId],
+  );
+  return Boolean(rowCount);
+}
 
 export async function getViewer(
   deps: AppDeps,
@@ -56,11 +66,15 @@ export async function getViewer(
     if (!bearer) return null;
     headers.delete('cookie');
   } else {
-    if (bearer) throw new HttpError(403, 'admin_web_only');
+    if (bearer) throw new HttpError(403, channel === 'admin' ? 'admin_web_only' : 'web_only');
     headers.delete('authorization');
   }
   const result = await deps.auth.api.getSession({ headers });
   if (!result) return null;
+  // Each browser client sees only its own sessions (a web session never reaches administration).
+  const web = channel === 'app' ? false : await isWebSession(deps, result.session.id);
+  if (channel === 'web' && !web) return null;
+  if (channel === 'admin' && web) throw new HttpError(403, 'admin_web_only');
   const user = result.user as typeof result.user & { role?: string };
   return {
     userId: user.id,
@@ -70,8 +84,12 @@ export async function getViewer(
   };
 }
 
-export async function requireViewer(deps: AppDeps, req: FastifyRequest): Promise<Viewer> {
-  const viewer = await getViewer(deps, req);
+export async function requireViewer(
+  deps: AppDeps,
+  req: FastifyRequest,
+  channel: 'app' | 'web' = 'app',
+): Promise<Viewer> {
+  const viewer = await getViewer(deps, req, channel);
   if (!viewer) throw new HttpError(401, 'unauthenticated');
   return viewer;
 }

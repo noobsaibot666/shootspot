@@ -21,6 +21,7 @@ Then run each of these in its own terminal:
 | API                        | `pnpm dev:api`    | http://127.0.0.1:4000/ready |
 | Worker                     | `pnpm dev:worker` | (logs only)                 |
 | Admin web                  | `pnpm dev:admin`  | http://localhost:3000       |
+| Member web gallery (D-44)  | `pnpm dev:web`    | http://localhost:3001       |
 | Mail inbox (sign-in codes) | —                 | http://127.0.0.1:8025       |
 
 **Become an admin locally:**

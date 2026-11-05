@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# One Dockerfile, three targets: api, worker, admin.
+# One Dockerfile, targets: api, worker, admin, web, backup.
 #   docker build -f infra/docker/Dockerfile --target api -t shootspot-api .
 # Services run TypeScript through tsx (ADR 0001); bundling is a later optimisation.
 
@@ -15,16 +15,21 @@ COPY packages/shared/package.json packages/shared/
 COPY services/api/package.json services/api/
 COPY services/worker/package.json services/worker/
 COPY apps/admin/package.json apps/admin/
+COPY apps/web/package.json apps/web/
 COPY apps/mobile/package.json apps/mobile/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
-      --filter "@shootspot/api..." --filter "@shootspot/worker..." --filter "@shootspot/admin..."
+      --filter "@shootspot/api..." --filter "@shootspot/worker..." --filter "@shootspot/admin..." \
+      --filter "@shootspot/web..."
 COPY packages/shared packages/shared
 COPY services services
 COPY apps/admin apps/admin
+COPY apps/web apps/web
 # Next.js bakes rewrite destinations in at build time: the admin proxies to the `api` container.
 ARG ADMIN_API_URL=http://api:4000
 RUN API_URL=$ADMIN_API_URL pnpm --filter @shootspot/admin build
+# The member web reads API_URL at runtime (its proxy is a route handler), set in compose.
+RUN pnpm --filter @shootspot/web build
 # Self-contained production folders: each service gets only its own runtime dependencies.
 RUN pnpm --filter @shootspot/api --prod deploy --legacy /out/api \
  && pnpm --filter @shootspot/worker --prod deploy --legacy /out/worker
@@ -69,3 +74,13 @@ COPY --from=build --chown=node:node /repo/apps/admin/.next/static ./apps/admin/.
 USER node
 EXPOSE 3000
 CMD ["node", "apps/admin/server.js"]
+
+# ---- web: member gallery (D-44, Next.js standalone) ----------------------------------------------
+FROM node:24-bookworm-slim AS web
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+WORKDIR /app
+COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
+USER node
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

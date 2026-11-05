@@ -16,7 +16,8 @@
     "db:migrate": "pnpm --filter @shootspot/api migrate up",
     "test:int": "pnpm -r --if-present --workspace-concurrency=1 test:int",
     "dev:worker": "pnpm --filter @shootspot/worker dev",
-    "dev:admin": "pnpm --filter @shootspot/admin dev"
+    "dev:admin": "pnpm --filter @shootspot/admin dev",
+    "dev:web": "pnpm --filter @shootspot/web dev"
   },
   "devDependencies": {
     "prettier": "^3.9.10"

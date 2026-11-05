@@ -22,7 +22,7 @@ export const APP_ORIGIN_HEADER = 'expo-origin';
  * Members create an account and sign in with email and password (D-43, no wait for an email).
  * The 6-digit email code remains for a forgotten password (sign in with the code, then set a new
  * one: src/me/password.ts) and for older code-only accounts. Mobile clients use
- * bearer tokens, the admin web uses cookies. The admin web accepts only password sessions
+ * bearer tokens, the admin web and the member web (D-44) use cookies. The admin web accepts only password sessions
  * (recorded in auth_password_sessions) plus TOTP, enforced by our own admin routes (src/admin/mfa.ts).
  */
 export const MIN_PASSWORD = 10;
@@ -39,8 +39,8 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     basePath: '/api/auth',
     secret: config.AUTH_SECRET,
     database: pool,
-    // Browser origins (admin web) plus the app's own scheme (see APP_ORIGIN_HEADER).
-    trustedOrigins: [...config.TRUSTED_ORIGINS, APP_ORIGIN],
+    // Browser origins (admin web, member web) plus the app's own scheme (see APP_ORIGIN_HEADER).
+    trustedOrigins: [...config.TRUSTED_ORIGINS, ...config.MEMBER_WEB_ORIGINS, APP_ORIGIN],
     telemetry: { enabled: false },
     emailAndPassword: {
       enabled: true,
@@ -57,6 +57,13 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
           await pool.query('insert into auth_password_sessions (session_id) values ($1)', [
             session.id,
           ]);
+          // Member web gallery (D-44): mark the session so it reads only /web/v1, never admin.
+          const origin = ctx.headers?.get('origin');
+          if (origin && config.MEMBER_WEB_ORIGINS.includes(origin)) {
+            await pool.query('insert into member_web_sessions (session_id) values ($1)', [
+              session.id,
+            ]);
+          }
         }
       }),
     },
@@ -76,8 +83,9 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     advanced: {
       database: { generateId: 'uuid' },
       cookiePrefix: 'shootspot',
-      // Cookies are only used by the admin web (the app uses bearer tokens), so they follow the
-      // admin origins: it stays on plain HTTP on the LAN even when the API is public over HTTPS.
+      // Cookies are used by the admin web and the member web (the app uses bearer tokens). They
+      // follow the admin origins, so the admin web keeps working on plain HTTP on the LAN; the
+      // member web's own proxy adds Secure on its HTTPS origin (apps/web/src/lib/proxy.ts).
       useSecureCookies:
         config.TRUSTED_ORIGINS.length > 0 &&
         config.TRUSTED_ORIGINS.every((o) => o.startsWith('https://')),

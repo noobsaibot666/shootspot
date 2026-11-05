@@ -241,6 +241,12 @@ Create a free account at cloudflare.com and add your domain. This lets phones re
   - [x] ~~**Android upload key** ⏱ 5 min~~: on the PC, `cd apps/mobile; npx eas-cli credentials -p android` → **production** → **Keystore** → **Download**. Move the `.jks` to `%USERPROFILE%\.shootspot\`, save the three passwords/alias in your password manager, and fill in `apps/mobile/.env.store` (copy `.env.store.example`; also paste the production `EXPO_PUBLIC_SENTRY_DSN` from expo.dev). Then Claude runs `tools/android-local.ps1 -Store` and you upload the `.aab` to Play's internal testing. Details: [store-builds.md](runbooks/store-builds.md).
   - [x] ~~**After the first Play upload:**~~ add the Play **App signing key** SHA-1 (Play Console → App integrity) to the Google Maps key (3.4 step 6), or the Map tab stays blank in the Play version.
 - [x] **4.9 Review account (D-34)**, set 2026-10-19 (remove `REVIEW_*` from the NAS `.env` after approval): just before submitting, Claude gives the NAS block for `REVIEW_EMAIL`/`REVIEW_CODE`; listing and review notes are in [store/listing.md](store/listing.md).
+- [ ] **4.10 Member web gallery (D-44)** at `https://shootspot.expose-u.com`: signed-in members browse locations in a browser (no exact position). Code is on `main` (`apps/web`). Details: [public-endpoints.md](runbooks/public-endpoints.md#member-web-gallery-d-44).
+  - [ ] Images with the `web` target built and deployed to the NAS (migration `012_member_web`), with Claude's guarded block
+  - [ ] NAS `.env`: `MEMBER_WEB_ORIGINS=https://shootspot.expose-u.com`, then `up -d api web`
+  - [ ] Tunnel route and DNS: `shootspot.expose-u.com` → `http://192.168.178.146:4404` (Mac: `tunnel-hostnames.py add`)
+  - [ ] **Lawyer/terms:** the image licence (D-10) and terms say "in-app viewing only"; add the member web before announcing it
+  - [ ] **You:** sign in on the web with your app email + password and check the grid and a location (members who only ever used email codes set a password in the app first)
 - [ ] **4.4 Pick a cloud host for launch.** The NAS is for testing only and should not be the public production server.
 
 ---

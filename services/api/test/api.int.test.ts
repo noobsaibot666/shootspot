@@ -10,8 +10,11 @@ import {
   createTestEnv,
   draftBody,
   grantOwner,
+  MEMBER_WEB_ORIGIN,
   member,
+  onboard,
   signIn,
+  webSignIn,
   type TestEnv,
 } from '../src/testing';
 
@@ -1185,5 +1188,188 @@ describe('account lifecycle', () => {
     expect(
       (await env.app.inject({ method: 'GET', url: '/v1/me', headers })).json().deletionScheduledFor,
     ).toBeNull();
+  });
+});
+
+describe('member web gallery (D-44)', () => {
+  const WEB_PASSWORD = 'web gallery password 1';
+  const web = {
+    origin: MEMBER_WEB_ORIGIN,
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+  };
+
+  /** A member who created the account in the app with a password, as D-43 does it. */
+  async function passwordMember(email: string) {
+    const created = await env.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      headers: APP_HEADERS,
+      payload: { email, password: WEB_PASSWORD, name: '' },
+    });
+    expect(created.statusCode).toBe(200);
+    const headers = { authorization: `Bearer ${created.headers['set-auth-token']}` };
+    await onboard(env, headers);
+    return headers;
+  }
+
+  it('shows published locations without their exact position, newest first', async () => {
+    const creator = await member(env, 'web-creator@example.com');
+    const older = await publishDirect(creator);
+    const newer = await publishDirect(creator, {
+      short: {
+        label: 'Harbour wall, Porto',
+        goodFor: ['night_astro'],
+        bestLight: ['night'],
+        bearingDeg: 0,
+      },
+    });
+    await passwordMember('web-viewer@example.com');
+    const cookie = await webSignIn(env, 'web-viewer@example.com', WEB_PASSWORD);
+
+    const feed = await env.app.inject({
+      method: 'GET',
+      url: '/web/v1/feed?limit=30',
+      headers: cookie,
+    });
+    expect(feed.statusCode).toBe(200);
+    expect(feed.headers['cache-control']).toBe('no-store');
+    const ids = feed.json().items.map((r: { id: string }) => r.id);
+    expect(ids.indexOf(newer)).toBeLessThan(ids.indexOf(older));
+    const item = feed.json().items.find((r: { id: string }) => r.id === newer);
+    expect(Object.keys(item).sort()).toEqual(
+      [
+        'advanced',
+        'altitudeM',
+        'attribution',
+        'bearingDeg',
+        'bestLight',
+        'bestLightCustom',
+        'bestLightNote',
+        'capturedAt',
+        'focalLength35mm',
+        'framing',
+        'goodFor',
+        'goodForCustom',
+        'goodForNote',
+        'id',
+        'images',
+        'label',
+        'sun',
+      ].sort(),
+    );
+    const raw = JSON.stringify(feed.json());
+    expect(raw).not.toMatch(/"lat"|"lon"|accuracyM|distanceM/);
+
+    const tagged = (
+      await env.app.inject({
+        method: 'GET',
+        url: '/web/v1/feed?goodFor=night_astro',
+        headers: cookie,
+      })
+    ).json();
+    expect(tagged.items.map((r: { id: string }) => r.id)).toContain(newer);
+    expect(tagged.items.map((r: { id: string }) => r.id)).not.toContain(older);
+
+    const one = await env.app.inject({
+      method: 'GET',
+      url: `/web/v1/records/${newer}`,
+      headers: cookie,
+    });
+    expect(one.statusCode).toBe(200);
+    expect(one.json().label).toBe('Harbour wall, Porto');
+    expect(one.json()).not.toHaveProperty('lat');
+    const vocab = await env.app.inject({
+      method: 'GET',
+      url: '/web/v1/vocabulary',
+      headers: cookie,
+    });
+    expect(vocab.json().goodFor.length).toBeGreaterThan(0);
+  });
+
+  it('needs a member web session: no anonymous visitors, no app tokens, no admin sessions', async () => {
+    const app = await passwordMember('web-channels@example.com');
+    expect((await env.app.inject({ method: 'GET', url: '/web/v1/feed' })).statusCode).toBe(401);
+    const withToken = await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: app });
+    expect(withToken.statusCode).toBe(403);
+    expect(withToken.json().error).toBe('web_only');
+    const { headers: adminCookie } = await admin(env, 'web-admin@example.com');
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: adminCookie }))
+        .statusCode,
+    ).toBe(401);
+    // …and the other way: a web session reaches neither the app routes nor administration.
+    const cookie = await webSignIn(env, 'web-channels@example.com', WEB_PASSWORD);
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/v1/feed', headers: cookie })).statusCode,
+    ).toBe(401);
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/web/v1/me', headers: cookie })).json(),
+    ).toEqual({
+      email: 'web-channels@example.com',
+    });
+  });
+
+  it("an owner's web session never reaches administration", async () => {
+    await admin(env, 'web-owner@example.com');
+    const cookie = await webSignIn(env, 'web-owner@example.com', ADMIN_PASSWORD);
+    const res = await env.app.inject({
+      method: 'POST',
+      url: '/admin/v1/mfa/enroll',
+      headers: cookie,
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe('admin_web_only');
+    const summary = await env.app.inject({
+      method: 'GET',
+      url: '/admin/v1/summary',
+      headers: cookie,
+    });
+    expect(summary.statusCode).toBe(403);
+  });
+
+  it('only signs in with a password: no sign-up, codes or resets from the web origin', async () => {
+    const sent = env.mailer.sent.length;
+    for (const [url, payload] of [
+      [
+        '/api/auth/sign-up/email',
+        { email: 'web-new@example.com', password: WEB_PASSWORD, name: '' },
+      ],
+      [
+        '/api/auth/email-otp/send-verification-otp',
+        { email: 'web-viewer@example.com', type: 'sign-in' },
+      ],
+      ['/api/auth/sign-in/email-otp', { email: 'web-viewer@example.com', otp: '123456' }],
+    ] as const) {
+      const res = await env.app.inject({ method: 'POST', url, headers: web, payload });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('APP_ONLY');
+    }
+    expect(env.mailer.sent.length).toBe(sent);
+    const users = await env.pool.query(
+      `select 1 from auth_users where email = 'web-new@example.com'`,
+    );
+    expect(users.rowCount).toBe(0);
+  });
+
+  it('hides locations from authors the viewer blocked', async () => {
+    const author = await member(env, 'web-blocked-author@example.com');
+    const id = await publishDirect(author);
+    const viewerApp = await passwordMember('web-blocker@example.com');
+    const block = await env.app.inject({
+      method: 'POST',
+      url: `/v1/records/${id}/block`,
+      headers: viewerApp,
+    });
+    expect([200, 201, 204]).toContain(block.statusCode);
+    const cookie = await webSignIn(env, 'web-blocker@example.com', WEB_PASSWORD);
+    const feed = (
+      await env.app.inject({ method: 'GET', url: '/web/v1/feed?limit=30', headers: cookie })
+    ).json();
+    expect(feed.items.map((r: { id: string }) => r.id)).not.toContain(id);
+    expect(
+      (await env.app.inject({ method: 'GET', url: `/web/v1/records/${id}`, headers: cookie }))
+        .statusCode,
+    ).toBe(404);
   });
 });

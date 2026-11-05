@@ -112,6 +112,20 @@ services:
       - '${LAN_IP}:${ADMIN_PORT:-4401}:3000'
     mem_limit: 256m
 
+  # Member web gallery (D-44): read-only, signed-in members. Public only through the tunnel
+  # hostname in WEB_ORIGIN; the API must list that origin in MEMBER_WEB_ORIGINS (.env).
+  web:
+    <<: *runtime
+    image: shootspot-web:${TAG:-latest}
+    depends_on: [api]
+    environment:
+      API_URL: http://api:4000
+      # Cloudflare ends TLS, the tunnel talks HTTP: mark the session cookie Secure anyway.
+      WEB_SECURE_COOKIES: ${WEB_SECURE_COOKIES:-true}
+    ports:
+      - '${LAN_IP}:${WEB_PORT:-4404}:3000'
+    mem_limit: 256m
+
   # Nightly pg_dump into the backups dataset (+ restic to Backblaze B2 EU once RESTIC_* are set).
   # Writes heartbeats the alert check reads. Run once now:
   #   sudo docker compose -p shootspot -f $F run --rm backup now

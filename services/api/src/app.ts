@@ -13,6 +13,7 @@ import { feedRoutes } from './records/feed';
 import { recordRoutes } from './records/routes';
 import { captureError } from './sentry';
 import { vocabularyRoutes } from './vocabulary/routes';
+import { webRoutes } from './web/routes';
 export type { AppDeps } from './http/context';
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -54,6 +55,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (
       req.url.startsWith('/v1') ||
       req.url.startsWith('/admin') ||
+      req.url.startsWith('/web') ||
       req.url.startsWith('/api/auth')
     ) {
       reply.header('cache-control', 'no-store');
@@ -114,6 +116,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const adminWeb = origin !== null && deps.config.TRUSTED_ORIGINS.includes(origin);
       const otpPath = url.pathname.endsWith('/email-otp/send-verification-otp');
       const signInPath = url.pathname.endsWith('/sign-in/email-otp');
+      // The member web (D-44) only signs in with a password, reads its session and signs out.
+      // Accounts, codes and password resets stay in the app.
+      const memberWeb = origin !== null && deps.config.MEMBER_WEB_ORIGINS.includes(origin);
+      if (memberWeb && !MEMBER_WEB_AUTH_PATHS.some((p) => url.pathname === `/api/auth${p}`)) {
+        return reply
+          .code(403)
+          .send({ code: 'APP_ONLY', message: 'Use the ShootSpot app for this' });
+      }
       if (adminWeb && url.pathname.endsWith('/sign-up/email')) {
         return reply.code(403).send({ code: 'SIGN_UP_DISABLED', message: 'Sign-up is app-only' });
       }
@@ -155,8 +165,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   blockRoutes(app, deps);
   adminRoutes(app, deps);
   vocabularyRoutes(app, deps);
+  webRoutes(app, deps);
   return app;
 }
+
+/** Better Auth paths the member web may use (D-44). */
+const MEMBER_WEB_AUTH_PATHS = ['/sign-in/email', '/get-session', '/sign-out'];
 
 function reason(result: PromiseSettledResult<unknown>): string | undefined {
   return result.status === 'rejected' ? String(result.reason) : undefined;

@@ -38,7 +38,7 @@ The API takes about 30 s to report healthy after `up -d`, so run checks after th
 
 ```powershell
 $sha = (git rev-parse --short HEAD).Trim()
-$ts = 'api','worker','admin','backup'
+$ts = 'api','worker','admin','web','backup'
 foreach ($t in $ts) { docker build -f infra/docker/Dockerfile --target $t -t "shootspot-${t}:latest" -t "shootspot-${t}:$sha" . }
 docker save -o "X:\04_DEV\_personal\shootspot\shared\builds\shootspot-images-$sha.tar" ($ts | ForEach-Object { "shootspot-${_}:latest"; "shootspot-${_}:$sha" })
 Copy-Item infra/nas/docker-compose.yml X:\04_DEV\_personal\shootspot\shared\builds\docker-compose.yml -Force
