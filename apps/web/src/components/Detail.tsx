@@ -23,9 +23,11 @@ export function Detail({
   onNext?: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [sharp, setSharp] = useState(false);
+  // Which record's sharp photo has loaded (per id, so stepping never shows a stale "loaded").
+  const [sharpId, setSharpId] = useState<string | null>(null);
+  const sharp = sharpId === record.id;
+  const setSharp = () => setSharpId(record.id);
   const [copied, setCopied] = useState(false);
-  useEffect(() => setSharp(false), [record.id]);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -88,7 +90,7 @@ export function Detail({
             />
             <img
               ref={(el) => {
-                if (el?.complete && el.naturalWidth) setSharp(true);
+                if (el?.complete && el.naturalWidth) setSharp();
               }}
               className={`sharp${sharp ? ' loaded' : ''}`}
               src={record.images.detail}
@@ -96,7 +98,7 @@ export function Detail({
               height={record.images.height}
               alt=""
               aria-hidden
-              onLoad={() => setSharp(true)}
+              onLoad={() => setSharp()}
             />
           </div>
         </div>
