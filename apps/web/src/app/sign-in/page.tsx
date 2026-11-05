@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Logo } from '@/components/Chrome';
 import { ApiError, auth } from '@/lib/api';
 
 /**
@@ -35,12 +36,13 @@ export default function SignIn() {
 
   return (
     <main className="auth">
-      <form onSubmit={submit}>
-        <div className="brand">
-          <i aria-hidden /> ShootSpot
+      <div className="glow" aria-hidden />
+      <form onSubmit={submit} className="card">
+        <Logo size="lg" />
+        <div>
+          <h1>Welcome back</h1>
+          <p>Sign in with the email and password you use in the ShootSpot app.</p>
         </div>
-        <h1>Sign in</h1>
-        <p>Use the email and password from the ShootSpot app.</p>
         <label>
           Email
           <input
@@ -70,7 +72,7 @@ export default function SignIn() {
         <button className="primary" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        <p className="small">
+        <p className="small fine">
           New here, or signed in with an email code until now? Create an account or set a password
           in the app under Settings.
         </p>

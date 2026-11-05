@@ -1,7 +1,7 @@
 'use client';
 
 import type { WebRecord } from '@shootspot/shared';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { goodForTags, lightFacts, practicalFacts, shortLabel, type Labeler } from '@/lib/format';
 
 /**
@@ -23,6 +23,9 @@ export function Detail({
   onNext?: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [sharp, setSharp] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setSharp(false), [record.id]);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -58,33 +61,47 @@ export function Detail({
     >
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title">
         <button ref={closeRef} className="icon-btn close" onClick={onClose} aria-label="Close">
-          ×
+          <Glyph d="M4 4l8 8M12 4l-8 8" />
         </button>
         {onPrev ? (
           <button className="icon-btn prev" onClick={onPrev} aria-label="Previous location">
-            ‹
+            <Glyph d="M10 3L5 8l5 5" />
           </button>
         ) : null}
         {onNext ? (
           <button className="icon-btn next" onClick={onNext} aria-label="Next location">
-            ›
+            <Glyph d="M6 3l5 5-5 5" />
           </button>
         ) : null}
 
         <div className="photo">
-          {/* key: show the new photo at once when stepping, not the previous one scaled. */}
-          <img
-            key={record.id}
-            src={record.images.detail}
-            srcSet={`${record.images.feed} 1080w, ${record.images.detail} 2160w`}
-            sizes="(max-width: 900px) 100vw, calc(100vw - 440px)"
-            width={record.images.width}
-            height={record.images.height}
-            alt={record.label}
-          />
+          {/* The cached tile photo shows at once (and carries the morph from the grid); the
+              sharp 2160 px version fades in over it once loaded. */}
+          <div className="frame" key={record.id}>
+            <img
+              className="base"
+              style={{ viewTransitionName: 'hero' }}
+              src={record.images.feed}
+              width={record.images.width}
+              height={record.images.height}
+              alt={record.label}
+            />
+            <img
+              ref={(el) => {
+                if (el?.complete && el.naturalWidth) setSharp(true);
+              }}
+              className={`sharp${sharp ? ' loaded' : ''}`}
+              src={record.images.detail}
+              width={record.images.width}
+              height={record.images.height}
+              alt=""
+              aria-hidden
+              onLoad={() => setSharp(true)}
+            />
+          </div>
         </div>
 
-        <aside className="info">
+        <aside className="info" key={record.id}>
           <div>
             <h1 id="detail-title">{record.label}</h1>
             <div className="byline">
@@ -147,14 +164,42 @@ export function Detail({
             <div className="where">
               <strong>{shortLabel(record.label)}</strong>
               The exact spot, directions and the map are in the ShootSpot app.
-              <br />
-              <a className="cta" href={`shootspot://records/${record.id}`}>
-                Open in ShootSpot
-              </a>
+              <div className="ctas">
+                <a className="primary" href={`shootspot://records/${record.id}`}>
+                  Open in ShootSpot
+                </a>
+                <button
+                  className="pill-btn"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1600);
+                    } catch {}
+                  }}
+                >
+                  {copied ? 'Link copied' : 'Copy link'}
+                </button>
+              </div>
             </div>
           </section>
         </aside>
       </div>
     </div>
+  );
+}
+
+function Glyph({ d }: { d: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
