@@ -34,11 +34,11 @@ export function Detail({
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
+    closeRef.current?.focus({ preventScroll: true });
     document.body.classList.add('locked');
     return () => {
       document.body.classList.remove('locked');
-      opener?.focus?.();
+      opener?.focus?.({ preventScroll: true });
     };
   }, []);
 

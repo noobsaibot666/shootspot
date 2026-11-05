@@ -266,7 +266,7 @@ export function Gallery() {
 
   return (
     <>
-      <header className={`top${hidden && !open ? ' hidden' : ''}`}>
+      <header className={`top${hidden ? ' hidden' : ''}`}>
         <Logo />
         <div className="top-actions">
           <FilterMenu vocabulary={vocabulary} filter={filter} onChange={setFilter} />

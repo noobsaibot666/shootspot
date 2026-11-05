@@ -54,6 +54,11 @@ body {
   font: 15px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
+/* Keep the scrollbar's space reserved, so locking the page under the detail view doesn't
+   widen it and shift every tile sideways. */
+html {
+  scrollbar-gutter: stable;
+}
 body.locked {
   overflow: hidden;
 }
