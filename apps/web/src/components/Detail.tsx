@@ -1,7 +1,7 @@
 'use client';
 
 import type { WebRecord } from '@shootspot/shared';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { goodForTags, lightFacts, practicalFacts, shortLabel, type Labeler } from '@/lib/format';
 
 /**
@@ -79,7 +79,11 @@ export function Detail({
         <div className="photo">
           {/* The cached tile photo shows at once (and carries the morph from the grid); the
               sharp 2160 px version fades in over it once loaded. */}
-          <div className="frame" key={record.id}>
+          <div
+            className="frame"
+            key={record.id}
+            style={{ '--ar': `${record.images.width} / ${record.images.height}` } as CSSProperties}
+          >
             <img
               className="base"
               style={{ viewTransitionName: 'hero' }}
