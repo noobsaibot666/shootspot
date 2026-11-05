@@ -112,6 +112,9 @@ export function Gallery() {
   const [filter, setFilter] = useState<Filter>({ goodFor: [], bestLight: [] });
   const [retry, setRetry] = useState(0);
   const [open, setOpen] = useState<WebRecord | null>(null);
+  // The photo file the tile was showing (480 or 1080 px): the detail opens on that same, already
+  // loaded file, so the morph never lands on an image that is still loading.
+  const [shownSrc, setShownSrc] = useState<string | undefined>();
   const gridRef = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadingMore = useRef(false);
@@ -193,13 +196,21 @@ export function Gallery() {
   // Opening a location: the tile's photo morphs into the large one; the address bar follows.
   const show = useCallback((r: WebRecord) => {
     const img = tileImage(r.id);
-    morph(() => setOpen(r), {
-      before: () => img && (img.style.viewTransitionName = HERO),
-      after: () => img && (img.style.viewTransitionName = ''),
-    });
+    const src = (img as HTMLImageElement | null)?.currentSrc || undefined;
+    morph(
+      () => {
+        setShownSrc(src);
+        setOpen(r);
+      },
+      {
+        before: () => img && (img.style.viewTransitionName = HERO),
+        after: () => img && (img.style.viewTransitionName = ''),
+      },
+    );
     window.history.pushState({ l: r.id }, '', `?l=${r.id}`);
   }, []);
   const step = useCallback((r: WebRecord) => {
+    setShownSrc(undefined);
     setOpen(r);
     window.history.replaceState({ l: r.id }, '', `?l=${r.id}`);
   }, []);
@@ -341,7 +352,14 @@ export function Gallery() {
       </main>
 
       {open ? (
-        <Detail record={open} label={label} onClose={close} onPrev={prev} onNext={next} />
+        <Detail
+          record={open}
+          placeholder={shownSrc}
+          label={label}
+          onClose={close}
+          onPrev={prev}
+          onNext={next}
+        />
       ) : null}
     </>
   );

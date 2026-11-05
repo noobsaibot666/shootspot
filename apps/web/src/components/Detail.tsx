@@ -11,12 +11,15 @@ import { goodForTags, lightFacts, practicalFacts, shortLabel, type Labeler } fro
  */
 export function Detail({
   record,
+  placeholder,
   label,
   onClose,
   onPrev,
   onNext,
 }: {
   record: WebRecord;
+  /** The photo file already on screen in the grid, shown first. Defaults to the feed size. */
+  placeholder?: string;
   label: Labeler;
   onClose: () => void;
   onPrev?: () => void;
@@ -87,7 +90,7 @@ export function Detail({
             <img
               className="base"
               style={{ viewTransitionName: 'hero' }}
-              src={record.images.feed}
+              src={placeholder ?? record.images.feed}
               width={record.images.width}
               height={record.images.height}
               alt={record.label}

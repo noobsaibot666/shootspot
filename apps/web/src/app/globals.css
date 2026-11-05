@@ -548,6 +548,11 @@ button {
 .frame .sharp.loaded {
   opacity: 1;
 }
+/* Only the morphing photo may move during a View Transition; the sharp copy fades in after. */
+:root.vt .frame .sharp {
+  opacity: 0;
+  transition: none;
+}
 .info {
   flex: 0 0 400px;
   overflow-y: auto;
