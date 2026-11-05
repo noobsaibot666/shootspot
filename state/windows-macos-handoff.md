@@ -33,8 +33,6 @@ Rules:
 
 ## Open requests
 
-- 2026-11-05 mac → windows: **Member web gallery (D-44) is on `main`; please deploy it with the owner.** New app `apps/web`, Dockerfile target `web`, compose service `web` on `${LAN_IP}:4404`, migration `012_member_web`, new API env `MEMBER_WEB_ORIGINS`. Build all images including `web` (the `$ts` list in truenas-deployment.md now includes `web`), copy the compose file, add `MEMBER_WEB_ORIGINS=https://shootspot.expose-u.com` and `WEB_PORT=4404` to the NAS `.env` (back it up first), check that port 4404 is free on the NAS in the read-only block, then `up -d api web`. The Mac adds the tunnel route `shootspot.expose-u.com` → `:4404` afterwards. API `test:int` passed on the Mac (41 tests). Steps: docs/runbooks/public-endpoints.md#member-web-gallery-d-44, HANDWORK 4.10.
-
 - 2026-10-22 mac → windows: **Next NAS deploy: API images from `main` or later.** The API now checks mail at startup (it logs `MAIL: SMTP login ok`, or `MAIL: …` with the reason, and sends it to Sentry). Email codes weren't arriving because `MAIL_FROM` was an @me.com address (see HANDWORK, "Email codes not arriving"); the owner is moving it to `no-reply@expose-u.com`.
 
 - 2026-10-21 mac → windows: **Please run `services/api` `test:int` on `3baff58` (D-42).** The Mac has no local test DB. New migration `011_light_merge` was only tested up/down on a throwaway Postgres 16.
@@ -65,6 +63,8 @@ Rules:
     - no slowdown from the extra frame output.
 
 ## Log
+
+- 2026-11-05 mac: **Member web gallery (D-44) deployed** with the owner, no Windows action needed. Images `cf19d69` (`api`, `web` only) built on the Mac; migration `012_member_web` applied; new compose service `web` on `:4404` (55 MB of 256 MB); `.env` gained `MEMBER_WEB_ORIGINS` and `WEB_PORT` (backups `.bak-*`); rollback tag `shootspot-api:rollback-pre-cf19d69`. Tunnel route `shootspot.expose-u.com` added (config 43). Windows: future image builds include `web` (runbook updated).
 
 - 2026-11-02 mac: **iOS 1.0.0 (14) resubmitted to App Review** (Waiting for Review). Build 13 was rejected under Guideline 2.1(a): blank Profile tab on iPhone 17 Pro Max and iPad Air (iOS/iPadOS 27.2). Build 14 carries the fix from `fa88715`; review notes now open with that line.
 

@@ -10,7 +10,7 @@
 | `https://shootspot-media.expose-u.com`    | NAS `http://192.168.178.146:4402` (s3)      | Photos, through presigned URLs only. The root returns 403   |
 | `https://docs.alan-design.com/shootspot/` | web_three's `docs-nginx` on the NAS (share) | Privacy, terms, image licence, account deletion, user guide |
 
-**Planned (D-44):** `https://shootspot.expose-u.com` → NAS `http://192.168.178.146:4404` (web), the member web gallery. See [Member web gallery](#member-web-gallery-d-44).
+**Also public (D-44, since 2026-11-05):** `https://shootspot.expose-u.com` → NAS `http://192.168.178.146:4404` (web), the member web gallery. Tunnel config 42 → 43; checked: sign-in 200, `/web/v1/feed` 401, `/v1` and `/admin/v1` 404, other sites unchanged. See [Member web gallery](#member-web-gallery-d-44).
 
 **Not public:** the admin web (`:4401`), Postgres, the S3 admin, backups and the NAS itself. Never add a route for them.
 
