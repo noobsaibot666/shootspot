@@ -64,6 +64,7 @@ Rules:
 
 ## Log
 
+- 2026-11-09 mac: **Member web gallery redesign deployed** (web only, no Windows action needed). Image `shootspot-web:web-5f9324e` (commits `4cdaacc`..`5f9324e`: redesign, logo in image, smooth tile-to-detail morph, no page jump on open). Rollback tag `shootspot-web:rollback-pre-redesign`. Web image tars from 2026-11-05 are in `shared/builds/` and can be removed once this version is confirmed.
 - 2026-11-05 mac: **Member web gallery (D-44) deployed** with the owner, no Windows action needed. Images `cf19d69` (`api`, `web` only) built on the Mac; migration `012_member_web` applied; new compose service `web` on `:4404` (55 MB of 256 MB); `.env` gained `MEMBER_WEB_ORIGINS` and `WEB_PORT` (backups `.bak-*`); rollback tag `shootspot-api:rollback-pre-cf19d69`. Tunnel route `shootspot.expose-u.com` added (config 43). Windows: future image builds include `web` (runbook updated).
 
 - 2026-11-02 mac: **iOS 1.0.0 (14) resubmitted to App Review** (Waiting for Review). Build 13 was rejected under Guideline 2.1(a): blank Profile tab on iPhone 17 Pro Max and iPad Air (iOS/iPadOS 27.2). Build 14 carries the fix from `fa88715`; review notes now open with that line.
