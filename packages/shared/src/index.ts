@@ -5,3 +5,4 @@ export * from './scout';
 export * from './jobs';
 export * from './api';
 export * from './exif';
+export * from './address';

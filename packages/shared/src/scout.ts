@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { withoutHouseNumber } from './address';
 
 /**
  * Scout record data (decision D-16): a short input every record has, plus an optional advanced
@@ -68,7 +69,8 @@ const customTags = z.array(z.string().trim().min(1).max(30)).max(3).default([]);
 
 /** The notes a member writes (also what the creator may edit later, D-38). */
 export const notesFields = z.object({
-  label: shortText(120).min(1),
+  /** House numbers are removed on save (D-45). */
+  label: shortText(120).min(1).transform(withoutHouseNumber),
   goodFor: z.array(goodForTag).max(8),
   goodForCustom: customTags,
   goodForNote: shortText(200).optional(),

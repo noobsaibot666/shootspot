@@ -1,5 +1,5 @@
 import { Icon } from '../../ui/icon';
-import { formatCoordinates, distanceMeters } from '@shootspot/shared';
+import { formatCoordinates, distanceMeters, withoutHouseNumber } from '@shootspot/shared';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -95,10 +95,10 @@ export default function PinScreen() {
           latitude: center.lat,
           longitude: center.lon,
         });
-        label = [place?.name, place?.district ?? place?.city]
-          .filter(Boolean)
-          .join(', ')
-          .slice(0, 120);
+        // Street and district, never the house number (D-45).
+        label = withoutHouseNumber(
+          [place?.street ?? place?.name, place?.district ?? place?.city].filter(Boolean).join(', '),
+        ).slice(0, 120);
       } catch {}
     }
     update({
