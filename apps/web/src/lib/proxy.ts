@@ -69,7 +69,7 @@ export async function proxy(req: NextRequest): Promise<Response> {
     return Response.json({ error: 'unavailable' }, { status: 502 });
   }
   const out = new Headers();
-  for (const name of ['content-type', 'cache-control']) {
+  for (const name of ['content-type', 'content-disposition', 'cache-control']) {
     const value = upstream.headers.get(name);
     if (value) out.set(name, value);
   }

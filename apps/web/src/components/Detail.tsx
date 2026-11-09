@@ -202,7 +202,7 @@ export function Detail({
                       const date = new Date().toISOString().slice(0, 10);
                       await downloadExport(
                         `/web/v1/records/${encodeURIComponent(record.id)}/export`,
-                        `shootspot-location-${record.id}-${date}.zip`,
+                        `shootspot-${exportSlug(record.label)}-${date}.zip`,
                       );
                     } catch {
                       setExportError(true);
@@ -239,5 +239,17 @@ function Glyph({ d }: { d: string }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function exportSlug(label: string): string {
+  return (
+    label
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60) || 'location'
   );
 }

@@ -1298,9 +1298,13 @@ describe('member web gallery (D-44)', () => {
   it('needs a member web session: no anonymous visitors, no app tokens, no admin sessions', async () => {
     const app = await passwordMember('web-channels@example.com');
     expect((await env.app.inject({ method: 'GET', url: '/web/v1/feed' })).statusCode).toBe(401);
+    expect((await env.app.inject({ method: 'GET', url: '/web/v1/export' })).statusCode).toBe(401);
     const withToken = await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: app });
     expect(withToken.statusCode).toBe(403);
     expect(withToken.json().error).toBe('web_only');
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/web/v1/export', headers: app })).statusCode,
+    ).toBe(403);
     const { headers: adminCookie } = await admin(env, 'web-admin@example.com');
     expect(
       (await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: adminCookie }))
@@ -1332,6 +1336,22 @@ describe('member web gallery (D-44)', () => {
     );
     await passwordMember('web-export-viewer@example.com');
     const cookie = await webSignIn(env, 'web-export-viewer@example.com', WEB_PASSWORD);
+    const pending = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: creator,
+      payload: draftBody(),
+    });
+    expect(pending.statusCode).toBe(201);
+    expect(
+      (
+        await env.app.inject({
+          method: 'GET',
+          url: `/web/v1/records/${pending.json().recordId}/export`,
+          headers: cookie,
+        })
+      ).statusCode,
+    ).toBe(404);
 
     const response = await env.app.inject({
       method: 'GET',
@@ -1425,6 +1445,15 @@ describe('member web gallery (D-44)', () => {
     expect(
       (await env.app.inject({ method: 'GET', url: `/web/v1/records/${id}`, headers: cookie }))
         .statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await env.app.inject({
+          method: 'GET',
+          url: `/web/v1/records/${id}/export`,
+          headers: cookie,
+        })
+      ).statusCode,
     ).toBe(404);
   });
 });

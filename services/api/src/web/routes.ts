@@ -7,7 +7,7 @@ import {
 } from '@shootspot/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { notFound, requireViewer, type AppDeps } from '../http/context';
+import { HttpError, notFound, requireViewer, type AppDeps } from '../http/context';
 import {
   ATTRIBUTION_JOIN,
   PUBLIC_COLUMNS,
@@ -21,6 +21,10 @@ import { buildLocationArchive, type ExportLocation } from './export';
 
 /** Same per-IP search limit as the app's feed (plan §10). */
 const SEARCH_LIMIT = { max: 60, timeWindow: '1 minute' };
+const EXPORT_LIMIT = { max: 3, timeWindow: '1 minute' };
+const MAX_EXPORT_LOCATIONS = 500;
+const MAX_EXPORT_IMAGE_BYTES = 100 * 1024 * 1024;
+const EXPORT_READ_CONCURRENCY = 8;
 const idParam = z.object({ id: z.uuid() });
 
 function exportFilename(label: string | null, all: boolean): string {
@@ -59,45 +63,67 @@ export function webRoutes(app: FastifyInstance, deps: AppDeps) {
       params,
     );
     if (id && !rows[0]) throw notFound();
-    return Promise.all(
-      rows.map(async (row) => ({
-        id: row.id,
-        label: row.label,
-        lat: row.lat,
-        lon: row.lon,
-        accuracyM: row.accuracy_m,
-        framing: row.framing,
-        goodFor: row.good_for,
-        goodForCustom: row.good_for_custom,
-        goodForNote: row.good_for_note,
-        bestLight: row.best_light,
-        bestLightCustom: row.best_light_custom,
-        bestLightNote: row.best_light_note,
-        bearingDeg: row.bearing_deg,
-        advanced: row.advanced,
-        capturedAt: row.captured_at.toISOString(),
-        altitudeM: row.altitude_m,
-        focalLength35mm: row.focal_length_35mm,
-        sun:
-          row.sun_azimuth_deg == null || row.sun_elevation_deg == null
-            ? null
-            : { azimuthDeg: row.sun_azimuth_deg, elevationDeg: row.sun_elevation_deg },
-        attribution: row.attr_name
-          ? {
-              name: row.attr_name,
-              portfolioUrl: row.attr_portfolio,
-              socialHandle: row.attr_social,
-            }
-          : null,
-        imageBytes: await storage.get('public', objectKey.derivative(row.media_id, 'detail')),
-      })),
-    );
+    if (rows.length > MAX_EXPORT_LOCATIONS) throw new HttpError(413, 'export_too_large');
+    const locations: ExportLocation[] = [];
+    let imageBytes = 0;
+    for (let offset = 0; offset < rows.length; offset += EXPORT_READ_CONCURRENCY) {
+      const batch = rows.slice(offset, offset + EXPORT_READ_CONCURRENCY);
+      const loaded = await Promise.all(
+        batch.map(async (row) => ({
+          row,
+          imageBytes: await storage.get('public', objectKey.derivative(row.media_id, 'detail')),
+        })),
+      );
+      imageBytes += loaded.reduce((sum, item) => sum + item.imageBytes.byteLength, 0);
+      if (imageBytes > MAX_EXPORT_IMAGE_BYTES) throw new HttpError(413, 'export_too_large');
+      locations.push(
+        ...loaded.map(({ row, imageBytes: bytes }) => ({
+          id: row.id,
+          label: row.label,
+          lat: row.lat,
+          lon: row.lon,
+          accuracyM: row.accuracy_m,
+          framing: row.framing,
+          goodFor: row.good_for,
+          goodForCustom: row.good_for_custom,
+          goodForNote: row.good_for_note,
+          bestLight: row.best_light,
+          bestLightCustom: row.best_light_custom,
+          bestLightNote: row.best_light_note,
+          bearingDeg: row.bearing_deg,
+          advanced: row.advanced,
+          capturedAt: row.captured_at.toISOString(),
+          altitudeM: row.altitude_m,
+          focalLength35mm: row.focal_length_35mm,
+          sun:
+            row.sun_azimuth_deg == null || row.sun_elevation_deg == null
+              ? null
+              : { azimuthDeg: row.sun_azimuth_deg, elevationDeg: row.sun_elevation_deg },
+          attribution: row.attr_name
+            ? {
+                name: row.attr_name,
+                portfolioUrl: row.attr_portfolio,
+                socialHandle: row.attr_social,
+              }
+            : null,
+          imageBytes: bytes,
+        })),
+      );
+    }
+    return locations;
   }
 
   async function sendExport(req: FastifyRequest, reply: FastifyReply, id?: string) {
     const viewer = await requireViewer(deps, req, 'web');
-    const locations = await exportLocations(viewer.userId, id);
-    const archive = buildLocationArchive(locations);
+    let locations: ExportLocation[];
+    let archive: Buffer;
+    try {
+      locations = await exportLocations(viewer.userId, id);
+      archive = buildLocationArchive(locations);
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(503, 'export_unavailable');
+    }
     reply
       .header('content-type', 'application/zip')
       .header(
@@ -118,12 +144,18 @@ export function webRoutes(app: FastifyInstance, deps: AppDeps) {
     return activeVocabulary(pool);
   });
 
-  app.get('/web/v1/export', async (req, reply) => sendExport(req, reply));
+  app.get('/web/v1/export', { config: { rateLimit: EXPORT_LIMIT } }, async (req, reply) =>
+    sendExport(req, reply),
+  );
 
-  app.get('/web/v1/records/:id/export', async (req, reply) => {
-    const { id } = idParam.parse(req.params);
-    return sendExport(req, reply, id);
-  });
+  app.get(
+    '/web/v1/records/:id/export',
+    { config: { rateLimit: EXPORT_LIMIT } },
+    async (req, reply) => {
+      const { id } = idParam.parse(req.params);
+      return sendExport(req, reply, id);
+    },
+  );
 
   /** All published locations, newest first, with the app's tag filters. Blocks still apply. */
   app.get('/web/v1/feed', { config: { rateLimit: SEARCH_LIMIT } }, async (req, reply) => {

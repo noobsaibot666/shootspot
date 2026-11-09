@@ -54,13 +54,16 @@ export async function downloadExport(path: string, filename: string): Promise<vo
     throw new ApiError(res.status, code);
   }
   const url = URL.createObjectURL(await res.blob());
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const web = {
