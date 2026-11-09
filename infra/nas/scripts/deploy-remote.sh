@@ -113,12 +113,15 @@ done
 "${P[@]}" ps --format '{{.Service}} {{.Status}}'
 docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' | grep '^shootspot-' || true
 
-# Keep each image's current and previous tag only (by tag; never prune: untagged images here
-# belong to other apps).
+# Tidy tags (by tag; never prune: untagged images here belong to other apps). Tags of images
+# that can't run here (not amd64) go; of the rest, keep the current and the newest previous one.
 for s in "${SERVICES[@]}"; do
-  docker images "shootspot-$s" --format '{{.Tag}}' |
-    grep -vxE "latest|rollback|rollback-.*|$TAG|<none>" | tail -n +2 |
-    while read -r old; do docker image rm "shootspot-$s:$old" >/dev/null && echo "removed shootspot-$s:$old"; done
+  kept=0
+  while read -r old; do
+    a=$(docker image inspect -f '{{.Architecture}}' "shootspot-$s:$old")
+    if [ "$a" = amd64 ] && [ $kept = 0 ]; then kept=1; continue; fi
+    docker image rm "shootspot-$s:$old" >/dev/null && echo "removed shootspot-$s:$old ($a)"
+  done < <(docker images "shootspot-$s" --format '{{.Tag}}' | grep -vxE "latest|rollback|rollback-.*|$TAG|<none>")
 done
 
 ENV_TAG=$(env_get TAG)
@@ -129,8 +132,17 @@ if [ -n "$ENV_TAG" ] && [ "$ENV_TAG" != latest ]; then
 fi
 
 say "Rollback if needed"
-for s in "${SERVICES[@]}"; do echo "sudo docker tag shootspot-$s:rollback shootspot-$s:latest"; done
-echo "sudo TAG=latest docker compose -p shootspot -f $F up -d --no-deps ${SERVICES[*]}"
+RB=()
+for s in "${SERVICES[@]}"; do
+  [ "$(docker image inspect -f '{{.Architecture}}' "shootspot-$s:rollback" 2>/dev/null)" = amd64 ] || continue
+  echo "sudo docker tag shootspot-$s:rollback shootspot-$s:latest"
+  RB+=("$s")
+done
+if [ ${#RB[@]} -gt 0 ]; then
+  echo "sudo TAG=latest docker compose -p shootspot -f $F up -d --no-deps ${RB[*]}"
+else
+  echo "(no runnable previous images to roll back to)"
+fi
 echo "(database changes: sudo zfs rollback -r Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP, with the stack stopped)"
 
 [ $fail = 0 ] || die "a health check failed: see above, and roll back if the site is broken"
