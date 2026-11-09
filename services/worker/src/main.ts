@@ -1,9 +1,14 @@
-import { QUEUE, type DataExportJob, type ProcessMediaJob } from '@shootspot/shared';
+import {
+  QUEUE,
+  type BlurAreasJob,
+  type DataExportJob,
+  type ProcessMediaJob,
+} from '@shootspot/shared';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
 import { loadWorkerConfig } from './config';
 import nodemailer from 'nodemailer';
-import { dataExportJob, deletionSweep, processMediaJob } from './jobs';
+import { blurAreasJob, dataExportJob, deletionSweep, faceBackfill, processMediaJob } from './jobs';
 import { alertText, dueAlerts, findProblems, ownerEmails } from './ops';
 import { initSentry } from './sentry';
 import { createWorkerStorage } from './storage';
@@ -55,6 +60,18 @@ await boss.work(QUEUE.opsCheck, async () => {
     const { subject, text } = alertText(due);
     await mailer.sendMail({ from: config.MAIL_FROM, to, subject, text });
   }
+});
+
+// Face blur (D-45): older photos a few at a time until all are checked; admin-marked areas.
+await boss.schedule(QUEUE.faceBackfill, '*/10 * * * *');
+await boss.work(QUEUE.faceBackfill, async () => {
+  const r = await faceBackfill(deps);
+  if (r.checked) console.log(`[worker] face backfill: ${r.checked} checked, ${r.blurred} blurred`);
+});
+await boss.work<BlurAreasJob>(QUEUE.blurAreas, async ([job]) => {
+  if (!job) return;
+  const r = await blurAreasJob(deps, job.data);
+  console.log(`[worker] media ${job.data.mediaId}: areas ${r.outcome}`);
 });
 
 console.log('[worker] ready');

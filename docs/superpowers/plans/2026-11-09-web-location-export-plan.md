@@ -13,6 +13,7 @@
 ### Task 1: Add the archive model and ZIP builder
 
 **Files:**
+
 - Create: `services/api/src/web/export.ts`
 - Test: `services/api/src/web/export.test.ts`
 - Modify: `services/api/package.json`
@@ -52,6 +53,7 @@
 ### Task 2: Add storage reads and authenticated web export routes
 
 **Files:**
+
 - Modify: `services/api/src/storage.ts`
 - Modify: `services/api/src/web/routes.ts`
 - Modify: `services/api/src/testing.ts` or its memory-storage helper, if required by typecheck
@@ -106,6 +108,7 @@
 ### Task 3: Add the web download client and UI actions
 
 **Files:**
+
 - Modify: `apps/web/src/lib/api.ts`
 - Modify: `apps/web/src/components/Chrome.tsx`
 - Modify: `apps/web/src/components/Gallery.tsx`
@@ -159,6 +162,7 @@
 ### Task 4: Full verification
 
 **Files:**
+
 - No new source files; inspect the complete diff and existing mobile changes.
 
 - [ ] **Step 1: Run all relevant checks**

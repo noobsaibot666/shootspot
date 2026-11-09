@@ -1,6 +1,6 @@
-import { objectKey } from '@shootspot/shared';
+import { objectKey, type BlurAreasJob } from '@shootspot/shared';
 import type pg from 'pg';
-import { processImage } from './process-image';
+import { processImage, reblurPublished, type Derivative } from './process-image';
 import type { WorkerStorage } from './storage';
 
 export interface JobDeps {
@@ -58,8 +58,16 @@ export async function processMediaJob(
       await client.query('begin');
       await client.query(
         `update media set state = 'ready', width = $2, height = $3, framing = $4, derivatives = $5,
-           last_error = null, updated_at = now() where id = $1`,
-        [mediaId, detail.width, detail.height, result.framing, JSON.stringify(derivatives)],
+           faces_checked_at = now(), faces_blurred = $6, last_error = null, updated_at = now()
+         where id = $1`,
+        [
+          mediaId,
+          detail.width,
+          detail.height,
+          result.framing,
+          JSON.stringify(derivatives),
+          result.faces,
+        ],
       );
       // The member chose 16:9 or 1:1; the worker's verdict on the real pixels wins.
       await client.query(
@@ -85,6 +93,61 @@ export async function processMediaJob(
     );
     throw err;
   }
+}
+
+/** Replaces a published photo's sizes in place (same keys) and returns the stored list. */
+async function storeDerivatives(deps: JobDeps, mediaId: string, list: Derivative[]) {
+  const stored = [];
+  for (const d of list) {
+    const key = objectKey.derivative(mediaId, d.name);
+    await deps.storage.put('public', key, d.data, 'image/webp');
+    stored.push({ name: d.name, key, width: d.width, height: d.height, bytes: d.bytes });
+  }
+  return stored;
+}
+
+/**
+ * Face blur for photos published before it existed (D-45): a few at a time, from the largest
+ * published size (the originals are gone, plan §5). Photos with no face are only marked checked.
+ */
+export async function faceBackfill(deps: JobDeps, limit = 20) {
+  const { rows } = await deps.pool.query<{ id: string }>(
+    `select id from media where state = 'ready' and faces_checked_at is null
+     order by created_at limit $1`,
+    [limit],
+  );
+  let blurred = 0;
+  for (const { id } of rows) {
+    const detail = await deps.storage.get('public', objectKey.derivative(id, 'detail'));
+    const result = await reblurPublished(detail, { detect: true });
+    let stored = null;
+    if (result.derivatives.length) {
+      stored = await storeDerivatives(deps, id, result.derivatives);
+      blurred++;
+    }
+    await deps.pool.query(
+      `update media set faces_checked_at = now(), faces_blurred = $2,
+         derivatives = coalesce($3::jsonb, derivatives), updated_at = now() where id = $1`,
+      [id, result.faces, stored && JSON.stringify(stored)],
+    );
+  }
+  return { checked: rows.length, blurred };
+}
+
+/** Blurs areas an admin marked on a published photo (D-45): a face the detector missed. */
+export async function blurAreasJob(deps: JobDeps, job: BlurAreasJob) {
+  const { rows } = await deps.pool.query(`select id from media where id = $1 and state = 'ready'`, [
+    job.mediaId,
+  ]);
+  if (!rows[0] || !job.areas.length) return { outcome: 'skipped' as const };
+  const detail = await deps.storage.get('public', objectKey.derivative(job.mediaId, 'detail'));
+  const result = await reblurPublished(detail, { detect: false, areas: job.areas });
+  const stored = await storeDerivatives(deps, job.mediaId, result.derivatives);
+  await deps.pool.query(`update media set derivatives = $2, updated_at = now() where id = $1`, [
+    job.mediaId,
+    JSON.stringify(stored),
+  ]);
+  return { outcome: 'blurred' as const, areas: job.areas.length };
 }
 
 /**

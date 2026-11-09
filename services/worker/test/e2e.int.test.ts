@@ -2,7 +2,15 @@ import { admin, createTestEnv, draftBody, member, type TestEnv } from '@shootspo
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadWorkerConfig } from '../src/config';
-import { dataExportJob, deletionSweep, processMediaJob, type JobDeps } from '../src/jobs';
+import { readFileSync } from 'node:fs';
+import {
+  blurAreasJob,
+  dataExportJob,
+  deletionSweep,
+  faceBackfill,
+  processMediaJob,
+  type JobDeps,
+} from '../src/jobs';
 import { createWorkerStorage, type WorkerStorage } from '../src/storage';
 
 let env: TestEnv;
@@ -265,5 +273,62 @@ describe('account lifecycle', () => {
     expect(
       (await env.pool.query(`select 1 from account_deletions where status = 'scheduled'`)).rowCount,
     ).toBe(0);
+  });
+});
+
+describe('face blur (D-45)', () => {
+  const crew = readFileSync(new URL('./fixtures/nasa-sts061-crew.jpg', import.meta.url));
+  const upright = () => sharp(crew).resize(1920, 1080, { fit: 'cover' }).jpeg().toBuffer();
+
+  it('records the faces blurred when a photo is published', async () => {
+    const creator = await member(env, 'faces@example.com');
+    const { mediaId } = await upload(creator, await upright());
+    await processMediaJob(deps, mediaId, { finalAttempt: false });
+    const { rows } = await env.pool.query(
+      `select faces_blurred, faces_checked_at from media where id = $1`,
+      [mediaId],
+    );
+    expect(rows[0].faces_blurred).toBeGreaterThanOrEqual(5);
+    expect(rows[0].faces_checked_at).not.toBeNull();
+  });
+
+  it('backfills photos published before face blur, then admin areas', async () => {
+    const creator = await member(env, 'older@example.com');
+    const { mediaId } = await upload(creator, await upright());
+    await processMediaJob(deps, mediaId, { finalAttempt: false });
+    // As if published before D-45: the unblurred photo is what is stored, never checked.
+    const key = `media/${mediaId}/detail.webp`;
+    await deps.storage.put(
+      'public',
+      key,
+      await sharp(await upright())
+        .webp()
+        .toBuffer(),
+      'image/webp',
+    );
+    await env.pool.query(
+      `update media set faces_checked_at = null, faces_blurred = 0 where id = $1`,
+      [mediaId],
+    );
+
+    const first = await faceBackfill(deps);
+    expect(first.checked).toBeGreaterThanOrEqual(1);
+    const { rows } = await env.pool.query(
+      `select faces_blurred, faces_checked_at from media where id = $1`,
+      [mediaId],
+    );
+    expect(rows[0].faces_blurred).toBeGreaterThanOrEqual(5);
+    expect(rows[0].faces_checked_at).not.toBeNull();
+    // Nothing left to do on the next round.
+    expect((await faceBackfill(deps)).checked).toBe(0);
+
+    const before = await deps.storage.get('public', key);
+    expect(
+      await blurAreasJob(deps, { mediaId, areas: [{ x: 0.05, y: 0.05, w: 0.1, h: 0.1 }] }),
+    ).toEqual({
+      outcome: 'blurred',
+      areas: 1,
+    });
+    expect((await deps.storage.get('public', key)).equals(before)).toBe(false);
   });
 });

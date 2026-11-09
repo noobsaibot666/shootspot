@@ -52,7 +52,8 @@ CMD ["node", "--import", "tsx", "src/main.ts"]
 
 # ---- worker -------------------------------------------------------------------------------------
 FROM node:24-bookworm-slim AS worker
-ENV NODE_ENV=production
+# The ONNX runtime (face blur, D-45) has telemetry built in: off.
+ENV NODE_ENV=production ORT_DISABLE_TELEMETRY=1
 WORKDIR /app
 COPY --from=build --chown=node:node /out/worker ./
 USER node

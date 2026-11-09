@@ -8,10 +8,27 @@ export const QUEUE = {
   deletionSweep: 'deletion-sweep',
   /** Every 30 minutes: backups, stuck/failed uploads, overdue reports → owner alert emails. */
   opsCheck: 'ops-check',
+  /** Every 10 minutes until done: blur faces in photos published before face blur (D-45). */
+  faceBackfill: 'face-backfill',
+  /** Blur areas an admin marked on a published photo (D-45). */
+  blurAreas: 'blur-areas',
 } as const;
 
 export interface ProcessMediaJob {
   mediaId: string;
+}
+
+/** An area on a photo, as fractions (0–1) of its width and height from the top left. */
+export interface PhotoArea {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface BlurAreasJob {
+  mediaId: string;
+  areas: PhotoArea[];
 }
 
 export interface DataExportJob {

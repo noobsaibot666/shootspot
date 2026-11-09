@@ -15,6 +15,7 @@
     "@sentry/node": "^11.8.0",
     "@shootspot/shared": "workspace:*",
     "nodemailer": "^10.1.2",
+    "onnxruntime-node": "^1.31.1",
     "pg": "^8.23.1",
     "pg-boss": "^12.38.0",
     "sharp": "^0.35.5",

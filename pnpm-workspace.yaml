@@ -8,6 +8,8 @@ allowBuilds:
   # optional dependencies anyway). No install script needed.
   '@sentry/cli': false
   esbuild: true
+  # Face detection (D-45). CPU binaries ship in the package; the script only fetches CUDA ones.
+  onnxruntime-node: false
   sharp: true
 
 minimumReleaseAgeExclude:

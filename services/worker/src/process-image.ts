@@ -1,5 +1,6 @@
-import sharp, { type SharpOptions } from 'sharp';
+import sharp, { type Sharp, type SharpOptions } from 'sharp';
 import { MAX_SOURCE_PIXELS, checkPublishable, type Framing } from '@shootspot/shared';
+import { blurAreas, detectFaces, toRaster, type Area, type Raster } from './faces';
 
 /**
  * Server-side image gate and derivative generation (plan §5, upload flow step 4).
@@ -35,7 +36,15 @@ export interface Derivative {
 }
 
 export type ProcessResult =
-  | { ok: true; framing: Framing; width: number; height: number; derivatives: Derivative[] }
+  | {
+      ok: true;
+      framing: Framing;
+      width: number;
+      height: number;
+      derivatives: Derivative[];
+      /** Faces found and blurred (D-45). */
+      faces: number;
+    }
   | { ok: false; reason: RejectReason; detail?: string };
 
 export type RejectReason =
@@ -84,25 +93,78 @@ export async function processImage(input: Buffer): Promise<ProcessResult> {
 
   const tone = toneCorrection(await measureTone(input, options));
 
+  // Faces are blurred before anything is published (D-45). Detection runs on the largest
+  // published size; if it fails, the job fails and retries rather than publishing unblurred.
+  const largest = DERIVATIVES[DERIVATIVES.length - 1]!.width;
+  const base = await toRaster(sharp(input, options), largest);
+  const faces = await detectFaces(base);
+
   const derivatives: Derivative[] = [];
-  for (const spec of DERIVATIVES) {
-    let img = sharp(input, options).resize({ width: spec.width, withoutEnlargement: true });
-    if (tone) img = img.linear(...perChannel(tone, channels));
-    const { data, info } = await img
-      .toColourspace('srgb')
-      .webp({ quality: spec.quality })
-      .toBuffer({ resolveWithObject: true });
-    derivatives.push({
-      name: spec.name,
-      format: 'webp',
-      width: info.width,
-      height: info.height,
-      bytes: info.size,
-      data,
-    });
+  if (faces.length) {
+    const blurred = await blurAreas(base, faces);
+    derivatives.push(...(await fromRaster(blurred, tone)));
+  } else {
+    for (const spec of DERIVATIVES) {
+      let img = sharp(input, options).resize({ width: spec.width, withoutEnlargement: true });
+      if (tone) img = img.linear(...perChannel(tone, channels));
+      derivatives.push(await encode(img, spec));
+    }
   }
 
-  return { ok: true, framing: check.framing, ...upright, derivatives };
+  return { ok: true, framing: check.framing, ...upright, derivatives, faces: faces.length };
+}
+
+type Spec = (typeof DERIVATIVES)[number];
+
+async function encode(img: Sharp, spec: Spec): Promise<Derivative> {
+  const { data, info } = await img
+    .toColourspace('srgb')
+    .webp({ quality: spec.quality })
+    .toBuffer({ resolveWithObject: true });
+  return {
+    name: spec.name,
+    format: 'webp',
+    width: info.width,
+    height: info.height,
+    bytes: info.size,
+    data,
+  };
+}
+
+/** All published sizes from an sRGB raster (already blurred where needed). */
+async function fromRaster(r: Raster, tone: Tone | null): Promise<Derivative[]> {
+  const out: Derivative[] = [];
+  for (const spec of DERIVATIVES) {
+    let img = sharp(r.data, { raw: { width: r.width, height: r.height, channels: 3 } }).resize({
+      width: spec.width,
+      withoutEnlargement: true,
+    });
+    if (tone) img = img.linear(...perChannel(tone, 3));
+    out.push(await encode(img, spec));
+  }
+  return out;
+}
+
+/**
+ * Re-blurs an already published photo (D-45): existing photos once, and areas an admin marks.
+ * Originals are deleted after processing (plan §5), so this works from the largest published
+ * size; the tone balance is already in it. `areas` are fractions (0–1) of the width and height.
+ */
+export async function reblurPublished(
+  detail: Buffer,
+  opts: { detect: boolean; areas?: Area[] },
+): Promise<{ faces: number; derivatives: Derivative[] }> {
+  const base = await toRaster(detail, DERIVATIVES[DERIVATIVES.length - 1]!.width);
+  const faces = opts.detect ? await detectFaces(base) : [];
+  const marked = (opts.areas ?? []).map((a) => ({
+    x: a.x * base.width,
+    y: a.y * base.height,
+    w: a.w * base.width,
+    h: a.h * base.height,
+  }));
+  const areas = [...faces, ...marked];
+  if (!areas.length) return { faces: 0, derivatives: [] };
+  return { faces: faces.length, derivatives: await fromRaster(await blurAreas(base, areas), null) };
 }
 
 /**
