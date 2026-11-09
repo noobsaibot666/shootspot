@@ -90,12 +90,12 @@ for s in "${SERVICES[@]}"; do
 done
 [ ${#same[@]} -eq ${#SERVICES[@]} ] && echo "Note: $TAG is already running for every service; nothing will restart."
 
-# ---- 4. migrations (only when the API or the worker changes) -------------------------------
-if [[ " ${SERVICES[*]} " == *" api "* || " ${SERVICES[*]} " == *" worker "* ]]; then
+# ---- 4. migrations (they ship in the API image, so only when the API is deployed) -----------
+if [[ " ${SERVICES[*]} " == *" api "* ]]; then
   say "4/6 Database migrations"
   "${P[@]}" run --rm migrate
 else
-  say "4/6 Database migrations: not needed"
+  say "4/6 Database migrations: skipped (they ship with the API; deploy api to apply new ones)"
 fi
 
 # ---- 5. restart only the named services ----------------------------------------------------

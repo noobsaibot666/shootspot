@@ -48,7 +48,7 @@ What it does:
    1. Runs read-only checks: the hash, the stack status and the free disk space.
    2. If the stack file changed, shows the diff and asks before installing it. A `.bak-<stamp>` copy is kept.
    3. Takes a ZFS snapshot `shootspot-runtime@pre-deploy-<stamp>` and tags each current image `shootspot-<svc>:rollback`.
-   4. Loads the images and runs `migrate` if `api` or `worker` is included.
+   4. Loads the images and runs `migrate` (from the new API image) if `api` is included.
    5. Runs `up -d --no-deps <services>`, so nothing else restarts.
    6. Checks `/ready` (api), `/` (admin) and `/sign-in` (web), and shows memory use.
    7. Removes old SHA tags (by tag, never prune) and prints the rollback commands.

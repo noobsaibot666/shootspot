@@ -2,7 +2,7 @@
 # Build ShootSpot server images and deploy them to the TrueNAS in one go.
 #
 #   tools/nas-deploy.sh web              # one service
-#   tools/nas-deploy.sh api worker       # several (migrations run automatically for api/worker)
+#   tools/nas-deploy.sh api worker       # several (migrations run automatically when api is included)
 #   tools/nas-deploy.sh all              # api worker admin web backup
 #   tools/nas-deploy.sh --build-only web # build and copy to the share, print the NAS command
 #
