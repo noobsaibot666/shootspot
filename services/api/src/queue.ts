@@ -1,9 +1,15 @@
 import { PgBoss } from 'pg-boss';
-import { QUEUE, type DataExportJob, type ProcessMediaJob } from '@shootspot/shared';
+import {
+  QUEUE,
+  type BlurAreasJob,
+  type DataExportJob,
+  type ProcessMediaJob,
+} from '@shootspot/shared';
 
 export interface JobQueue {
   processMedia(job: ProcessMediaJob): Promise<void>;
   dataExport(job: DataExportJob): Promise<void>;
+  blurAreas(job: BlurAreasJob): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -22,6 +28,9 @@ export async function createJobQueue(connectionString: string): Promise<JobQueue
     async dataExport(job) {
       await boss.send(QUEUE.dataExport, job, { ...retry, singletonKey: job.exportId });
     },
+    async blurAreas(job) {
+      await boss.send(QUEUE.blurAreas, job, retry);
+    },
     stop: () => boss.stop({ graceful: true }),
   };
 }
@@ -36,6 +45,9 @@ export function createMemoryQueue(): JobQueue & { sent: { queue: string; data: u
     },
     async dataExport(job) {
       sent.push({ queue: QUEUE.dataExport, data: job });
+    },
+    async blurAreas(job) {
+      sent.push({ queue: QUEUE.blurAreas, data: job });
     },
     async stop() {},
   };

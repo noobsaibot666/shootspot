@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BlurAreas, type Area } from '@/components/BlurAreas';
 import { ConfirmAction, Segmented, StatusBadge } from '@/components/ConfirmAction';
 import { PageHead } from '@/components/PageHead';
 import { api, fmtDate } from '@/lib/api';
@@ -14,6 +15,8 @@ interface Item {
   openReports: number;
   width: number | null;
   height: number | null;
+  /** Faces blurred automatically (D-45); null until the photo has been checked. */
+  facesBlurred: number | null;
   image: string | null;
 }
 type Status = 'published' | 'hidden' | 'processing' | 'rejected' | 'removed' | 'all';
@@ -27,6 +30,8 @@ export default function LocationsPage() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [open, setOpen] = useState<Item | null>(null);
+  const [blurring, setBlurring] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
   const load = useCallback(
@@ -48,6 +53,12 @@ export default function LocationsPage() {
     await api(`/admin/v1/records/${id}/moderate`, { method: 'POST', body: { action, reason } });
     dialog.current?.close();
     void load();
+  }
+
+  async function blur(id: string, areas: Area[], reason: string) {
+    await api(`/admin/v1/records/${id}/blur`, { method: 'POST', body: { areas, reason } });
+    setBlurring(false);
+    setNotice('Blur queued. The photo updates within a minute; reload to see it.');
   }
 
   return (
@@ -128,8 +139,23 @@ export default function LocationsPage() {
         </div>
       )}
 
-      <dialog ref={dialog} style={{ maxWidth: 640 }} onClose={() => setOpen(null)}>
-        {open && (
+      <dialog
+        ref={dialog}
+        style={{ maxWidth: 640 }}
+        onClose={() => {
+          setOpen(null);
+          setBlurring(false);
+          setNotice(null);
+        }}
+      >
+        {open && blurring && open.image && (
+          <BlurAreas
+            image={open.image}
+            onSubmit={(areas, reason) => blur(open.id, areas, reason)}
+            onCancel={() => setBlurring(false)}
+          />
+        )}
+        {open && !blurring && (
           <div style={{ display: 'grid', gap: 14 }}>
             {open.image && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -148,9 +174,20 @@ export default function LocationsPage() {
                 </span>
                 <span className="mono">{fmtDate(open.createdAt)}</span>
                 <span className="mono">{open.id.slice(0, 8)}</span>
+                <span>
+                  {open.facesBlurred == null
+                    ? 'Faces not checked yet'
+                    : `${open.facesBlurred} face${open.facesBlurred === 1 ? '' : 's'} blurred`}
+                </span>
               </div>
+              {notice && <p className="muted">{notice}</p>}
             </div>
             <div className="row">
+              {open.image && (open.status === 'published' || open.status === 'hidden') && (
+                <button type="button" className="secondary" onClick={() => setBlurring(true)}>
+                  Blur an area
+                </button>
+              )}
               {open.status === 'published' && (
                 <ConfirmAction
                   label="Hide"

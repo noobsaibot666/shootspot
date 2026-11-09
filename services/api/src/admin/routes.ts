@@ -19,6 +19,24 @@ const idParam = z.object({ id: z.uuid() });
 const codeSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
 const reason = z.string().trim().min(3).max(500);
 const moderateSchema = z.object({ action: z.enum(['hide', 'restore', 'remove']), reason });
+/** Areas to blur on a photo (D-45), as fractions of its width and height from the top left. */
+const fraction = z.number().min(0).max(1);
+const blurSchema = z.object({
+  areas: z
+    .array(
+      z
+        .object({
+          x: fraction,
+          y: fraction,
+          w: z.number().min(0.005).max(1),
+          h: z.number().min(0.005).max(1),
+        })
+        .refine((a) => a.x + a.w <= 1.0001 && a.y + a.h <= 1.0001, 'area outside the photo'),
+    )
+    .min(1)
+    .max(20),
+  reason,
+});
 const resolveSchema = z.object({
   outcome: z.enum(['actioned', 'dismissed']),
   note: z.string().trim().max(500).optional(),
@@ -226,7 +244,8 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
           : [q.status];
     const { rows } = await pool.query(
       `select l.id, l.label, l.status, l.created_at, l.capture_origin,
-              m.id as media_id, m.state as media_state, m.width, m.height,
+              m.id as media_id, m.state as media_state, m.width, m.height, m.faces_blurred,
+              m.faces_checked_at,
               (select count(*)::int from reports r where r.location_id = l.id and r.status = 'open') as open_reports
        from locations l left join media m on m.location_id = l.id
        where l.status = any($1::text[]) and ($2::timestamptz is null or l.created_at < $2)
@@ -244,6 +263,7 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
           openReports: r.open_reports,
           width: r.width,
           height: r.height,
+          facesBlurred: r.faces_checked_at ? r.faces_blurred : null,
           image:
             r.media_state === 'ready'
               ? await storage.presignDownload(
@@ -344,6 +364,26 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
     // Remove is final (there is no restore from it), so the photos go too.
     if (body.action === 'remove') await purgeMedia(pool, storage, id);
     return reply.code(204).send();
+  });
+
+  /**
+   * Blur areas of a published photo that face detection missed (D-45). Applies to every published
+   * size and cannot be undone (the original is gone, plan §5). Needs a reason; audited.
+   */
+  app.post('/admin/v1/records/:id/blur', async (req, reply) => {
+    const viewer = await requireAdmin(deps, req);
+    const { id } = idParam.parse(req.params);
+    const body = blurSchema.parse(req.body);
+    const { rows } = await pool.query(
+      `select m.id from media m where m.location_id = $1 and m.state = 'ready'`,
+      [id],
+    );
+    if (!rows[0]) throw new HttpError(409, 'no_published_photo');
+    await deps.queue.blurAreas({ mediaId: rows[0].id, areas: body.areas });
+    await audit(pool, viewer, 'media.blur', { type: 'location', id }, body.reason, {
+      areas: body.areas.length,
+    });
+    return reply.code(202).send({ queued: body.areas.length });
   });
 
   /** Full record for moderation, including who created it. Viewing the creator is audited. */

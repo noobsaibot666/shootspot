@@ -177,6 +177,7 @@ export const ADMIN_EMAILS = [
   'ops@example.com', // services/worker e2e: admin media retry
   'web-admin@example.com', // member web gallery (D-44)
   'web-owner@example.com',
+  'blur-admin@example.com', // face blur admin fallback (D-45)
 ];
 export const ADMIN_PASSWORD = 'correct horse battery staple';
 

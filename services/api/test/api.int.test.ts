@@ -1457,3 +1457,52 @@ describe('member web gallery (D-44)', () => {
     ).toBe(404);
   });
 });
+
+describe('face blur admin fallback (D-45)', () => {
+  it('queues areas to blur on a published photo, validated and audited', async () => {
+    const { headers } = await admin(env, 'blur-admin@example.com');
+    const owner = await member(env, 'blurred-owner@example.com');
+    const rec = await publishDirect(owner);
+    const url = `/admin/v1/records/${rec}/blur`;
+    const area = { x: 0.2, y: 0.1, w: 0.1, h: 0.15 };
+
+    const noReason = await env.app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: { areas: [area] },
+    });
+    expect(noReason.statusCode).toBe(400);
+    const outside = await env.app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: { areas: [{ x: 0.95, y: 0.1, w: 0.2, h: 0.1 }], reason: 'Face left visible' },
+    });
+    expect(outside.statusCode).toBe(400);
+
+    const ok = await env.app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: { areas: [area], reason: 'Face left visible' },
+    });
+    expect(ok.statusCode).toBe(202);
+    const job = env.queue.sent.findLast((j) => j.queue === 'blur-areas');
+    expect(job?.data).toMatchObject({ areas: [area] });
+    const { rows } = await env.pool.query(
+      `select reason from admin_audit_events where action = 'media.blur' and target_id = $1`,
+      [rec],
+    );
+    expect(rows[0]?.reason).toBe('Face left visible');
+
+    // Members can't use it.
+    const asMember = await env.app.inject({
+      method: 'POST',
+      url,
+      headers: owner,
+      payload: { areas: [area], reason: 'Face left visible' },
+    });
+    expect(asMember.statusCode).toBeGreaterThanOrEqual(401);
+  });
+});
