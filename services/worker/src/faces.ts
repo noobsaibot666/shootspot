@@ -76,6 +76,8 @@ export async function detectFaces(raster: Raster, threshold = FACE_THRESHOLD): P
             .raw()
             .toBuffer();
     for (const [left, top] of tiles(w, h)) {
+      // Give the event loop a turn between tiles, so queue polling and DB pings stay responsive.
+      await new Promise((resolve) => setImmediate(resolve));
       const faces = await detectTile(scaled, w, h, left, top, threshold);
       for (const f of faces) {
         found.push({

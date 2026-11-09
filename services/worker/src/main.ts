@@ -20,7 +20,9 @@ const storage = createWorkerStorage(config);
 const deps = { pool, storage };
 const RETRY_LIMIT = 3;
 
-const boss = new PgBoss({ connectionString: config.DATABASE_URL, max: 2 });
+// Six queues poll here, and face blur keeps a job busy for a second or two: 2 connections were
+// too few ("timeout exceeded when trying to connect" during the D-45 backfill).
+const boss = new PgBoss({ connectionString: config.DATABASE_URL, max: 4 });
 boss.on('error', (err) => console.error('[worker] pg-boss', err));
 await boss.start();
 for (const name of Object.values(QUEUE)) {
