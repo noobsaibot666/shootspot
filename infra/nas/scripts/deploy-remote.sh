@@ -10,7 +10,7 @@ S=/mnt/Gaia/04_DEV/_personal/shootspot
 B=$S/shared/builds
 R=$S/runtime/compose
 F=$R/docker-compose.yml
-P=(docker compose -p shootspot -f "$F")
+P=(docker compose -p shootspot -f "$F")  # TAG is exported below, so the images just loaded are used
 ALLOWED=(api worker admin web backup)
 
 say() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
@@ -19,6 +19,8 @@ die() { printf '\033[31mSTOP: %s\033[0m\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || die "run with sudo"
 [ $# -ge 4 ] || die "usage: deploy-remote.sh <tar> <sha256> <tag> <service...>"
 TAR=$1 SUM=$2 TAG=$3; shift 3
+# Compose reads TAG from the shell before .env: pin it, so a stale TAG in .env can't win.
+export TAG
 SERVICES=("$@")
 for s in "${SERVICES[@]}"; do
   [[ " ${ALLOWED[*]} " == *" $s "* ]] || die "unknown service '$s' (allowed: ${ALLOWED[*]})"
@@ -58,7 +60,8 @@ STAMP=$(date +%Y%m%d-%H%M)
 zfs snapshot -r "Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP"
 echo "snapshot Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP"
 for s in "${SERVICES[@]}"; do
-  if docker image inspect "shootspot-$s:latest" >/dev/null 2>&1; then
+  # Only a runnable (amd64) image is worth keeping as the rollback.
+  if [ "$(docker image inspect -f '{{.Architecture}}' "shootspot-$s:latest" 2>/dev/null)" = amd64 ]; then
     docker tag "shootspot-$s:latest" "shootspot-$s:rollback"
     echo "shootspot-$s:latest -> shootspot-$s:rollback"
   fi
@@ -67,6 +70,13 @@ done
 # ---- 3. load -------------------------------------------------------------------------------
 say "3/6 Load images"
 docker load -i "$B/$TAR"
+# The NAS is x86-64: refuse images built for another CPU (e.g. a Mac build without --platform),
+# before anything restarts.
+for s in "${SERVICES[@]}"; do
+  arch=$(docker image inspect -f '{{.Architecture}}' "shootspot-$s:$TAG")
+  [ "$arch" = amd64 ] || die "shootspot-$s:$TAG is built for $arch, not amd64: rebuild with --platform linux/amd64 (nothing was restarted)"
+done
+echo "all images are amd64"
 
 # ---- 4. migrations (only when the API or the worker changes) -------------------------------
 if [[ " ${SERVICES[*]} " == *" api "* || " ${SERVICES[*]} " == *" worker "* ]]; then
@@ -111,9 +121,16 @@ for s in "${SERVICES[@]}"; do
     while read -r old; do docker image rm "shootspot-$s:$old" >/dev/null && echo "removed shootspot-$s:$old"; done
 done
 
+ENV_TAG=$(env_get TAG)
+if [ -n "$ENV_TAG" ] && [ "$ENV_TAG" != latest ]; then
+  say "Note: .env has TAG=$ENV_TAG"
+  echo "Manual 'docker compose up' commands would use that tag, not this deploy. Set it back with:"
+  echo "sudo sed -i.bak-\$(date +%Y%m%d-%H%M) 's/^TAG=.*/TAG=latest/' $R/.env"
+fi
+
 say "Rollback if needed"
 for s in "${SERVICES[@]}"; do echo "sudo docker tag shootspot-$s:rollback shootspot-$s:latest"; done
-echo "sudo docker compose -p shootspot -f $F up -d --no-deps ${SERVICES[*]}"
+echo "sudo TAG=latest docker compose -p shootspot -f $F up -d --no-deps ${SERVICES[*]}"
 echo "(database changes: sudo zfs rollback -r Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP, with the stack stopped)"
 
 [ $fail = 0 ] || die "a health check failed: see above, and roll back if the site is broken"
