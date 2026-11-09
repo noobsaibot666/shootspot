@@ -55,17 +55,10 @@ if [ -f "$B/docker-compose.yml" ] && ! cmp -s "$B/docker-compose.yml" "$F"; then
 fi
 
 # ---- 2. safety nets ------------------------------------------------------------------------
-say "2/6 Snapshot and rollback tags"
+say "2/6 Snapshot"
 STAMP=$(date +%Y%m%d-%H%M)
 zfs snapshot -r "Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP"
 echo "snapshot Gaia/04_DEV/shootspot-runtime@pre-deploy-$STAMP"
-for s in "${SERVICES[@]}"; do
-  # Only a runnable (amd64) image is worth keeping as the rollback.
-  if [ "$(docker image inspect -f '{{.Architecture}}' "shootspot-$s:latest" 2>/dev/null)" = amd64 ]; then
-    docker tag "shootspot-$s:latest" "shootspot-$s:rollback"
-    echo "shootspot-$s:latest -> shootspot-$s:rollback"
-  fi
-done
 
 # ---- 3. load -------------------------------------------------------------------------------
 say "3/6 Load images"
@@ -77,6 +70,25 @@ for s in "${SERVICES[@]}"; do
   [ "$arch" = amd64 ] || die "shootspot-$s:$TAG is built for $arch, not amd64: rebuild with --platform linux/amd64 (nothing was restarted)"
 done
 echo "all images are amd64"
+
+# The rollback is what is running now, and only if it is a different (runnable) image: running
+# the same deploy twice must not turn the new version into its own rollback.
+same=()
+for s in "${SERVICES[@]}"; do
+  cid=$("${P[@]}" ps -q "$s" 2>/dev/null | head -1)
+  running=$([ -n "$cid" ] && docker inspect -f '{{.Image}}' "$cid" || true)
+  new=$(docker image inspect -f '{{.Id}}' "shootspot-$s:$TAG")
+  if [ -z "$running" ]; then
+    echo "$s: not running, no rollback tag"
+  elif [ "$running" = "$new" ]; then
+    same+=("$s")
+    echo "$s: already runs $TAG"
+  elif [ "$(docker image inspect -f '{{.Architecture}}' "$running")" = amd64 ]; then
+    docker tag "$running" "shootspot-$s:rollback"
+    echo "$s: running version kept as shootspot-$s:rollback"
+  fi
+done
+[ ${#same[@]} -eq ${#SERVICES[@]} ] && echo "Note: $TAG is already running for every service; nothing will restart."
 
 # ---- 4. migrations (only when the API or the worker changes) -------------------------------
 if [[ " ${SERVICES[*]} " == *" api "* || " ${SERVICES[*]} " == *" worker "* ]]; then
