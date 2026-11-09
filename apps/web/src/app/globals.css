@@ -337,6 +337,15 @@ button {
 .item:hover {
   background: var(--surface);
 }
+.item:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.export-error {
+  color: var(--accent);
+  font-size: 13px;
+  margin-top: 8px;
+}
 .grabber,
 .scrim-mobile {
   display: none;

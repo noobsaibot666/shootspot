@@ -3,7 +3,7 @@
 import type { Vocabulary, WebRecord } from '@shootspot/shared';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, auth, web } from '@/lib/api';
+import { ApiError, auth, downloadExport, web } from '@/lib/api';
 import { distribute, labeler, shortLabel } from '@/lib/format';
 import { morph, useHideOnScroll } from '@/lib/motion';
 import { AccountMenu, FilterMenu, Logo, type Filter } from './Chrome';
@@ -112,6 +112,8 @@ export function Gallery() {
   const [filter, setFilter] = useState<Filter>({ goodFor: [], bestLight: [] });
   const [retry, setRetry] = useState(0);
   const [open, setOpen] = useState<WebRecord | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
   // The photo file the tile was showing (480 or 1080 px): the detail opens on that same, already
   // loaded file, so the morph never lands on an image that is still loading.
   const [shownSrc, setShownSrc] = useState<string | undefined>();
@@ -121,6 +123,19 @@ export function Gallery() {
   const columns = useColumns(gridRef);
   const hidden = useHideOnScroll();
   const label = useMemo(() => labeler(vocabulary), [vocabulary]);
+
+  const exportAll = useCallback(async () => {
+    setExporting(true);
+    setExportError(false);
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadExport('/web/v1/export', `shootspot-export-${date}.zip`);
+    } catch {
+      setExportError(true);
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
   const signIn = useCallback(() => {
     const here = window.location.pathname + window.location.search;
@@ -272,6 +287,8 @@ export function Gallery() {
           <FilterMenu vocabulary={vocabulary} filter={filter} onChange={setFilter} />
           <AccountMenu
             email={email}
+            exporting={exporting}
+            onExportAll={exportAll}
             onSignOut={async () => {
               try {
                 await auth.signOut();
@@ -280,6 +297,11 @@ export function Gallery() {
             }}
           />
         </div>
+        {exportError ? (
+          <div className="export-error" role="alert">
+            Export failed. Please try again.
+          </div>
+        ) : null}
       </header>
 
       <main className="page">

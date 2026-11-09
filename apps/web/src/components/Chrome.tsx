@@ -118,8 +118,18 @@ export function FilterMenu({
   );
 }
 
-/** The signed-in member: an initial in a circle, with Sign out in its menu. */
-export function AccountMenu({ email, onSignOut }: { email: string | null; onSignOut: () => void }) {
+/** The signed-in member: an initial in a circle, with export and sign out in its menu. */
+export function AccountMenu({
+  email,
+  exporting,
+  onExportAll,
+  onSignOut,
+}: {
+  email: string | null;
+  exporting: boolean;
+  onExportAll: () => void;
+  onSignOut: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(open, () => setOpen(false), ref);
@@ -140,6 +150,9 @@ export function AccountMenu({ email, onSignOut }: { email: string | null; onSign
             <small>Signed in as</small>
             {email}
           </div>
+          <button role="menuitem" className="item" onClick={onExportAll} disabled={exporting}>
+            {exporting ? 'Exporting…' : 'Export all locations'}
+          </button>
           <button role="menuitem" className="item" onClick={onSignOut}>
             Sign out
           </button>

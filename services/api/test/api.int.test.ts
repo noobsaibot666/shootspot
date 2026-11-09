@@ -1,4 +1,6 @@
 import { currentTotp } from '../src/admin/mfa';
+import { objectKey } from '@shootspot/shared';
+import { unzipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ADMIN_ORIGIN,
@@ -43,6 +45,12 @@ async function publishDirect(headers: { authorization: string }, overrides = {})
   await env.pool.query(
     `update locations set status = 'published', published_at = now() where id = $1`,
     [recordId],
+  );
+  await env.storage.put(
+    'public',
+    objectKey.derivative(media.id, 'detail'),
+    Buffer.from(`image-${recordId}`),
+    'image/webp',
   );
   return recordId as string;
 }
@@ -1290,9 +1298,13 @@ describe('member web gallery (D-44)', () => {
   it('needs a member web session: no anonymous visitors, no app tokens, no admin sessions', async () => {
     const app = await passwordMember('web-channels@example.com');
     expect((await env.app.inject({ method: 'GET', url: '/web/v1/feed' })).statusCode).toBe(401);
+    expect((await env.app.inject({ method: 'GET', url: '/web/v1/export' })).statusCode).toBe(401);
     const withToken = await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: app });
     expect(withToken.statusCode).toBe(403);
     expect(withToken.json().error).toBe('web_only');
+    expect(
+      (await env.app.inject({ method: 'GET', url: '/web/v1/export', headers: app })).statusCode,
+    ).toBe(403);
     const { headers: adminCookie } = await admin(env, 'web-admin@example.com');
     expect(
       (await env.app.inject({ method: 'GET', url: '/web/v1/feed', headers: adminCookie }))
@@ -1308,6 +1320,69 @@ describe('member web gallery (D-44)', () => {
     ).toEqual({
       email: 'web-channels@example.com',
     });
+  });
+
+  it('exports visible locations as a ZIP with coordinates, GeoJSON, and image bytes', async () => {
+    const creator = await member(env, 'web-export-creator@example.com');
+    const id = await publishDirect(creator);
+    const media = (
+      await env.pool.query<{ id: string }>('select id from media where location_id = $1', [id])
+    ).rows[0]!;
+    await env.storage.put(
+      'public',
+      objectKey.derivative(media.id, 'detail'),
+      Buffer.from('export-image'),
+      'image/webp',
+    );
+    await passwordMember('web-export-viewer@example.com');
+    const cookie = await webSignIn(env, 'web-export-viewer@example.com', WEB_PASSWORD);
+    const pending = await env.app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: creator,
+      payload: draftBody(),
+    });
+    expect(pending.statusCode).toBe(201);
+    expect(
+      (
+        await env.app.inject({
+          method: 'GET',
+          url: `/web/v1/records/${pending.json().recordId}/export`,
+          headers: cookie,
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    const response = await env.app.inject({
+      method: 'GET',
+      url: '/web/v1/export',
+      headers: cookie,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('application/zip');
+    const files = unzipSync(response.rawPayload);
+    const manifest = JSON.parse(Buffer.from(files['locations.json']!).toString()) as {
+      locations: Array<{ id: string; lat: number; lon: number; image: string }>;
+    };
+    const geojson = JSON.parse(Buffer.from(files['locations.geojson']!).toString()) as {
+      features: Array<{ geometry: { coordinates: [number, number] } }>;
+    };
+    expect(manifest.locations.map((l) => l.id)).toContain(id);
+    const exported = manifest.locations.find((l) => l.id === id)!;
+    expect(exported).toMatchObject({ lat: 38.7139, lon: -9.1334, image: `images/${id}.webp` });
+    expect(geojson.features.some((f) => f.geometry.coordinates[0] === -9.1334)).toBe(true);
+    expect(Buffer.from(files[`images/${id}.webp`]!).toString()).toBe('export-image');
+
+    const one = await env.app.inject({
+      method: 'GET',
+      url: `/web/v1/records/${id}/export`,
+      headers: cookie,
+    });
+    expect(one.statusCode).toBe(200);
+    const oneManifest = JSON.parse(
+      Buffer.from(unzipSync(one.rawPayload)['locations.json']!).toString(),
+    ) as { locations: unknown[] };
+    expect(oneManifest.locations).toHaveLength(1);
   });
 
   it("an owner's web session never reaches administration", async () => {
@@ -1370,6 +1445,15 @@ describe('member web gallery (D-44)', () => {
     expect(
       (await env.app.inject({ method: 'GET', url: `/web/v1/records/${id}`, headers: cookie }))
         .statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await env.app.inject({
+          method: 'GET',
+          url: `/web/v1/records/${id}/export`,
+          headers: cookie,
+        })
+      ).statusCode,
     ).toBe(404);
   });
 });

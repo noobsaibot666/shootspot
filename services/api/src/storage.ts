@@ -26,6 +26,7 @@ export interface Storage {
   ): Promise<{ url: string; headers: Record<string, string> }>;
   presignDownload(bucket: BucketName, key: string, expiresInSeconds: number): Promise<string>;
   head(bucket: BucketName, key: string): Promise<{ size: number } | null>;
+  get(bucket: BucketName, key: string): Promise<Buffer>;
   put(bucket: BucketName, key: string, body: Buffer, contentType: string): Promise<void>;
   remove(bucket: BucketName, key: string): Promise<void>;
 }
@@ -89,6 +90,11 @@ export function createStorage(config: Config): Storage {
         if (isNotFound(err)) return null;
         throw err;
       }
+    },
+    async get(bucket, key) {
+      const res = await client.send(new GetObjectCommand({ Bucket: name(bucket), Key: key }));
+      if (!res.Body) throw new Error(`empty object ${key}`);
+      return Buffer.from(await res.Body.transformToByteArray());
     },
     async put(bucket, key, body, contentType) {
       await client.send(
