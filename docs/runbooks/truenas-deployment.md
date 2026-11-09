@@ -32,7 +32,32 @@ The API takes about 30 s to report healthy after `up -d`, so run checks after th
 | S3 (presigned URLs only)                                    | `http://192.168.178.146:4402`                       |
 | Mailpit: **stopped** since 2026-10-17; real email via Brevo | (`:4403`, only if started with `--profile devmail`) |
 
-## Deploy or update
+## Quick deploy (script)
+
+For updates of existing services. Run on the Mac, or in Git Bash on Windows, from a clean, committed tree:
+
+```sh
+tools/nas-deploy.sh web            # or: api worker admin web backup, several at once, or all
+tools/nas-deploy.sh --build-only web   # build and copy only; prints the NAS command to run by hand
+```
+
+What it does:
+
+1. **On the Mac:** builds `linux/amd64` images tagged `latest` and the commit SHA. It refuses to build if server code has uncommitted changes. It saves one tar plus a `.sha256` file to `shared/builds`, copies `deploy-remote.sh` and `docker-compose.yml` there too, and keeps only the newest three tars.
+2. **On the NAS:** `ssh -t $NAS_HOST` (default `truenas`) runs `sudo bash shared/builds/deploy-remote.sh`. You type the NAS password once. The script then:
+   1. Runs read-only checks: the hash, the stack status and the free disk space.
+   2. If the stack file changed, shows the diff and asks before installing it. A `.bak-<stamp>` copy is kept.
+   3. Takes a ZFS snapshot `shootspot-runtime@pre-deploy-<stamp>` and tags each current image `shootspot-<svc>:rollback`.
+   4. Loads the images and runs `migrate` if `api` or `worker` is included.
+   5. Runs `up -d --no-deps <services>`, so nothing else restarts.
+   6. Checks `/ready` (api), `/` (admin) and `/sign-in` (web), and shows memory use.
+   7. Removes old SHA tags (by tag, never prune) and prints the rollback commands.
+
+Rollback for one service: `sudo docker tag shootspot-<svc>:rollback shootspot-<svc>:latest && sudo docker compose -p shootspot -f $F up -d --no-deps <svc>`.
+
+The manual steps below are still the way to do a first deploy, `.env` changes and anything unusual.
+
+## Deploy or update (manual)
 
 **1. On Windows:** build the images and put them on the share. Nothing goes through a registry.
 
