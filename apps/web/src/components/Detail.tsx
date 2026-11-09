@@ -2,6 +2,7 @@
 
 import type { WebRecord } from '@shootspot/shared';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { downloadExport } from '@/lib/api';
 import { goodForTags, lightFacts, practicalFacts, shortLabel, type Labeler } from '@/lib/format';
 
 /**
@@ -31,6 +32,8 @@ export function Detail({
   const sharp = sharpId === record.id;
   const setSharp = () => setSharpId(record.id);
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -189,7 +192,33 @@ export function Detail({
                 >
                   {copied ? 'Link copied' : 'Copy link'}
                 </button>
+                <button
+                  className="pill-btn"
+                  disabled={exporting}
+                  onClick={async () => {
+                    setExporting(true);
+                    setExportError(false);
+                    try {
+                      const date = new Date().toISOString().slice(0, 10);
+                      await downloadExport(
+                        `/web/v1/records/${encodeURIComponent(record.id)}/export`,
+                        `shootspot-location-${record.id}-${date}.zip`,
+                      );
+                    } catch {
+                      setExportError(true);
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                >
+                  {exporting ? 'Exporting…' : 'Export this location'}
+                </button>
               </div>
+              {exportError ? (
+                <p className="export-error" role="alert">
+                  Export failed. Please try again.
+                </p>
+              ) : null}
             </div>
           </section>
         </aside>

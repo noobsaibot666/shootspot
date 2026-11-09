@@ -22,7 +22,7 @@ shootspot-export-YYYY-MM-DD.zip
 ├── locations.json
 ├── locations.geojson
 └── images/
-    ├── <location-id>.jpg
+    ├── <location-id>.webp
     └── ...
 ```
 
@@ -31,7 +31,7 @@ latitude/longitude, label, capture time, scouting fields, attribution, and the r
 path. `locations.geojson` is a `FeatureCollection` using standard `[longitude, latitude]` point
 coordinates and the same metadata, with `image` pointing at the relative image path.
 
-The archive uses the ready detail derivative as a JPEG image. It does not expose storage URLs,
+The archive uses the ready detail derivative as a WebP image. It does not expose storage URLs,
 session tokens, or internal database fields. The export endpoint only returns published records
 that the signed-in web member is allowed to see after block filtering. A record-specific export
 uses the same visibility rule.

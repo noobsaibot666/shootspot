@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (recommended) to implement this plan task-by-task.
 
-**Goal:** Add a web-only ZIP export for all visible published locations, including `locations.json`, `locations.geojson`, and the ready JPEG image for each location.
+**Goal:** Add a web-only ZIP export for all visible published locations, including `locations.json`, `locations.geojson`, and the ready WebP image for each location.
 
 **Architecture:** Add export-specific API routes under `/web/v1/export` and `/web/v1/records/:id/export`. The API keeps normal `WebRecord` payloads coordinate-free, queries the same published/block-filtered records for export, reads ready image bytes through storage, and creates a ZIP in memory. The web client adds download helpers and buttons in the account menu and location detail view.
 
@@ -34,7 +34,7 @@
   Add `fflate` to `services/api` dependencies. Define an export record type containing the public
   scouting fields plus `lat`, `lon`, and `imageBytes`. Implement `buildLocationArchive(records)`:
 
-  - map each record to a JSON-safe manifest record with `schemaVersion: 1` and `image: images/<id>.jpg`;
+  - map each record to a JSON-safe manifest record with `schemaVersion: 1` and `image: images/<id>.webp`;
   - create a GeoJSON `FeatureCollection` with each feature's geometry coordinates as `[lon, lat]`;
   - encode both JSON documents with UTF-8;
   - add image buffers and both documents to an `fflate.zipSync` input map;
@@ -84,7 +84,7 @@
   - selects the existing `PUBLIC_COLUMNS` plus exact `lat`/`lon` and the media ID;
   - restricts to `l.status = 'published'`, `m.state = 'ready'`, and `notBlocked(viewer.userId)`;
   - for a record route, adds `l.id = $2` and throws `notFound()` when no row exists;
-  - reads each `derivative(media_id, 'detail')` object through storage;
+  - reads each `derivative(media_id, 'detail')` WebP object through storage;
   - maps database rows to the archive record shape without storage URLs or internal fields.
 
 - [ ] **Step 5: Implement the HTTP responses**

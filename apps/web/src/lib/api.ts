@@ -38,6 +38,31 @@ export async function api<T = unknown>(
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+export async function downloadExport(path: string, filename: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(path, { credentials: 'same-origin' });
+  } catch {
+    throw new ApiError(0, 'offline');
+  }
+  if (!res.ok) {
+    let code = 'error';
+    try {
+      const body = (await res.json()) as { error?: string; code?: string };
+      code = body.error ?? body.code ?? code;
+    } catch {}
+    throw new ApiError(res.status, code);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 export const web = {
   me: () => api<{ email: string }>('/web/v1/me'),
   vocabulary: () => api<Vocabulary>('/web/v1/vocabulary'),
