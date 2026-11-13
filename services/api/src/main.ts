@@ -27,6 +27,18 @@ mailer.verify().then(
     captureError(err);
   },
 );
+// Postgres may still be starting (NAS reboot, stack restart): wait up to ~1 minute instead of
+// crash-looping, which sends one fatal Sentry event per restart ("getaddrinfo ENOTFOUND db").
+for (let attempt = 1; ; attempt++) {
+  try {
+    await pool.query('select 1');
+    break;
+  } catch (err) {
+    if (attempt >= 30) throw err;
+    console.warn(`database not ready (attempt ${attempt}), retrying in 2 s`);
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
 const queue = await createJobQueue(config.DATABASE_URL);
 
 // Idempotent: creates the two buckets on a fresh store (first NAS start), otherwise no-op.
