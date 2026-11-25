@@ -1,9 +1,9 @@
-import { getPosition } from 'suncalc';
+import { getMoonIllumination, getMoonPosition, getMoonTimes, getPosition, getTimes } from 'suncalc';
 import { normalizeBearing } from './geo';
 
 /**
- * Sun position at the moment of capture, stored as technical metadata on a record. This is a
- * single computed point, not sun-path prediction (which is out of V1 scope).
+ * Sun position and light-planning helpers built on `suncalc`.
+ * All calculations run deterministically from date, latitude, longitude, and camera bearing.
  */
 
 export interface SunAtCapture {
@@ -39,4 +39,174 @@ export function lightAngle(cameraBearingDeg: number, sun: SunAtCapture): LightAn
 /** "☀ az 104° · el 6°" */
 export function formatSun(sun: SunAtCapture): string {
   return `☀ az ${Math.round(sun.azimuthDeg)}° · el ${Math.round(sun.elevationDeg)}°`;
+}
+
+export interface SunPathPoint {
+  hour: number;
+  azimuthDeg: number;
+  elevationDeg: number;
+}
+
+export interface DaylightSummary {
+  sunrise: Date | null;
+  sunset: Date | null;
+  solarNoon: Date;
+  dawn: Date | null;
+  dusk: Date | null;
+  goldenHourEnd: Date | null;
+  goldenHour: Date | null;
+  nightEnd: Date | null;
+  night: Date | null;
+  alwaysUp: boolean;
+  alwaysDown: boolean;
+  /** 25 hourly samples (0..24) on the local civil day of `date` for drawing the sun arc. */
+  sunPath: SunPathPoint[];
+}
+
+export function daylightSummary(date: Date, lat: number, lon: number): DaylightSummary {
+  const times = getTimes(date, lat, lon);
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const sunPath: SunPathPoint[] = [];
+  for (let hour = 0; hour <= 24; hour++) {
+    const sample = new Date(startOfDay.getTime() + hour * 3_600_000);
+    const pos = sunAtCapture(sample, lat, lon);
+    sunPath.push({ hour, azimuthDeg: pos.azimuthDeg, elevationDeg: pos.elevationDeg });
+  }
+
+  return {
+    sunrise: times.sunrise,
+    sunset: times.sunset,
+    solarNoon: times.solarNoon,
+    dawn: times.dawn,
+    dusk: times.dusk,
+    goldenHourEnd: times.goldenHourEnd,
+    goldenHour: times.goldenHour,
+    nightEnd: times.nightEnd,
+    night: times.night,
+    alwaysUp: Boolean(times.alwaysUp),
+    alwaysDown: Boolean(times.alwaysDown),
+    sunPath,
+  };
+}
+
+export interface NextBestLight {
+  kind: 'golden_am' | 'golden_pm';
+  start: Date;
+  end: Date;
+  sunAzimuthDeg: number;
+  lightAngle: LightAngle | null;
+}
+
+/**
+ * Finds the next upcoming golden hour window (AM or PM) from `from` (searching today and tomorrow),
+ * along with the sun azimuth and light angle relative to `bearingDeg` at the midpoint.
+ */
+export function nextBestLight(
+  from: Date,
+  lat: number,
+  lon: number,
+  bearingDeg?: number | null,
+): NextBestLight | null {
+  const candidates: Array<{
+    kind: 'golden_am' | 'golden_pm';
+    start: Date | null;
+    end: Date | null;
+  }> = [];
+
+  for (let offset = 0; offset <= 1; offset++) {
+    const day = new Date(from.getTime() + offset * 86_400_000);
+    const t = getTimes(day, lat, lon);
+    candidates.push(
+      { kind: 'golden_am', start: t.sunrise, end: t.goldenHourEnd },
+      { kind: 'golden_pm', start: t.goldenHour, end: t.sunset },
+    );
+  }
+
+  const upcoming = candidates
+    .filter(
+      (c): c is { kind: 'golden_am' | 'golden_pm'; start: Date; end: Date } =>
+        c.start != null && c.end != null && c.end.getTime() > from.getTime(),
+    )
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  const next = upcoming[0];
+  if (!next) return null;
+
+  const mid = new Date((next.start.getTime() + next.end.getTime()) / 2);
+  const sun = sunAtCapture(mid, lat, lon);
+
+  return {
+    kind: next.kind,
+    start: next.start,
+    end: next.end,
+    sunAzimuthDeg: sun.azimuthDeg,
+    lightAngle: bearingDeg != null ? lightAngle(bearingDeg, sun) : null,
+  };
+}
+
+export type MoonPhaseLabel =
+  | 'New Moon'
+  | 'Waxing Crescent'
+  | 'First Quarter'
+  | 'Waxing Gibbous'
+  | 'Full Moon'
+  | 'Waning Gibbous'
+  | 'Last Quarter'
+  | 'Waning Crescent';
+
+export function moonPhaseLabel(phase: number): MoonPhaseLabel {
+  if (phase < 0.0625 || phase >= 0.9375) return 'New Moon';
+  if (phase < 0.1875) return 'Waxing Crescent';
+  if (phase < 0.3125) return 'First Quarter';
+  if (phase < 0.4375) return 'Waxing Gibbous';
+  if (phase < 0.5625) return 'Full Moon';
+  if (phase < 0.6875) return 'Waning Gibbous';
+  if (phase < 0.8125) return 'Last Quarter';
+  return 'Waning Crescent';
+}
+
+export interface MoonSummary {
+  fraction: number;
+  phase: number;
+  phaseLabel: MoonPhaseLabel;
+  waxing: boolean;
+  azimuthDeg: number;
+  elevationDeg: number;
+  rise: Date | null;
+  set: Date | null;
+  alwaysUp: boolean;
+  alwaysDown: boolean;
+}
+
+export function moonSummary(date: Date, lat: number, lon: number): MoonSummary {
+  const illum = getMoonIllumination(date);
+  const pos = getMoonPosition(date, lat, lon);
+  const times = getMoonTimes(date, lat, lon);
+
+  return {
+    fraction: illum.fraction,
+    phase: illum.phase,
+    phaseLabel: moonPhaseLabel(illum.phase),
+    waxing: illum.waxing,
+    azimuthDeg: Math.round(normalizeBearing(pos.azimuth) * 10) / 10,
+    elevationDeg: Math.round(pos.altitude * 10) / 10,
+    rise: times.rise ?? null,
+    set: times.set ?? null,
+    alwaysUp: Boolean(times.alwaysUp),
+    alwaysDown: Boolean(times.alwaysDown),
+  };
+}
+
+/**
+ * Horizontal field of view in degrees for a 35mm-equivalent focal length (36 mm sensor width).
+ * Falls back to 54° (~35mm lens) when focal length is unknown.
+ */
+export function horizontalFovDeg(focalLength35mm: number | null | undefined): number {
+  if (!focalLength35mm || !Number.isFinite(focalLength35mm) || focalLength35mm <= 0) {
+    return 54;
+  }
+  const fov = 2 * Math.atan(36 / (2 * focalLength35mm)) * (180 / Math.PI);
+  return Math.max(5, Math.min(130, Math.round(fov * 10) / 10));
 }

@@ -1,15 +1,18 @@
 import {
+  destinationPoint,
   formatBearing,
   formatCoordinates,
   formatDistance,
+  horizontalFovDeg,
   lightAngle,
+  sunAtCapture,
   type Page,
   type PublicRecord,
   type RecordStatusResponse,
 } from '@shootspot/shared';
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,9 +24,11 @@ import {
   StyleSheet,
   Switch,
   Text,
+  useColorScheme,
   View,
   useWindowDimensions,
 } from 'react-native';
+import MapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import Animated, {
   Easing,
   FadeIn,
@@ -33,6 +38,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError, api } from '../../lib/api';
+import { mapsAvailable } from '../../lib/device';
 import { listDrafts, settleDraft } from '../../lib/drafts';
 import { mediaSource } from '../../lib/images';
 import { REJECT_LABEL, STATUS_LABEL } from '../../lib/labels';
@@ -53,6 +59,7 @@ import {
   Tap,
 } from '../../ui';
 import { Icon, type IconName } from '../../ui/icon';
+import { LightPlanner } from '../../ui/light-planner';
 import { Heart, MasonryGrid, aspectOf, recordTile } from '../../ui/masonry';
 
 const LIGHT = {
@@ -84,6 +91,7 @@ const BAR = 52;
 export default function RecordScreen() {
   const { label } = useVocabulary();
   const t = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -92,6 +100,7 @@ export default function RecordScreen() {
   const [missing, setMissing] = useState(false);
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
+  const [planTime, setPlanTime] = useState(() => new Date());
   const [preview] = useState(() => getPreview(id));
   const heroEntered = useRef(false);
   useEffect(() => {
@@ -264,6 +273,27 @@ export default function RecordScreen() {
 
   const own = Boolean(status);
   const adv = record.advanced;
+  const planSun = useMemo(
+    () => sunAtCapture(planTime, record.lat, record.lon),
+    [planTime, record.lat, record.lon],
+  );
+  const fovCoords = useMemo(() => {
+    if (record.bearingDeg == null) return null;
+    const fov = horizontalFovDeg(record.focalLength35mm);
+    const radiusM = 160;
+    const steps = 6;
+    const pts = [{ latitude: record.lat, longitude: record.lon }];
+    for (let i = 0; i <= steps; i++) {
+      const b = record.bearingDeg - fov / 2 + (fov * i) / steps;
+      const p = destinationPoint(record.lat, record.lon, b, radiusM);
+      pts.push({ latitude: p.lat, longitude: p.lon });
+    }
+    return pts;
+  }, [record.lat, record.lon, record.bearingDeg, record.focalLength35mm]);
+  const sunRayEnd = useMemo(() => {
+    const p = destinationPoint(record.lat, record.lon, planSun.azimuthDeg, 180);
+    return { latitude: p.lat, longitude: p.lon };
+  }, [record.lat, record.lon, planSun.azimuthDeg]);
   const facts: [string, string | undefined][] = [
     ['Access', adv.access?.type?.replace('_', ' ')],
     [
@@ -427,11 +457,67 @@ export default function RecordScreen() {
                 })}
               />
             </View>
+            <LightPlanner
+              lat={record.lat}
+              lon={record.lon}
+              bearingDeg={record.bearingDeg}
+              focalLength35mm={record.focalLength35mm}
+              capturedAt={record.capturedAt}
+              showMoonByDefault={
+                record.bestLight.includes('night') || record.goodFor.includes('night_astro')
+              }
+              selectedTime={planTime}
+              onTimeChange={setPlanTime}
+            />
           </View>
 
           {/* Where: coordinates with what they mean, and a way to use them. */}
           <View style={{ gap: space.md }}>
             <Label>Location</Label>
+            {mapsAvailable ? (
+              <View
+                style={{
+                  height: 170,
+                  borderRadius: radius.card,
+                  overflow: 'hidden',
+                  backgroundColor: t.surface,
+                }}
+              >
+                <MapView
+                  style={StyleSheet.absoluteFill}
+                  initialRegion={{
+                    latitude: record.lat,
+                    longitude: record.lon,
+                    latitudeDelta: 0.0045,
+                    longitudeDelta: 0.0045,
+                  }}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  onPress={openInMaps}
+                >
+                  {fovCoords ? (
+                    <Polygon
+                      coordinates={fovCoords}
+                      fillColor={isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(10, 10, 10, 0.16)'}
+                      strokeColor={isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(10, 10, 10, 0.55)'}
+                      strokeWidth={1.5}
+                    />
+                  ) : null}
+                  <Polyline
+                    coordinates={[{ latitude: record.lat, longitude: record.lon }, sunRayEnd]}
+                    strokeColor={planSun.elevationDeg >= 0 ? '#E5A00D' : '#8C8C8C'}
+                    strokeWidth={2.5}
+                    lineDashPattern={planSun.elevationDeg >= 0 ? undefined : [6, 6]}
+                  />
+                  <Marker
+                    coordinate={{ latitude: record.lat, longitude: record.lon }}
+                    pinColor={t.accent}
+                  />
+                </MapView>
+              </View>
+            ) : null}
             <Tap
               accessibilityRole="button"
               accessibilityLabel={`Open ${record.label} in Maps`}

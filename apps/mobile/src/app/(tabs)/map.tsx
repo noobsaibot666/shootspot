@@ -1,11 +1,17 @@
 import { Icon } from '../../ui/icon';
-import type { MapPin } from '@shootspot/shared';
+import {
+  destinationPoint,
+  formatBearing,
+  nextBestLight,
+  sunAtCapture,
+  type MapPin,
+} from '@shootspot/shared';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, type Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { mapsAvailable } from '../../lib/device';
@@ -75,6 +81,7 @@ export default function MapTab() {
   const [pins, setPins] = useState<MapPin[]>([]);
   const [selected, setSelected] = useState<MapPin | null>(null);
   const [truncated, setTruncated] = useState(false);
+  const [showSun, setShowSun] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
@@ -114,6 +121,22 @@ export default function MapTab() {
   }, [center]);
 
   const clusters = useMemo(() => cluster(pins, region), [pins, region]);
+  const sunHud = useMemo(() => {
+    if (!showSun) return null;
+    const now = new Date();
+    const sun = sunAtCapture(now, region.latitude, region.longitude);
+    const next = nextBestLight(now, region.latitude, region.longitude);
+    const rayLengthM = Math.max(200, Math.min(25_000, region.latitudeDelta * 32_000));
+    const end = destinationPoint(region.latitude, region.longitude, sun.azimuthDeg, rayLengthM);
+    return {
+      sun,
+      next,
+      coords: [
+        { latitude: region.latitude, longitude: region.longitude },
+        { latitude: end.lat, longitude: end.lon },
+      ],
+    };
+  }, [showSun, region]);
 
   if (!mapsAvailable)
     return (
@@ -151,6 +174,14 @@ export default function MapTab() {
         toolbarEnabled={false}
         pitchEnabled={false}
       >
+        {sunHud ? (
+          <Polyline
+            coordinates={sunHud.coords}
+            strokeColor={sunHud.sun.elevationDeg >= 0 ? '#E5A00D' : '#8C8C8C'}
+            strokeWidth={3}
+            lineDashPattern={sunHud.sun.elevationDeg >= 0 ? undefined : [8, 6]}
+          />
+        ) : null}
         {clusters.map((c) =>
           c.pins.length === 1 ? (
             <Marker
@@ -215,12 +246,49 @@ export default function MapTab() {
               : 'Filters'}
           </Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showSun ? 'Hide sun direction' : 'Show sun direction'}
+          onPress={() => setShowSun((s) => !s)}
+          style={[styles.chip, { backgroundColor: showSun ? t.ink : t.scrim }]}
+        >
+          <Icon name="sun" size={16} color={showSun ? t.onInk : t.ink} />
+          <Text
+            style={{ color: showSun ? t.onInk : t.ink, fontSize: 14, fontWeight: '600' }}
+            numberOfLines={1}
+          >
+            Sun
+          </Text>
+        </Pressable>
         {truncated ? (
           <View style={[styles.chip, { backgroundColor: t.scrim }]}>
             <Text style={{ color: t.muted, fontSize: 13 }}>Zoom in to see all</Text>
           </View>
         ) : null}
       </View>
+
+      {sunHud ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.chip,
+            {
+              position: 'absolute',
+              top: insets.top + 54,
+              left: space.lg,
+              backgroundColor: t.scrim,
+              minHeight: 32,
+            },
+          ]}
+        >
+          <Text style={{ color: t.ink, fontSize: 12, fontWeight: '600' }}>
+            {`☀ ${formatBearing(sunHud.sun.azimuthDeg)} · ${Math.round(sunHud.sun.elevationDeg)}° el`}
+            {sunHud.next
+              ? ` · Golden ${sunHud.next.start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+              : ''}
+          </Text>
+        </View>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"

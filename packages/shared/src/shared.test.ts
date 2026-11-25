@@ -4,12 +4,18 @@ import {
   checkPublishable,
   classifyFraming,
   cropRetention,
+  daylightSummary,
+  destinationPoint,
   distanceMeters,
   draftRecordSchema,
   formatBearing,
   formatCoordinates,
   formatDistance,
+  horizontalFovDeg,
   lightAngle,
+  moonPhaseLabel,
+  moonSummary,
+  nextBestLight,
   normalizeWebUrl,
   profileUpdateSchema,
   sunAtCapture,
@@ -142,6 +148,38 @@ describe('sun', () => {
     expect(lightAngle(0, sun)).toBe('side_lit');
     expect(lightAngle(300, { azimuthDeg: 10, elevationDeg: 10 })).toBe('side_lit');
     expect(lightAngle(350, { azimuthDeg: 10, elevationDeg: 10 })).toBe('backlit');
+  });
+
+  it('computes daylight summary, next best light, moon summary, and FOV', () => {
+    const day = new Date('2026-06-21T10:00:00Z');
+    const summary = daylightSummary(day, 38.7223, -9.1393);
+    expect(summary.sunrise).toBeInstanceOf(Date);
+    expect(summary.sunset).toBeInstanceOf(Date);
+    expect(summary.goldenHour).toBeInstanceOf(Date);
+    expect(summary.goldenHourEnd).toBeInstanceOf(Date);
+    expect(summary.sunPath).toHaveLength(25);
+
+    const next = nextBestLight(day, 38.7223, -9.1393, 270);
+    expect(next).not.toBeNull();
+    expect(next!.end.getTime()).toBeGreaterThan(day.getTime());
+    expect(next!.lightAngle).toBeTruthy();
+
+    const moon = moonSummary(day, 38.7223, -9.1393);
+    expect(moon.fraction).toBeGreaterThanOrEqual(0);
+    expect(moon.fraction).toBeLessThanOrEqual(1);
+    expect(moonPhaseLabel(0)).toBe('New Moon');
+    expect(moonPhaseLabel(0.5)).toBe('Full Moon');
+
+    expect(horizontalFovDeg(24)).toBeCloseTo(73.7, 0);
+    expect(horizontalFovDeg(50)).toBeCloseTo(39.6, 0);
+    expect(horizontalFovDeg(null)).toBe(54);
+  });
+
+  it('projects a destination point along a bearing', () => {
+    const dest = destinationPoint(38.7223, -9.1393, 90, 1000);
+    expect(dest.lat).toBeCloseTo(38.7223, 3);
+    expect(dest.lon).toBeGreaterThan(-9.1393);
+    expect(distanceMeters(38.7223, -9.1393, dest.lat, dest.lon)).toBeCloseTo(1000, 0);
   });
 });
 
