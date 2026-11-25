@@ -64,6 +64,7 @@ import {
 import { Icon, type IconName } from '../../ui/icon';
 import { LightPlanner } from '../../ui/light-planner';
 import { Heart, MasonryGrid, aspectOf, recordTile } from '../../ui/masonry';
+import { WeatherStrip } from '../../ui/weather-strip';
 
 const LIGHT = {
   backlit: 'Backlit',
@@ -119,6 +120,7 @@ export default function RecordScreen() {
   const [missing, setMissing] = useState(false);
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
+  const [mapsSheet, setMapsSheet] = useState(false);
   const [verifySheet, setVerifySheet] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [planTime, setPlanTime] = useState(() => new Date());
@@ -564,6 +566,8 @@ export default function RecordScreen() {
               />
             </View>
             <LightPlanner
+              recordId={record.id}
+              recordLabel={record.label}
               lat={record.lat}
               lon={record.lon}
               bearingDeg={record.bearingDeg}
@@ -574,6 +578,13 @@ export default function RecordScreen() {
               }
               selectedTime={planTime}
               onTimeChange={setPlanTime}
+            />
+            <WeatherStrip
+              lat={record.lat}
+              lon={record.lon}
+              selectedTime={planTime}
+              onSelectDay={setPlanTime}
+              showDroneHint={record.advanced.rules?.drone !== 'no_fly'}
             />
           </View>
 
@@ -627,7 +638,7 @@ export default function RecordScreen() {
             <Tap
               accessibilityRole="button"
               accessibilityLabel={`Open ${record.label} in Maps`}
-              onPress={openInMaps}
+              onPress={() => setMapsSheet(true)}
               scaleTo={0.98}
               style={{
                 flexDirection: 'row',
@@ -762,6 +773,39 @@ export default function RecordScreen() {
             onPress={() => void submitVerification('changed', r)}
           />
         ))}
+      </Sheet>
+
+      <Sheet visible={mapsSheet} onClose={() => setMapsSheet(false)}>
+        {Platform.OS === 'ios' ? (
+          <SheetAction icon="navigate" label="Apple Maps" onPress={openInMaps} />
+        ) : null}
+        <SheetAction
+          icon="map"
+          label="Google Maps"
+          onPress={() =>
+            void Linking.openURL(
+              `https://www.google.com/maps/search/?api=1&query=${record.lat},${record.lon}`,
+            )
+          }
+        />
+        <SheetAction
+          icon="navigate"
+          label="Waze"
+          onPress={() =>
+            void Linking.openURL(`https://waze.com/ul?ll=${record.lat},${record.lon}&navigate=yes`)
+          }
+        />
+        {record.advanced.rules?.drone !== 'no_fly' ? (
+          <SheetAction
+            icon="drone"
+            label="Check drone airspace (OpenAIP)"
+            onPress={() =>
+              void Linking.openURL(
+                `https://www.openaip.net/map?lat=${record.lat}&lon=${record.lon}&zoom=13`,
+              )
+            }
+          />
+        ) : null}
       </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>

@@ -66,6 +66,44 @@ export const verifyLocationSchema = z.object({
 });
 export type VerifyLocationInput = z.infer<typeof verifyLocationSchema>;
 
+export const weatherQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lon: z.coerce.number().min(-180).max(180),
+});
+export type WeatherQuery = z.infer<typeof weatherQuerySchema>;
+
+export interface WeatherDay {
+  date: string;
+  weatherCode: number;
+  summary: string;
+  tempMinC: number;
+  tempMaxC: number;
+  cloudCoverPct: number;
+  precipProbPct: number;
+  windMaxKmh: number;
+  windGustsKmh: number;
+}
+
+export interface WeatherForecast {
+  days: WeatherDay[];
+  source: 'open-meteo';
+}
+
+export function describeWmoWeather(code: number): string {
+  if (code === 0) return 'Clear';
+  if (code === 1) return 'Mainly clear';
+  if (code === 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code === 45 || code === 48) return 'Fog';
+  if (code >= 51 && code <= 57) return 'Drizzle';
+  if (code >= 61 && code <= 67) return 'Rain';
+  if (code >= 71 && code <= 77) return 'Snow';
+  if (code >= 80 && code <= 82) return 'Showers';
+  if (code >= 85 && code <= 86) return 'Snow showers';
+  if (code >= 95) return 'Thunderstorm';
+  return 'Mixed';
+}
+
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;

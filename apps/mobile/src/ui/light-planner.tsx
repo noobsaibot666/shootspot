@@ -1,4 +1,5 @@
 import {
+  buildShootIcs,
   daylightSummary,
   formatBearing,
   horizontalFovDeg,
@@ -8,8 +9,17 @@ import {
   sunAtCapture,
   type LightAngle,
 } from '@shootspot/shared';
+import { File, Paths } from 'expo-file-system';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View, type GestureResponderEvent } from 'react-native';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  Share,
+  Text,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { font, radius, space, type, useTheme } from '../theme/tokens';
 import { Icon } from './icon';
@@ -65,6 +75,8 @@ function sectorPath(
  * Runs 100% locally via `suncalc` in `@shootspot/shared` with zero external API calls.
  */
 export function LightPlanner(props: {
+  recordId?: string;
+  recordLabel?: string;
   lat: number;
   lon: number;
   bearingDeg: number | null;
@@ -124,6 +136,48 @@ export function LightPlanner(props: {
     if (barWidth <= 0) return;
     const x = Math.max(0, Math.min(barWidth, e.nativeEvent.locationX));
     setMinutes((x / barWidth) * 1439);
+  }
+
+  async function exportCalendarWindow() {
+    const isMorning = selectedTime.getHours() < 12;
+    const start =
+      (isMorning ? summary.sunrise : summary.goldenHour) ?? new Date(selectedTime.getTime());
+    const end =
+      (isMorning ? summary.goldenHourEnd : summary.sunset) ??
+      new Date(start.getTime() + 60 * 60 * 1000);
+    const labelName = props.recordLabel ?? 'ShootSpot location';
+    const windowName = isMorning ? 'Golden Hour AM' : 'Golden Hour PM';
+    const descParts = [
+      bearingDeg != null ? `Camera faces ${formatBearing(bearingDeg)}` : null,
+      angle ? `Light: ${LIGHT_LABEL[angle]}` : null,
+      `Coordinates: ${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+    ].filter(Boolean);
+
+    const ics = buildShootIcs({
+      uid: `${props.recordId ?? 'spot'}-${start.toISOString()}`,
+      title: `${windowName} · ${labelName}`,
+      start,
+      end,
+      lat,
+      lon,
+      description: descParts.join('\n'),
+    });
+
+    try {
+      const file = new File(Paths.cache, 'shootspot-window.ics');
+      if (!file.exists) file.create({ overwrite: true });
+      await file.write(ics);
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: file.uri, title: `${windowName} · ${labelName}` });
+      } else {
+        await Share.share({
+          title: `${windowName} · ${labelName}`,
+          message: `${windowName} at ${labelName} (${fmtTime(start)}–${fmtTime(end)})\n${descParts.join('\n')}`,
+        });
+      }
+    } catch {
+      Alert.alert('Could not export', 'Calendar export is unavailable right now.');
+    }
   }
 
   const today = new Date();
@@ -618,6 +672,26 @@ export function LightPlanner(props: {
           </Row>
         ) : null}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add shoot window to calendar"
+        onPress={() => void exportCalendarWindow()}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space.xs,
+          backgroundColor: t.raised,
+          borderRadius: radius.control,
+          paddingVertical: 9,
+        }}
+      >
+        <Icon name="share" size={14} color={t.ink} />
+        <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>
+          Add shoot window to calendar
+        </Text>
+      </Pressable>
     </View>
   );
 }

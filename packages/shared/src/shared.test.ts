@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildShootIcs,
   centerCrop,
   checkPublishable,
   classifyFraming,
   cropRetention,
   daylightSummary,
+  describeWmoWeather,
   destinationPoint,
   distanceMeters,
   draftRecordSchema,
@@ -241,5 +243,27 @@ describe('scout schema', () => {
     expect(verifyLocationSchema.safeParse({ status: 'changed', reason: 'invalid' }).success).toBe(
       false,
     );
+  });
+
+  it('describes WMO weather codes and builds valid ICS events', () => {
+    expect(describeWmoWeather(0)).toBe('Clear');
+    expect(describeWmoWeather(3)).toBe('Overcast');
+    expect(describeWmoWeather(95)).toBe('Thunderstorm');
+
+    const ics = buildShootIcs({
+      uid: 'rec-123',
+      title: 'Golden Hour · Miradouro',
+      start: new Date('2026-06-21T19:30:00Z'),
+      end: new Date('2026-06-21T20:15:00Z'),
+      lat: 38.7223,
+      lon: -9.1393,
+      description: 'Facing 247° WSW\nBring ND filter',
+    });
+    expect(ics).toContain('BEGIN:VCALENDAR\r\n');
+    expect(ics).toContain('DTSTART:20260621T193000Z\r\n');
+    expect(ics).toContain('DTEND:20260621T201500Z\r\n');
+    expect(ics).toContain('GEO:38.72230;-9.13930\r\n');
+    expect(ics).toContain('DESCRIPTION:Facing 247° WSW\\nBring ND filter\r\n');
+    expect(ics).toContain('END:VCALENDAR\r\n');
   });
 });

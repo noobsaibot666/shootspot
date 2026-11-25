@@ -13,6 +13,7 @@ import { feedRoutes } from './records/feed';
 import { recordRoutes } from './records/routes';
 import { captureError } from './sentry';
 import { vocabularyRoutes } from './vocabulary/routes';
+import { weatherRoutes } from './weather/routes';
 import { webRoutes } from './web/routes';
 export type { AppDeps } from './http/context';
 
@@ -165,6 +166,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   blockRoutes(app, deps);
   adminRoutes(app, deps);
   vocabularyRoutes(app, deps);
+  weatherRoutes(app, deps);
   webRoutes(app, deps);
   return app;
 }
