@@ -12,6 +12,8 @@ interface Item {
   status: string;
   origin: 'camera' | 'import';
   createdAt: string;
+  lastVerifiedAt: string | null;
+  changeFlag: string | null;
   openReports: number;
   width: number | null;
   height: number | null;
@@ -115,12 +117,14 @@ export default function LocationsPage() {
                   No image
                 </div>
               )}
-              {(it.status !== 'published' || it.openReports > 0) && (
+              {(it.status !== 'published' || it.openReports > 0 || it.changeFlag) && (
                 <span className="badge-wrap" style={{ position: 'absolute', top: 10, left: 10 }}>
                   {it.openReports > 0 ? (
                     <span className="badge bad">
                       {it.openReports} report{it.openReports > 1 ? 's' : ''}
                     </span>
+                  ) : it.changeFlag ? (
+                    <span className="badge warn">{it.changeFlag.replace('_', ' ')}</span>
                   ) : (
                     <StatusBadge value={it.status} />
                   )}
@@ -173,6 +177,11 @@ export default function LocationsPage() {
                   {open.origin === 'import' ? 'Imported from gallery' : 'Taken in the app'}
                 </span>
                 <span className="mono">{fmtDate(open.createdAt)}</span>
+                {open.changeFlag ? (
+                  <span className="badge warn">Flagged: {open.changeFlag.replace('_', ' ')}</span>
+                ) : open.lastVerifiedAt ? (
+                  <span>Verified {fmtDate(open.lastVerifiedAt)}</span>
+                ) : null}
                 <span className="mono">{open.id.slice(0, 8)}</span>
                 <span>
                   {open.facesBlurred == null

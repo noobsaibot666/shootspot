@@ -196,6 +196,8 @@ export const WEB_RECORD_KEYS = [
   'sun',
   'images',
   'attribution',
+  'lastVerifiedAt',
+  'changeFlag',
 ] as const satisfies readonly (keyof WebRecord)[];
 
 export function toWebRecord(r: PublicRecord): WebRecord {

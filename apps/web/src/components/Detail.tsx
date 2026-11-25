@@ -127,6 +127,11 @@ export function Detail({
                   </a>
                 </>
               ) : null}
+              {record.changeFlag
+                ? ` · Change reported (${record.changeFlag.replace('_', ' ')})`
+                : record.lastVerifiedAt
+                  ? ` · Verified ${new Date(record.lastVerifiedAt).toLocaleDateString()}`
+                  : ''}
             </div>
           </div>
 

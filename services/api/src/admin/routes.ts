@@ -244,6 +244,7 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
           : [q.status];
     const { rows } = await pool.query(
       `select l.id, l.label, l.status, l.created_at, l.capture_origin,
+              l.last_verified_at, l.change_flag,
               m.id as media_id, m.state as media_state, m.width, m.height, m.faces_blurred,
               m.faces_checked_at,
               (select count(*)::int from reports r where r.location_id = l.id and r.status = 'open') as open_reports
@@ -260,6 +261,8 @@ export function adminRoutes(app: FastifyInstance, deps: AppDeps) {
           status: r.status,
           origin: r.capture_origin,
           createdAt: r.created_at.toISOString(),
+          lastVerifiedAt: r.last_verified_at ? r.last_verified_at.toISOString() : null,
+          changeFlag: r.change_flag ?? null,
           openReports: r.open_reports,
           width: r.width,
           height: r.height,
