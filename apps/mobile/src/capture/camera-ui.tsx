@@ -22,8 +22,9 @@ export interface CameraPrefs {
   grid: boolean;
   level: boolean;
   histogram: boolean;
+  compass: boolean;
 }
-const PREFS_DEFAULT: CameraPrefs = { grid: true, level: true, histogram: false };
+const PREFS_DEFAULT: CameraPrefs = { grid: true, level: true, histogram: false, compass: false };
 const prefsFile = () => new File(Paths.document, 'camera.json');
 
 export function useCameraPrefs(): [CameraPrefs, (next: Partial<CameraPrefs>) => void] {

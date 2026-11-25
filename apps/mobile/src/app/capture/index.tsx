@@ -47,6 +47,7 @@ import { framesAvailable } from '../../capture/histogram';
 import { haptics } from '../../lib/device';
 import { listImports, pickPhotos } from '../../lib/imports';
 import { processCapture, toFileUri } from '../../capture/process';
+import { ScoutCompassOverlay } from '../../capture/scout-compass';
 import { useFieldSensors } from '../../capture/sensors';
 import { camera as c } from '../../theme/tokens';
 
@@ -328,6 +329,13 @@ export default function CameraScreen() {
         ) : null}
         {crop && preview ? <CropMask preview={preview} crop={crop} /> : null}
         {crop && prefs.grid ? <Grid rect={crop} /> : null}
+        {preview && prefs.compass ? (
+          <ScoutCompassOverlay
+            preview={preview}
+            fix={sensors.fix}
+            headingDeg={sensors.headingDeg}
+          />
+        ) : null}
         {histogramOn && frameOutput ? <HistogramView /> : null}
         <Animated.View
           pointerEvents="none"
@@ -382,6 +390,13 @@ export default function CameraScreen() {
             active={prefs.level}
             iconStyle={rotate}
             onPress={() => setPrefs({ level: !prefs.level })}
+          />
+          <ToggleButton
+            icon="compass"
+            label="Sun compass"
+            active={prefs.compass}
+            iconStyle={rotate}
+            onPress={() => setPrefs({ compass: !prefs.compass })}
           />
           <ToggleButton
             icon="flip"
