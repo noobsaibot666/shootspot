@@ -6,6 +6,7 @@ import {
   type MapPin,
   type Page,
   type PublicRecord,
+  type ScoutFilters,
 } from '@shootspot/shared';
 import type { FastifyInstance } from 'fastify';
 import { HttpError, requireViewer, type AppDeps } from '../http/context';
@@ -34,6 +35,23 @@ export function decodeCursor(cursor: string): { at: string; id: string } {
 /** Plan §10: search/feed rate limit (per client IP; the global limit is 300/min). */
 const SEARCH_LIMIT = { max: 60, timeWindow: '1 minute' };
 
+/** Shared SQL predicates for feed and map queries (Phase 1.5B). */
+function applyScoutFilters(q: ScoutFilters, p: (v: unknown) => string, where: string[]) {
+  if (q.goodFor?.length) where.push(`l.good_for && ${p(q.goodFor)}::text[]`);
+  if (q.bestLight?.length) where.push(`l.best_light && ${p(q.bestLight)}::text[]`);
+  if (q.drone === 'allowed') where.push(`l.advanced->'rules'->>'drone' = 'allowed'`);
+  if (q.noPermit) where.push(`l.advanced->'rules'->>'permitRequired' = 'no'`);
+  if (q.parking) where.push(`l.advanced->'practical'->>'parking' = 'yes'`);
+  if (q.power) where.push(`l.advanced->'practical'->>'power' = 'yes'`);
+  if (q.restrooms) where.push(`l.advanced->'practical'->>'restrooms' = 'yes'`);
+  if (q.easyTerrain) where.push(`l.advanced->'access'->>'terrain' = 'easy'`);
+  if (q.tideDependent) where.push(`l.advanced->'conditions'->>'tideDependent' = 'yes'`);
+  if (q.focalBand === 'wide') where.push(`l.focal_length_35mm < 28`);
+  else if (q.focalBand === 'standard')
+    where.push(`l.focal_length_35mm >= 28 and l.focal_length_35mm <= 70`);
+  else if (q.focalBand === 'telephoto') where.push(`l.focal_length_35mm > 70`);
+}
+
 export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
   const { pool, storage } = deps;
 
@@ -59,8 +77,7 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
       distance = `st_distance(l.point, ${origin})`;
       where.push(`st_dwithin(l.point, ${origin}, ${p(q.radiusKm * 1000)})`);
     }
-    if (q.goodFor?.length) where.push(`l.good_for && ${p(q.goodFor)}::text[]`);
-    if (q.bestLight?.length) where.push(`l.best_light && ${p(q.bestLight)}::text[]`);
+    applyScoutFilters(q, p, where);
     if (cursor)
       where.push(`(l.published_at, l.id) < (${p(cursor.at)}::timestamptz, ${p(cursor.id)}::uuid)`);
 
@@ -95,25 +112,21 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
     const viewer = await requireViewer(deps, req);
     const q = mapQuerySchema.parse(req.query);
     const params: unknown[] = [q.minLon, q.minLat, q.maxLon, q.maxLat, viewer.userId];
+    const p = (v: unknown) => {
+      params.push(v);
+      return `$${params.length}`;
+    };
     const where = [
       `l.status = 'published'`,
       `l.point && st_makeenvelope($1, $2, $3, $4, 4326)::geography`,
       notBlocked('$5'),
     ];
-    if (q.goodFor?.length) {
-      params.push(q.goodFor);
-      where.push(`l.good_for && $${params.length}::text[]`);
-    }
-    if (q.bestLight?.length) {
-      params.push(q.bestLight);
-      where.push(`l.best_light && $${params.length}::text[]`);
-    }
-    params.push(MAP_PIN_LIMIT);
+    applyScoutFilters(q, p, where);
     const { rows } = await pool.query(
       `select l.id, l.label, st_y(l.point::geometry) as lat, st_x(l.point::geometry) as lon, m.id as media_id
        from locations l join media m on m.location_id = l.id and m.state = 'ready'
        where ${where.join(' and ')}
-       order by l.published_at desc limit $${params.length}`,
+       order by l.published_at desc limit ${p(MAP_PIN_LIMIT)}`,
       params,
     );
     const items: MapPin[] = await Promise.all(

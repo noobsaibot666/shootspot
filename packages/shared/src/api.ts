@@ -47,7 +47,24 @@ export interface PublicRecord {
   attribution: Attribution | null;
   /** The viewer's own like (D-29). Private: never about other members, no counts. */
   liked: boolean;
+  /** Community freshness check (Phase 1.5B). */
+  lastVerifiedAt: string | null;
+  changeFlag: string | null;
 }
+
+export const CHANGE_FLAG_REASONS = [
+  'construction',
+  'access_changed',
+  'seasonal',
+  'obstructed',
+] as const;
+export type ChangeFlagReason = (typeof CHANGE_FLAG_REASONS)[number];
+
+export const verifyLocationSchema = z.object({
+  status: z.enum(['accurate', 'changed']),
+  reason: z.enum(CHANGE_FLAG_REASONS).optional(),
+});
+export type VerifyLocationInput = z.infer<typeof verifyLocationSchema>;
 
 export interface Page<T> {
   items: T[];
@@ -76,10 +93,15 @@ export interface RecordStatusResponse {
 export const LEGAL_KINDS = ['terms', 'privacy', 'image_license'] as const;
 export type LegalKind = (typeof LEGAL_KINDS)[number];
 
-export const feedQuerySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lon: z.coerce.number().min(-180).max(180).optional(),
-  radiusKm: z.coerce.number().min(1).max(100).default(10),
+export const FOCAL_BANDS = ['wide', 'standard', 'telephoto'] as const;
+export type FocalBand = (typeof FOCAL_BANDS)[number];
+
+const boolQuery = z
+  .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+  .transform((v) => v === true || v === 'true' || v === '1')
+  .optional();
+
+export const scoutFilterSchema = z.object({
   goodFor: z
     .string()
     .transform((s) => s.split(',').filter(Boolean))
@@ -90,6 +112,21 @@ export const feedQuerySchema = z.object({
     .transform((s) => s.split(',').filter(Boolean))
     .pipe(z.array(bestLightPeriod))
     .optional(),
+  drone: z.enum(['allowed']).optional(),
+  noPermit: boolQuery,
+  parking: boolQuery,
+  power: boolQuery,
+  restrooms: boolQuery,
+  easyTerrain: boolQuery,
+  tideDependent: boolQuery,
+  focalBand: z.enum(FOCAL_BANDS).optional(),
+});
+export type ScoutFilters = z.infer<typeof scoutFilterSchema>;
+
+export const feedQuerySchema = scoutFilterSchema.extend({
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lon: z.coerce.number().min(-180).max(180).optional(),
+  radiusKm: z.coerce.number().min(1).max(100).default(10),
   cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(30).default(20),
 });
@@ -139,14 +176,12 @@ export const webFeedQuerySchema = feedQuerySchema.pick({
 export type WebFeedQuery = z.infer<typeof webFeedQuerySchema>;
 
 /** Map tab: pins inside the visible bounding box (anonymous, like PublicRecord). */
-export const mapQuerySchema = z
-  .object({
+export const mapQuerySchema = scoutFilterSchema
+  .extend({
     minLat: z.coerce.number().min(-90).max(90),
     minLon: z.coerce.number().min(-180).max(180),
     maxLat: z.coerce.number().min(-90).max(90),
     maxLon: z.coerce.number().min(-180).max(180),
-    goodFor: feedQuerySchema.shape.goodFor,
-    bestLight: feedQuerySchema.shape.bestLight,
   })
   .refine((q) => q.minLat < q.maxLat && q.minLon < q.maxLon, 'empty box');
 export type MapQuery = z.infer<typeof mapQuerySchema>;

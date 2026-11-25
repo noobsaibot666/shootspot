@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { mapsAvailable } from '../../lib/device';
 import { mediaSource } from '../../lib/images';
-import { filterQuery, scopeLabel, useScope } from '../../lib/scope';
+import { activeFilterCount, filterQuery, scopeLabel, useScope } from '../../lib/scope';
 import { radius, space, useTheme } from '../../theme/tokens';
 
 interface Cluster {
@@ -241,7 +241,7 @@ export default function MapTab() {
         >
           <Icon name="filters" size={16} color={t.ink} />
           <Text style={{ color: t.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
-            {scope.goodFor.length + scope.bestLight.length
+            {activeFilterCount(scope)
               ? scopeLabel(scope, Boolean(center)).split(' · ').slice(-1)[0]
               : 'Filters'}
           </Text>

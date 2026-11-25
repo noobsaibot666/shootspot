@@ -8,6 +8,7 @@ import {
   destinationPoint,
   distanceMeters,
   draftRecordSchema,
+  feedQuerySchema,
   formatBearing,
   formatCoordinates,
   formatDistance,
@@ -20,6 +21,7 @@ import {
   profileUpdateSchema,
   sunAtCapture,
   toCardinal,
+  verifyLocationSchema,
 } from './index';
 
 describe('portfolio link', () => {
@@ -217,5 +219,27 @@ describe('scout schema', () => {
     expect(
       draftRecordSchema.safeParse({ ...valid, short: { ...valid.short, bearingDeg: 360 } }).success,
     ).toBe(false);
+  });
+
+  it('parses Phase 1.5B scout filters and verify payload', () => {
+    const q = feedQuerySchema.parse({
+      drone: 'allowed',
+      noPermit: 'true',
+      parking: '1',
+      focalBand: 'wide',
+    });
+    expect(q.drone).toBe('allowed');
+    expect(q.noPermit).toBe(true);
+    expect(q.parking).toBe(true);
+    expect(q.focalBand).toBe('wide');
+
+    expect(verifyLocationSchema.parse({ status: 'accurate' })).toEqual({ status: 'accurate' });
+    expect(verifyLocationSchema.parse({ status: 'changed', reason: 'construction' })).toEqual({
+      status: 'changed',
+      reason: 'construction',
+    });
+    expect(verifyLocationSchema.safeParse({ status: 'changed', reason: 'invalid' }).success).toBe(
+      false,
+    );
   });
 });

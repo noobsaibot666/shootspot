@@ -3,6 +3,7 @@ import {
   draftRecordSchema,
   objectKey,
   sunAtCapture,
+  verifyLocationSchema,
   type CreateRecordResponse,
   type RecordStatusResponse,
 } from '@shootspot/shared';
@@ -209,6 +210,50 @@ export function recordRoutes(app: FastifyInstance, deps: AppDeps) {
     ]);
     return reply.code(204).send();
   });
+
+  /**
+   * Community freshness check (Phase 1.5B): confirm a location is still accurate or report a
+   * physical change (construction, access changed, seasonal, obstructed). One vote per member.
+   */
+  app.post(
+    '/v1/records/:id/verify',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const viewer = await requireOnboarded(deps, req);
+      const { id } = idParam.parse(req.params);
+      const body = verifyLocationSchema.parse(req.body);
+      const changeFlag = body.status === 'changed' ? (body.reason ?? 'access_changed') : null;
+
+      const updated = await tx(pool, async (c) => {
+        const { rows } = await c.query<{ id: string }>(
+          `select id from locations where id = $1 and status = 'published'`,
+          [id],
+        );
+        if (!rows[0]) throw notFound();
+
+        await c.query(
+          `insert into location_verifications (location_id, user_id, status, reason)
+           values ($1, $2, $3, $4)
+           on conflict (location_id, user_id) do update
+             set status = excluded.status, reason = excluded.reason, created_at = now()`,
+          [id, viewer.userId, body.status, changeFlag],
+        );
+        const res = await c.query<{ last_verified_at: Date; change_flag: string | null }>(
+          `update locations
+             set last_verified_at = now(), change_flag = $2
+           where id = $1
+           returning last_verified_at, change_flag`,
+          [id, changeFlag],
+        );
+        return res.rows[0]!;
+      });
+
+      return reply.send({
+        lastVerifiedAt: updated.last_verified_at.toISOString(),
+        changeFlag: updated.change_flag,
+      });
+    },
+  );
 
   app.get('/v1/me/likes', async (req) => {
     const viewer = await requireOnboarded(deps, req);

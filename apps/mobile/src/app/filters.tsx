@@ -172,6 +172,50 @@ export default function Filters() {
             ))}
           </Row>
         </Section>
+
+        <Section title="Production & access" sub="Filter by practical scout details.">
+          <Row wrap>
+            {(
+              [
+                ['droneAllowed', 'Drone allowed'],
+                ['noPermit', 'No permit needed'],
+                ['parking', 'Parking'],
+                ['power', 'Power'],
+                ['restrooms', 'Restrooms'],
+                ['easyTerrain', 'Easy terrain'],
+                ['tideDependent', 'Tide-dependent'],
+              ] as const
+            ).map(([key, text]) => (
+              <Chip
+                key={key}
+                label={text}
+                selected={draft[key]}
+                onPress={() => setDraft((d) => ({ ...d, [key]: !d[key] }))}
+              />
+            ))}
+          </Row>
+        </Section>
+
+        <Section title="Focal length" sub="Match the lens perspective.">
+          <Row wrap>
+            {(
+              [
+                ['wide', 'Wide (< 28mm)'],
+                ['standard', 'Standard (28–70mm)'],
+                ['telephoto', 'Telephoto (> 70mm)'],
+              ] as const
+            ).map(([band, text]) => (
+              <Chip
+                key={band}
+                label={text}
+                selected={draft.focalBand === band}
+                onPress={() =>
+                  setDraft((d) => ({ ...d, focalBand: d.focalBand === band ? null : band }))
+                }
+              />
+            ))}
+          </Row>
+        </Section>
       </ScrollView>
 
       {/* Two equal, compact actions, apart from the content. */}
@@ -198,6 +242,14 @@ export default function Filters() {
               goodFor: [],
               bestLight: [],
               radiusKm: 10,
+              droneAllowed: false,
+              noPermit: false,
+              parking: false,
+              power: false,
+              restrooms: false,
+              easyTerrain: false,
+              tideDependent: false,
+              focalBand: null,
             }))
           }
         />

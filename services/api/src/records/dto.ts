@@ -14,7 +14,8 @@ export const PUBLIC_COLUMNS = `
   l.framing, l.good_for, l.good_for_custom, l.good_for_note, l.best_light, l.best_light_custom,
   l.best_light_note, l.bearing_deg,
   l.advanced, l.captured_at, l.altitude_m, l.focal_length_35mm, l.sun_azimuth_deg,
-  l.sun_elevation_deg, l.published_at, m.id as media_id, m.width, m.height,
+  l.sun_elevation_deg, l.published_at, l.last_verified_at, l.change_flag,
+  m.id as media_id, m.width, m.height,
   attr.name as attr_name, attr.portfolio_url as attr_portfolio, attr.social_handle as attr_social`;
 
 /**
@@ -64,6 +65,8 @@ export interface PublicRow {
   sun_azimuth_deg: number | null;
   sun_elevation_deg: number | null;
   published_at: Date | null;
+  last_verified_at: Date | null;
+  change_flag: string | null;
   media_id: string;
   width: number;
   height: number;
@@ -114,5 +117,7 @@ export async function toPublicRecord(storage: Storage, row: PublicRow): Promise<
       ? { name: row.attr_name, portfolioUrl: row.attr_portfolio, socialHandle: row.attr_social }
       : null,
     liked: row.liked ?? false,
+    lastVerifiedAt: row.last_verified_at ? row.last_verified_at.toISOString() : null,
+    changeFlag: row.change_flag ?? null,
   };
 }

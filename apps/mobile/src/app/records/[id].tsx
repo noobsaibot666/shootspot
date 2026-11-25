@@ -1,11 +1,14 @@
 import {
+  CHANGE_FLAG_REASONS,
   destinationPoint,
+  distanceMeters,
   formatBearing,
   formatCoordinates,
   formatDistance,
   horizontalFovDeg,
   lightAngle,
   sunAtCapture,
+  type ChangeFlagReason,
   type Page,
   type PublicRecord,
   type RecordStatusResponse,
@@ -69,6 +72,22 @@ const LIGHT = {
   sun_down: 'Sun below horizon',
 } as const;
 
+const CHANGE_REASON_LABEL: Record<ChangeFlagReason, string> = {
+  construction: 'Construction / scaffolding',
+  access_changed: 'Access / gate changed',
+  seasonal: 'Seasonal change',
+  obstructed: 'View obstructed',
+};
+
+function formatVerifiedAgo(iso: string): string {
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+  if (days <= 0) return 'Verified today';
+  if (days === 1) return 'Verified yesterday';
+  if (days < 30) return `Verified ${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `Verified ${months}mo ago`;
+}
+
 const HERO_RADIUS = 24;
 /** Soft arrival for the photo: a slight scale up with a fade, eased, no bounce. */
 const HERO_IN: EntryExitAnimationFunction = () => {
@@ -100,6 +119,8 @@ export default function RecordScreen() {
   const [missing, setMissing] = useState(false);
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
+  const [verifySheet, setVerifySheet] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [planTime, setPlanTime] = useState(() => new Date());
   const [preview] = useState(() => getPreview(id));
   const heroEntered = useRef(false);
@@ -156,14 +177,15 @@ export default function RecordScreen() {
   useEffect(() => {
     if (!record) return;
     void api<Page<PublicRecord>>(
-      `/v1/feed?lat=${record.lat}&lon=${record.lon}&radiusKm=25&limit=13`,
+      `/v1/feed?lat=${record.lat}&lon=${record.lon}&radiusKm=25&limit=15`,
     )
       .then((p) => {
         seedLiked(p.items);
-        setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 12));
+        setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 14));
       })
       .catch(() => {});
-  }, [record]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id, record?.lat, record?.lon]);
 
   const close = () => router.back();
 
@@ -313,6 +335,39 @@ export default function RecordScreen() {
   ];
   const shownFacts = facts.filter((f): f is [string, string] => Boolean(f[1]));
 
+  const { sameSpot, moreNearby } = useMemo(() => {
+    if (!record) return { sameSpot: [] as PublicRecord[], moreNearby: [] as PublicRecord[] };
+    const same: PublicRecord[] = [];
+    const more: PublicRecord[] = [];
+    for (const r of nearby) {
+      if (distanceMeters(record.lat, record.lon, r.lat, r.lon) <= 30) same.push(r);
+      else more.push(r);
+    }
+    return { sameSpot: same, moreNearby: more.slice(0, 12) };
+  }, [nearby, record]);
+
+  async function submitVerification(statusArg: 'accurate' | 'changed', reason?: ChangeFlagReason) {
+    if (!record || verifying) return;
+    setVerifying(true);
+    try {
+      const res = await api<{ lastVerifiedAt: string; changeFlag: string | null }>(
+        `/v1/records/${record.id}/verify`,
+        {
+          method: 'POST',
+          body: reason ? { status: statusArg, reason } : { status: statusArg },
+        },
+      );
+      setRecord((prev) =>
+        prev ? { ...prev, lastVerifiedAt: res.lastVerifiedAt, changeFlag: res.changeFlag } : prev,
+      );
+      setVerifySheet(false);
+    } catch {
+      Alert.alert('Could not save', 'Check your connection and try again.');
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   function openInMaps() {
     const { lat, lon, label: name } = record!;
     const q = encodeURIComponent(name);
@@ -385,6 +440,57 @@ export default function RecordScreen() {
               {record.attribution?.socialHandle ? ` · ${record.attribution.socialHandle}` : ''}
               {record.distanceM != null ? ` · ${formatDistance(record.distanceM)} away` : ''}
             </Text>
+            <Row style={{ gap: space.sm, marginTop: 4, flexWrap: 'wrap' }}>
+              {record.changeFlag ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: t.surface,
+                    borderRadius: radius.pill,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Icon name="alert" size={14} color={t.accent} />
+                  <Text style={[type.caption, { color: t.accent, fontWeight: '600' }]}>
+                    {CHANGE_REASON_LABEL[record.changeFlag as ChangeFlagReason] ??
+                      'Change reported'}
+                  </Text>
+                </View>
+              ) : record.lastVerifiedAt ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: t.surface,
+                    borderRadius: radius.pill,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Icon name="done" size={14} color={t.signalGreen} />
+                  <Text style={[type.caption, { color: t.muted, fontWeight: '600' }]}>
+                    {formatVerifiedAgo(record.lastVerifiedAt)}
+                  </Text>
+                </View>
+              ) : null}
+              <Tap
+                accessibilityRole="button"
+                accessibilityLabel="Verify location accuracy"
+                onPress={() => setVerifySheet(true)}
+                style={{
+                  backgroundColor: t.surface,
+                  borderRadius: radius.pill,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                }}
+              >
+                <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>Verify info</Text>
+              </Tap>
+            </Row>
           </View>
 
           <Row wrap style={{ gap: space.sm }}>
@@ -616,7 +722,19 @@ export default function RecordScreen() {
           </Body>
         </Animated.View>
 
-        {nearby.length ? (
+        {sameSpot.length ? (
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            style={{ paddingTop: space.xl, gap: space.md }}
+          >
+            <View style={{ paddingHorizontal: space.lg }}>
+              <Label>Other angles at this spot</Label>
+            </View>
+            <MasonryGrid edge={grid.edge} tiles={sameSpot.map(recordTile)} />
+          </Animated.View>
+        ) : null}
+
+        {moreNearby.length ? (
           <Animated.View
             entering={FadeIn.duration(300)}
             style={{ paddingTop: space.xl, gap: space.md }}
@@ -624,11 +742,27 @@ export default function RecordScreen() {
             <View style={{ paddingHorizontal: space.lg }}>
               <Label>More nearby</Label>
             </View>
-            <MasonryGrid edge={grid.edge} tiles={nearby.map(recordTile)} />
+            <MasonryGrid edge={grid.edge} tiles={moreNearby.map(recordTile)} />
           </Animated.View>
         ) : null}
       </ScrollView>
       {backButton}
+
+      <Sheet visible={verifySheet} onClose={() => setVerifySheet(false)}>
+        <SheetAction
+          icon="done"
+          label="Still accurate"
+          onPress={() => void submitVerification('accurate')}
+        />
+        {CHANGE_FLAG_REASONS.map((r) => (
+          <SheetAction
+            key={r}
+            icon="alert"
+            label={`Report: ${CHANGE_REASON_LABEL[r]}`}
+            onPress={() => void submitVerification('changed', r)}
+          />
+        ))}
+      </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)}>
         {own ? (

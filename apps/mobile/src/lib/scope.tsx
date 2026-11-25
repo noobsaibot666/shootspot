@@ -1,4 +1,4 @@
-import type { BestLightPeriod, GoodForTag } from '@shootspot/shared';
+import type { BestLightPeriod, FocalBand, GoodForTag } from '@shootspot/shared';
 import { File, Paths } from 'expo-file-system';
 import * as Location from 'expo-location';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -14,6 +14,14 @@ export interface Scope {
   radiusKm: number;
   goodFor: GoodForTag[];
   bestLight: BestLightPeriod[];
+  droneAllowed: boolean;
+  noPermit: boolean;
+  parking: boolean;
+  power: boolean;
+  restrooms: boolean;
+  easyTerrain: boolean;
+  tideDependent: boolean;
+  focalBand: FocalBand | null;
 }
 
 export const RADII = [1, 5, 10, 25, 50, 100] as const;
@@ -23,6 +31,14 @@ const DEFAULT: Scope = {
   radiusKm: 10,
   goodFor: [],
   bestLight: [],
+  droneAllowed: false,
+  noPermit: false,
+  parking: false,
+  power: false,
+  restrooms: false,
+  easyTerrain: false,
+  tideDependent: false,
+  focalBand: null,
 };
 const file = () => new File(Paths.document, 'scope.json');
 
@@ -99,8 +115,23 @@ export function useScope(): ScopeCtx {
   return c;
 }
 
+export function activeFilterCount(scope: Scope): number {
+  return (
+    scope.goodFor.length +
+    scope.bestLight.length +
+    (scope.droneAllowed ? 1 : 0) +
+    (scope.noPermit ? 1 : 0) +
+    (scope.parking ? 1 : 0) +
+    (scope.power ? 1 : 0) +
+    (scope.restrooms ? 1 : 0) +
+    (scope.easyTerrain ? 1 : 0) +
+    (scope.tideDependent ? 1 : 0) +
+    (scope.focalBand ? 1 : 0)
+  );
+}
+
 export function scopeLabel(scope: Scope, located: boolean): string {
-  const filters = scope.goodFor.length + scope.bestLight.length;
+  const filters = activeFilterCount(scope);
   const where =
     scope.mode === 'nearby'
       ? located
@@ -117,5 +148,13 @@ export function filterQuery(scope: Scope): string {
   const q: string[] = [];
   if (scope.goodFor.length) q.push(`goodFor=${scope.goodFor.join(',')}`);
   if (scope.bestLight.length) q.push(`bestLight=${scope.bestLight.join(',')}`);
+  if (scope.droneAllowed) q.push('drone=allowed');
+  if (scope.noPermit) q.push('noPermit=true');
+  if (scope.parking) q.push('parking=true');
+  if (scope.power) q.push('power=true');
+  if (scope.restrooms) q.push('restrooms=true');
+  if (scope.easyTerrain) q.push('easyTerrain=true');
+  if (scope.tideDependent) q.push('tideDependent=true');
+  if (scope.focalBand) q.push(`focalBand=${scope.focalBand}`);
   return q.join('&');
 }
