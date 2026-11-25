@@ -189,6 +189,39 @@ export default function RecordScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id, record?.lat, record?.lon]);
 
+  const planSun = useMemo(
+    () => (record ? sunAtCapture(planTime, record.lat, record.lon) : null),
+    [planTime, record],
+  );
+  const fovCoords = useMemo(() => {
+    if (!record || record.bearingDeg == null) return null;
+    const fov = horizontalFovDeg(record.focalLength35mm);
+    const radiusM = 160;
+    const steps = 6;
+    const pts = [{ latitude: record.lat, longitude: record.lon }];
+    for (let i = 0; i <= steps; i++) {
+      const b = record.bearingDeg - fov / 2 + (fov * i) / steps;
+      const p = destinationPoint(record.lat, record.lon, b, radiusM);
+      pts.push({ latitude: p.lat, longitude: p.lon });
+    }
+    return pts;
+  }, [record]);
+  const sunRayEnd = useMemo(() => {
+    if (!record || !planSun) return null;
+    const p = destinationPoint(record.lat, record.lon, planSun.azimuthDeg, 180);
+    return { latitude: p.lat, longitude: p.lon };
+  }, [record, planSun]);
+  const { sameSpot, moreNearby } = useMemo(() => {
+    if (!record) return { sameSpot: [] as PublicRecord[], moreNearby: [] as PublicRecord[] };
+    const same: PublicRecord[] = [];
+    const more: PublicRecord[] = [];
+    for (const r of nearby) {
+      if (distanceMeters(record.lat, record.lon, r.lat, r.lon) <= 30) same.push(r);
+      else more.push(r);
+    }
+    return { sameSpot: same, moreNearby: more.slice(0, 12) };
+  }, [nearby, record]);
+
   const close = () => router.back();
 
   // Top bar of its own: the back button never sits on the photo, and content scrolls under it.
@@ -297,27 +330,6 @@ export default function RecordScreen() {
 
   const own = Boolean(status);
   const adv = record.advanced;
-  const planSun = useMemo(
-    () => sunAtCapture(planTime, record.lat, record.lon),
-    [planTime, record.lat, record.lon],
-  );
-  const fovCoords = useMemo(() => {
-    if (record.bearingDeg == null) return null;
-    const fov = horizontalFovDeg(record.focalLength35mm);
-    const radiusM = 160;
-    const steps = 6;
-    const pts = [{ latitude: record.lat, longitude: record.lon }];
-    for (let i = 0; i <= steps; i++) {
-      const b = record.bearingDeg - fov / 2 + (fov * i) / steps;
-      const p = destinationPoint(record.lat, record.lon, b, radiusM);
-      pts.push({ latitude: p.lat, longitude: p.lon });
-    }
-    return pts;
-  }, [record.lat, record.lon, record.bearingDeg, record.focalLength35mm]);
-  const sunRayEnd = useMemo(() => {
-    const p = destinationPoint(record.lat, record.lon, planSun.azimuthDeg, 180);
-    return { latitude: p.lat, longitude: p.lon };
-  }, [record.lat, record.lon, planSun.azimuthDeg]);
   const facts: [string, string | undefined][] = [
     ['Access', adv.access?.type?.replace('_', ' ')],
     [
@@ -336,17 +348,6 @@ export default function RecordScreen() {
     ['Notes', adv.shot?.note],
   ];
   const shownFacts = facts.filter((f): f is [string, string] => Boolean(f[1]));
-
-  const { sameSpot, moreNearby } = useMemo(() => {
-    if (!record) return { sameSpot: [] as PublicRecord[], moreNearby: [] as PublicRecord[] };
-    const same: PublicRecord[] = [];
-    const more: PublicRecord[] = [];
-    for (const r of nearby) {
-      if (distanceMeters(record.lat, record.lon, r.lat, r.lon) <= 30) same.push(r);
-      else more.push(r);
-    }
-    return { sameSpot: same, moreNearby: more.slice(0, 12) };
-  }, [nearby, record]);
 
   async function submitVerification(statusArg: 'accurate' | 'changed', reason?: ChangeFlagReason) {
     if (!record || verifying) return;
@@ -622,12 +623,14 @@ export default function RecordScreen() {
                       strokeWidth={1.5}
                     />
                   ) : null}
-                  <Polyline
-                    coordinates={[{ latitude: record.lat, longitude: record.lon }, sunRayEnd]}
-                    strokeColor={planSun.elevationDeg >= 0 ? '#E5A00D' : '#8C8C8C'}
-                    strokeWidth={2.5}
-                    lineDashPattern={planSun.elevationDeg >= 0 ? undefined : [6, 6]}
-                  />
+                  {sunRayEnd && planSun ? (
+                    <Polyline
+                      coordinates={[{ latitude: record.lat, longitude: record.lon }, sunRayEnd]}
+                      strokeColor={planSun.elevationDeg >= 0 ? '#E5A00D' : '#8C8C8C'}
+                      strokeWidth={2.5}
+                      lineDashPattern={planSun.elevationDeg >= 0 ? undefined : [6, 6]}
+                    />
+                  ) : null}
                   <Marker
                     coordinate={{ latitude: record.lat, longitude: record.lon }}
                     pinColor={t.accent}
