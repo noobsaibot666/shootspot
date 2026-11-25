@@ -32,8 +32,8 @@ const LIGHT_LABEL: Record<LightAngle, string> = {
   sun_down: 'Sun below horizon',
 };
 
-const GOLD = '#E5A00D';
-const BLUE_HOUR = '#4F7CAC';
+const GOLD = '#FFB800';
+const BLUE_HOUR = '#3B82F6';
 
 function fmtTime(d: Date | null | undefined): string {
   if (!d || Number.isNaN(d.getTime())) return '—';
@@ -300,13 +300,13 @@ export function LightPlanner(props: {
                 paddingHorizontal: 10,
                 paddingVertical: 5,
                 borderRadius: radius.pill,
-                backgroundColor: p.active ? t.ink : t.raised,
+                backgroundColor: p.active ? t.accent : t.raised,
               }}
             >
               <Text
                 style={[
                   type.caption,
-                  { color: p.active ? t.onInk : t.ink, fontWeight: '600', fontSize: 12 },
+                  { color: p.active ? '#FFFFFF' : t.ink, fontWeight: '700', fontSize: 12 },
                 ]}
               >
                 {p.label}
@@ -370,13 +370,13 @@ export function LightPlanner(props: {
             <>
               <Path
                 d={sectorPath(cx, cy, rimR - 2, bearingDeg, fov)}
-                fill={t.ink}
-                fillOpacity={0.14}
+                fill={t.accent}
+                fillOpacity={0.24}
               />
               {(() => {
                 const aim = polarToXY(cx, cy, rimR - 2, bearingDeg);
                 return (
-                  <Line x1={cx} y1={cy} x2={aim.x} y2={aim.y} stroke={t.ink} strokeWidth={1.75} />
+                  <Line x1={cx} y1={cy} x2={aim.x} y2={aim.y} stroke={t.accent} strokeWidth={2} />
                 );
               })()}
             </>
@@ -384,7 +384,7 @@ export function LightPlanner(props: {
 
           {/* Sun path arc */}
           {sunArcPath ? (
-            <Path d={sunArcPath} stroke={GOLD} strokeWidth={2} strokeOpacity={0.75} fill="none" />
+            <Path d={sunArcPath} stroke={GOLD} strokeWidth={2.5} strokeOpacity={0.95} fill="none" />
           ) : null}
 
           {/* Sunrise & Sunset rim ticks */}
@@ -467,20 +467,29 @@ export function LightPlanner(props: {
         </Svg>
 
         <View style={{ flex: 1, gap: 4 }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Mono style={{ fontSize: 20, fontWeight: '700', color: t.ink }}>
+          <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <Mono style={{ fontSize: 22, lineHeight: 28, fontWeight: '700', color: t.ink }}>
               {fmtTime(selectedTime)}
             </Mono>
             {angle ? (
               <View
                 style={{
-                  backgroundColor: t.raised,
+                  backgroundColor: angle === 'sun_down' ? t.raised : t.accent,
                   borderRadius: radius.pill,
-                  paddingHorizontal: 8,
+                  paddingHorizontal: 9,
                   paddingVertical: 3,
                 }}
               >
-                <Text style={[type.caption, { color: t.ink, fontWeight: '600', fontSize: 11 }]}>
+                <Text
+                  style={[
+                    type.caption,
+                    {
+                      color: angle === 'sun_down' ? t.ink : '#FFFFFF',
+                      fontWeight: '700',
+                      fontSize: 11,
+                    },
+                  ]}
+                >
                   {LIGHT_LABEL[angle]}
                 </Text>
               </View>
@@ -566,7 +575,7 @@ export function LightPlanner(props: {
                   top: 0,
                   bottom: 0,
                   backgroundColor: BLUE_HOUR,
-                  opacity: 0.3,
+                  opacity: 0.78,
                 }}
               />
               <View
@@ -576,8 +585,8 @@ export function LightPlanner(props: {
                   width: `${Math.max(0, setPct - risePct)}%`,
                   top: 0,
                   bottom: 0,
-                  backgroundColor: GOLD,
-                  opacity: 0.55,
+                  backgroundColor: t.accent,
+                  opacity: 0.92,
                 }}
               />
               <View
@@ -587,8 +596,8 @@ export function LightPlanner(props: {
                   width: `${Math.max(0, gPmStartPct - gAmEndPct)}%`,
                   top: 0,
                   bottom: 0,
-                  backgroundColor: t.canvas,
-                  opacity: 0.35,
+                  backgroundColor: GOLD,
+                  opacity: 0.92,
                 }}
               />
             </View>
@@ -600,13 +609,13 @@ export function LightPlanner(props: {
             style={{
               position: 'absolute',
               left: `${thumbPct}%`,
-              marginLeft: -7,
-              width: 14,
-              height: 14,
-              borderRadius: 7,
-              backgroundColor: t.ink,
-              borderWidth: 2,
-              borderColor: t.canvas,
+              marginLeft: -8,
+              width: 16,
+              height: 16,
+              borderRadius: 8,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 3,
+              borderColor: t.accent,
             }}
           />
         </View>
