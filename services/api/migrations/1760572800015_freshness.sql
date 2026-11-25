@@ -7,7 +7,7 @@ alter table locations
 create table if not exists location_verifications (
   id uuid primary key default gen_random_uuid(),
   location_id uuid not null references locations(id) on delete cascade,
-  user_id text not null references "user"(id) on delete cascade,
+  user_id uuid not null references auth_users (id) on delete cascade,
   status text not null check (status in ('accurate', 'changed')),
   reason text,
   created_at timestamptz not null default now(),
