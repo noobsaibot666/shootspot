@@ -21,6 +21,9 @@ import {
   nextBestLight,
   normalizeWebUrl,
   profileUpdateSchema,
+  projectItemUpdateSchema,
+  projectReorderSchema,
+  projectUpdateSchema,
   sunAtCapture,
   toCardinal,
   verifyLocationSchema,
@@ -265,5 +268,17 @@ describe('scout schema', () => {
     expect(ics).toContain('GEO:38.72230;-9.13930\r\n');
     expect(ics).toContain('DESCRIPTION:Facing 247° WSW\\nBring ND filter\r\n');
     expect(ics).toContain('END:VCALENDAR\r\n');
+  });
+
+  it('validates Smart Project schemas', () => {
+    expect(projectUpdateSchema.parse({ shootDate: '2026-06-21' }).shootDate).toBe('2026-06-21');
+    expect(projectUpdateSchema.parse({ shootDate: null }).shootDate).toBeNull();
+    expect(projectUpdateSchema.safeParse({ shootDate: '21-06-2026' }).success).toBe(false);
+    expect(projectItemUpdateSchema.parse({ note: 'Park at north gate' }).note).toBe(
+      'Park at north gate',
+    );
+    expect(
+      projectReorderSchema.parse({ recordIds: ['6f1c2b8e-3d4a-4b5c-9d6e-7f8a9b0c1d2e'] }).recordIds,
+    ).toHaveLength(1);
   });
 });
