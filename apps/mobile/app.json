@@ -3,14 +3,14 @@
     "name": "ShootSpot",
     "slug": "shootspot",
     "scheme": "shootspot",
-    "version": "1.0.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.exposeu.shootspot",
       "appleTeamId": "RD7UU4Z3D2",
-      "buildNumber": "15",
+      "buildNumber": "16",
       "supportsTablet": false,
       "config": { "usesNonExemptEncryption": false },
       "entitlements": {
