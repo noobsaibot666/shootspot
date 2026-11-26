@@ -243,7 +243,7 @@ export function effectiveSolarTimes(
 ): EffectiveSolarTimes {
   let effectiveSunrise = summary.sunrise;
   let sunriseDelayMin = 0;
-  if (summary.sunrise) {
+  if (summary.sunrise && !Number.isNaN(summary.sunrise.getTime())) {
     const startMs = summary.sunrise.getTime();
     for (let min = 0; min <= 120; min += 2) {
       const t = new Date(startMs + min * 60_000);
@@ -258,7 +258,7 @@ export function effectiveSolarTimes(
 
   let effectiveSunset = summary.sunset;
   let sunsetEarlyMin = 0;
-  if (summary.sunset) {
+  if (summary.sunset && !Number.isNaN(summary.sunset.getTime())) {
     const endMs = summary.sunset.getTime();
     for (let min = 0; min <= 120; min += 2) {
       const t = new Date(endMs - min * 60_000);

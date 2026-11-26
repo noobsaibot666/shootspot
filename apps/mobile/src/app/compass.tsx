@@ -48,7 +48,8 @@ export default function CompassScreen() {
     if (!hasPermission && canRequestPermission) void requestPermission();
   }, [hasPermission, canRequestPermission, requestPermission]);
 
-  const activeFix = hasCoords ? { lat, lon } : sensors.fix;
+  const paramFix = useMemo(() => (hasCoords ? { lat, lon } : null), [hasCoords, lat, lon]);
+  const activeFix = paramFix ?? sensors.fix;
   const summary = useMemo(
     () => (activeFix ? daylightSummary(selectedDate, activeFix.lat, activeFix.lon) : null),
     [activeFix, selectedDate],
