@@ -9,7 +9,8 @@ import {
   type ScoutFilters,
 } from '@shootspot/shared';
 import type { FastifyInstance } from 'fastify';
-import { HttpError, requireViewer, type AppDeps } from '../http/context';
+import { z } from 'zod';
+import { HttpError, notFound, requireViewer, type AppDeps } from '../http/context';
 import {
   ATTRIBUTION_JOIN,
   PUBLIC_COLUMNS,
@@ -145,4 +146,95 @@ export function feedRoutes(app: FastifyInstance, deps: AppDeps) {
     );
     return reply.send({ items, truncated: rows.length === MAP_PIN_LIMIT });
   });
+
+  /**
+   * Moodboard-to-Location Matcher (Phase 2D): finds locations matching a reference spot's
+   * shooting tags, light periods, framing, focal-length perspective, and terrain.
+   */
+  app.get(
+    '/v1/records/:id/similar',
+    { config: { rateLimit: SEARCH_LIMIT } },
+    async (req, reply) => {
+      const viewer = await requireViewer(deps, req);
+      const { id } = z.object({ id: z.uuid() }).parse(req.params);
+      const q = z
+        .object({
+          lat: z.coerce.number().min(-90).max(90).optional(),
+          lon: z.coerce.number().min(-180).max(180).optional(),
+          radiusKm: z.coerce.number().min(1).max(200).default(50),
+          limit: z.coerce.number().int().min(1).max(20).default(8),
+        })
+        .parse(req.query);
+      if ((q.lat == null) !== (q.lon == null)) throw new HttpError(400, 'lat_lon_pair');
+
+      const refRes = await pool.query<{
+        good_for: string[];
+        best_light: string[];
+        framing: string;
+        focal_length_35mm: number | null;
+        terrain: string | null;
+      }>(
+        `select good_for, best_light, framing, focal_length_35mm,
+              advanced->'access'->>'terrain' as terrain
+       from locations l
+       where l.id = $1 and l.status = 'published' and ${notBlocked('$2')}`,
+        [id, viewer.userId],
+      );
+      const ref = refRes.rows[0];
+      if (!ref) throw notFound();
+
+      const params: unknown[] = [
+        id,
+        viewer.userId,
+        ref.good_for,
+        ref.best_light,
+        ref.framing,
+        ref.focal_length_35mm,
+        ref.terrain,
+      ];
+      const p = (v: unknown) => {
+        params.push(v);
+        return `$${params.length}`;
+      };
+
+      const where = [
+        `l.status = 'published'`,
+        `l.id <> $1`,
+        notBlocked('$2'),
+        `(l.good_for && $3::text[] or l.best_light && $4::text[])`,
+      ];
+      let distance = 'null::float8';
+      if (q.lat != null && q.lon != null) {
+        const origin = `st_setsrid(st_makepoint(${p(q.lon)}, ${p(q.lat)}), 4326)::geography`;
+        distance = `st_distance(l.point, ${origin})`;
+        where.push(`st_dwithin(l.point, ${origin}, ${p(q.radiusKm * 1000)})`);
+      }
+
+      const scoreExpr = `(
+      coalesce(cardinality(array(select unnest(l.good_for) intersect select unnest($3::text[]))), 0) * 3 +
+      coalesce(cardinality(array(select unnest(l.best_light) intersect select unnest($4::text[]))), 0) * 2 +
+      case when l.framing = $5 then 2 else 0 end +
+      case when $6::float8 is not null and l.focal_length_35mm is not null and (
+        ($6::float8 < 28 and l.focal_length_35mm < 28) or
+        ($6::float8 between 28 and 70 and l.focal_length_35mm between 28 and 70) or
+        ($6::float8 > 70 and l.focal_length_35mm > 70)
+      ) then 2 else 0 end +
+      case when $7::text is not null and l.advanced->'access'->>'terrain' = $7 then 1 else 0 end
+    )`;
+
+      const { rows } = await pool.query<PublicRow>(
+        `select ${PUBLIC_COLUMNS}, ${distance} as distance_m, ${likedColumn('$2')}
+       from locations l join media m on m.location_id = l.id and m.state = 'ready'
+       ${ATTRIBUTION_JOIN}
+       where ${where.join(' and ')}
+       order by ${scoreExpr} desc, l.published_at desc
+       limit ${p(q.limit)}`,
+        params,
+      );
+
+      return reply.send({
+        items: await Promise.all(rows.map((r) => toPublicRecord(storage, r))),
+      });
+    },
+  );
 }

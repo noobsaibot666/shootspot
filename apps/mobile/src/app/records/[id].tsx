@@ -119,6 +119,7 @@ export default function RecordScreen() {
   const [status, setStatus] = useState<RecordStatusResponse | null>(null);
   const [missing, setMissing] = useState(false);
   const [nearby, setNearby] = useState<PublicRecord[]>([]);
+  const [similar, setSimilar] = useState<PublicRecord[]>([]);
   const [menu, setMenu] = useState(false);
   const [mapsSheet, setMapsSheet] = useState(false);
   const [verifySheet, setVerifySheet] = useState(false);
@@ -175,7 +176,7 @@ export default function RecordScreen() {
     }, [load]),
   );
 
-  // More locations around this one (Savee's "more like this").
+  // More locations around this one (Savee's "more like this") + moodboard similarity match.
   useEffect(() => {
     if (!record) return;
     void api<Page<PublicRecord>>(
@@ -184,6 +185,12 @@ export default function RecordScreen() {
       .then((p) => {
         seedLiked(p.items);
         setNearby(p.items.filter((r) => r.id !== record.id).slice(0, 14));
+      })
+      .catch(() => {});
+    void api<{ items: PublicRecord[] }>(`/v1/records/${record.id}/similar?limit=8`)
+      .then((res) => {
+        seedLiked(res.items);
+        setSimilar(res.items);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -749,6 +756,18 @@ export default function RecordScreen() {
               <Label>Other angles at this spot</Label>
             </View>
             <MasonryGrid edge={grid.edge} tiles={sameSpot.map(recordTile)} />
+          </Animated.View>
+        ) : null}
+
+        {similar.length ? (
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            style={{ paddingTop: space.xl, gap: space.md }}
+          >
+            <View style={{ paddingHorizontal: space.lg }}>
+              <Label>Similar spots</Label>
+            </View>
+            <MasonryGrid edge={grid.edge} tiles={similar.map(recordTile)} />
           </Animated.View>
         ) : null}
 
