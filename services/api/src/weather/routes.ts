@@ -1,6 +1,8 @@
 import {
   describeWmoWeather,
+  destinationPoint,
   weatherQuerySchema,
+  type HorizonProfile,
   type WeatherDay,
   type WeatherForecast,
 } from '@shootspot/shared';
@@ -8,8 +10,12 @@ import type { FastifyInstance } from 'fastify';
 import { HttpError, requireViewer, type AppDeps } from '../http/context';
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const HORIZON_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
 const cache = new Map<string, { expiresAt: number; data: WeatherForecast }>();
+const horizonCache = new Map<string, { expiresAt: number; data: HorizonProfile }>();
+const HORIZON_SECTORS = 16;
+const HORIZON_DISTANCES_M = [500, 1500, 4000, 9000] as const;
 
 interface OpenMeteoDailyResponse {
   daily?: {
@@ -86,6 +92,80 @@ export function weatherRoutes(app: FastifyInstance, deps: AppDeps) {
       }
       cache.set(key, { expiresAt: now + CACHE_TTL_MS, data: forecast });
       return reply.send(forecast);
+    },
+  );
+
+  /**
+   * 360° terrain horizon profile via Open-Meteo Elevation (no API key).
+   * Samples 16 azimuths × 4 distances around a ~1 km grid point and caches for 24 h.
+   */
+  app.get(
+    '/v1/horizon',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      await requireViewer(deps, req);
+      const { lat, lon } = weatherQuerySchema.parse(req.query);
+
+      const gridLat = Number(lat.toFixed(2));
+      const gridLon = Number(lon.toFixed(2));
+      const key = `${gridLat},${gridLon}`;
+      const now = Date.now();
+
+      const cached = horizonCache.get(key);
+      if (cached && cached.expiresAt > now) {
+        return reply.send(cached.data);
+      }
+
+      const lats: number[] = [gridLat];
+      const lons: number[] = [gridLon];
+      for (let s = 0; s < HORIZON_SECTORS; s++) {
+        const az = (s * 360) / HORIZON_SECTORS;
+        for (const dist of HORIZON_DISTANCES_M) {
+          const pt = destinationPoint(gridLat, gridLon, az, dist);
+          lats.push(Number(pt.lat.toFixed(4)));
+          lons.push(Number(pt.lon.toFixed(4)));
+        }
+      }
+
+      const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats.join(',')}&longitude=${lons.join(',')}`;
+      let elevations: number[];
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+        if (!res.ok) throw new Error(`open-meteo elevation status ${res.status}`);
+        const json = (await res.json()) as { elevation?: number[] };
+        if (!json.elevation || json.elevation.length < lats.length) {
+          throw new Error('incomplete elevation array');
+        }
+        elevations = json.elevation;
+      } catch (err) {
+        app.log.warn({ err }, 'horizon elevation fetch failed');
+        throw new HttpError(503, 'horizon_unavailable');
+      }
+
+      const observerElevationM = Math.round(elevations[0] ?? 0);
+      const sectorsDeg: number[] = [];
+      let idx = 1;
+      for (let s = 0; s < HORIZON_SECTORS; s++) {
+        let maxAngle = 0;
+        for (const dist of HORIZON_DISTANCES_M) {
+          const elev = elevations[idx++] ?? observerElevationM;
+          const angle = Math.atan2(elev - observerElevationM, dist) * (180 / Math.PI);
+          if (angle > maxAngle) maxAngle = angle;
+        }
+        sectorsDeg.push(Math.round(maxAngle * 10) / 10);
+      }
+
+      const profile: HorizonProfile = {
+        observerElevationM,
+        sectorsDeg,
+        source: 'open-meteo',
+      };
+      if (horizonCache.size >= MAX_CACHE_ENTRIES) {
+        const oldest = horizonCache.keys().next().value;
+        if (oldest) horizonCache.delete(oldest);
+      }
+      horizonCache.set(key, { expiresAt: now + HORIZON_TTL_MS, data: profile });
+      return reply.send(profile);
     },
   );
 }

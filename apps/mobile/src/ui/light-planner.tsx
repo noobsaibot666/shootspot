@@ -1,17 +1,19 @@
 import {
   buildShootIcs,
   daylightSummary,
+  effectiveSolarTimes,
   formatBearing,
   horizontalFovDeg,
   lightAngle,
   moonSummary,
   nextBestLight,
   sunAtCapture,
+  type HorizonProfile,
   type LightAngle,
 } from '@shootspot/shared';
 import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -22,6 +24,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
+import { api } from '../lib/api';
 import { font, radius, space, type, useTheme } from '../theme/tokens';
 import { Icon } from './icon';
 import { Mono, Row } from './index';
@@ -91,6 +94,19 @@ export function LightPlanner(props: {
   const { lat, lon, bearingDeg, focalLength35mm, selectedTime, onTimeChange } = props;
   const [showMoon, setShowMoon] = useState(Boolean(props.showMoonByDefault));
   const [barWidth, setBarWidth] = useState(0);
+  const [horizon, setHorizon] = useState<HorizonProfile | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void api<HorizonProfile>(`/v1/horizon?lat=${lat}&lon=${lon}`)
+      .then((res) => {
+        if (alive) setHorizon(res);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [lat, lon]);
 
   const summary = useMemo(
     () => daylightSummary(selectedTime, lat, lon),
@@ -106,6 +122,10 @@ export function LightPlanner(props: {
     [lat, lon, bearingDeg],
   );
   const moon = useMemo(() => moonSummary(selectedTime, lat, lon), [selectedTime, lat, lon]);
+  const terrainTimes = useMemo(
+    () => (horizon ? effectiveSolarTimes(summary, lat, lon, horizon) : null),
+    [horizon, summary, lat, lon],
+  );
 
   const minutesOfDay = selectedTime.getHours() * 60 + selectedTime.getMinutes();
 
@@ -657,6 +677,34 @@ export function LightPlanner(props: {
         <TimeCell label="Golden PM" value={fmtTime(summary.goldenHour)} />
         <TimeCell label="Sunset" value={fmtTime(summary.sunset)} />
       </Row>
+
+      {terrainTimes && (terrainTimes.sunriseDelayMin >= 4 || terrainTimes.sunsetEarlyMin >= 4) ? (
+        <View
+          style={{
+            backgroundColor: t.raised,
+            borderRadius: radius.control,
+            paddingHorizontal: space.md,
+            paddingVertical: space.sm,
+            gap: 2,
+          }}
+        >
+          <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>
+            Terrain horizon ({horizon?.observerElevationM} m)
+          </Text>
+          <Text style={[type.caption, { color: t.muted, fontFamily: font.mono, fontSize: 11 }]}>
+            {[
+              terrainTimes.sunriseDelayMin >= 4
+                ? `Sun clears hills ${fmtTime(terrainTimes.effectiveSunrise)} (+${terrainTimes.sunriseDelayMin}m)`
+                : null,
+              terrainTimes.sunsetEarlyMin >= 4
+                ? `Mountain shadow ${fmtTime(terrainTimes.effectiveSunset)} (−${terrainTimes.sunsetEarlyMin}m)`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Moon & Astro toggle */}
       <View

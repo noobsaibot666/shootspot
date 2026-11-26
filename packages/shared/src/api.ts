@@ -89,6 +89,13 @@ export interface WeatherForecast {
   source: 'open-meteo';
 }
 
+export interface HorizonProfile {
+  observerElevationM: number;
+  /** Maximum terrain elevation angle (degrees above flat horizon) per sector, clockwise from North. */
+  sectorsDeg: number[];
+  source: 'open-meteo';
+}
+
 export function describeWmoWeather(code: number): string {
   if (code === 0) return 'Clear';
   if (code === 1) return 'Mainly clear';

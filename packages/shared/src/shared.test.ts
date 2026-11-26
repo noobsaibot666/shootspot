@@ -10,10 +10,12 @@ import {
   destinationPoint,
   distanceMeters,
   draftRecordSchema,
+  effectiveSolarTimes,
   feedQuerySchema,
   formatBearing,
   formatCoordinates,
   formatDistance,
+  horizonAngleAt,
   horizontalFovDeg,
   lightAngle,
   moonPhaseLabel,
@@ -280,5 +282,27 @@ describe('scout schema', () => {
     expect(
       projectReorderSchema.parse({ recordIds: ['6f1c2b8e-3d4a-4b5c-9d6e-7f8a9b0c1d2e'] }).recordIds,
     ).toHaveLength(1);
+  });
+
+  it('computes horizon obstruction angle and effective solar times', () => {
+    const flat = {
+      observerElevationM: 100,
+      sectorsDeg: new Array(16).fill(0),
+      source: 'open-meteo' as const,
+    };
+    expect(horizonAngleAt(270, flat)).toBe(0);
+
+    const mountainWest = {
+      observerElevationM: 500,
+      sectorsDeg: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 12, 8, 0, 0],
+      source: 'open-meteo' as const,
+    };
+    expect(horizonAngleAt(270, mountainWest)).toBeCloseTo(12, 1);
+
+    const day = new Date('2026-06-21T12:00:00Z');
+    const summary = daylightSummary(day, 46.5, 7.9);
+    const eff = effectiveSolarTimes(summary, 46.5, 7.9, mountainWest);
+    expect(eff.sunsetEarlyMin).toBeGreaterThan(20);
+    expect(eff.effectiveSunset!.getTime()).toBeLessThan(summary.sunset!.getTime());
   });
 });

@@ -1,4 +1,5 @@
 import { getMoonIllumination, getMoonPosition, getMoonTimes, getPosition, getTimes } from 'suncalc';
+import type { HorizonProfile } from './api';
 import { normalizeBearing } from './geo';
 
 /**
@@ -209,4 +210,66 @@ export function horizontalFovDeg(focalLength35mm: number | null | undefined): nu
   }
   const fov = 2 * Math.atan(36 / (2 * focalLength35mm)) * (180 / Math.PI);
   return Math.max(5, Math.min(130, Math.round(fov * 10) / 10));
+}
+
+/** Linearly interpolates the terrain horizon angle (deg) at `azimuthDeg` from a 360° profile. */
+export function horizonAngleAt(azimuthDeg: number, profile: HorizonProfile): number {
+  const sectors = profile.sectorsDeg;
+  if (!sectors.length) return 0;
+  const step = 360 / sectors.length;
+  const az = normalizeBearing(azimuthDeg);
+  const idx = Math.floor(az / step) % sectors.length;
+  const nextIdx = (idx + 1) % sectors.length;
+  const frac = (az - idx * step) / step;
+  return (sectors[idx] ?? 0) * (1 - frac) + (sectors[nextIdx] ?? 0) * frac;
+}
+
+export interface EffectiveSolarTimes {
+  effectiveSunrise: Date | null;
+  effectiveSunset: Date | null;
+  sunriseDelayMin: number;
+  sunsetEarlyMin: number;
+}
+
+/**
+ * Estimates when the sun actually clears or drops behind surrounding terrain using 2-minute steps
+ * from flat-horizon sunrise/sunset.
+ */
+export function effectiveSolarTimes(
+  summary: Pick<DaylightSummary, 'sunrise' | 'sunset'>,
+  lat: number,
+  lon: number,
+  profile: HorizonProfile,
+): EffectiveSolarTimes {
+  let effectiveSunrise = summary.sunrise;
+  let sunriseDelayMin = 0;
+  if (summary.sunrise) {
+    const startMs = summary.sunrise.getTime();
+    for (let min = 0; min <= 120; min += 2) {
+      const t = new Date(startMs + min * 60_000);
+      const pos = sunAtCapture(t, lat, lon);
+      if (pos.elevationDeg >= horizonAngleAt(pos.azimuthDeg, profile)) {
+        effectiveSunrise = t;
+        sunriseDelayMin = min;
+        break;
+      }
+    }
+  }
+
+  let effectiveSunset = summary.sunset;
+  let sunsetEarlyMin = 0;
+  if (summary.sunset) {
+    const endMs = summary.sunset.getTime();
+    for (let min = 0; min <= 120; min += 2) {
+      const t = new Date(endMs - min * 60_000);
+      const pos = sunAtCapture(t, lat, lon);
+      if (pos.elevationDeg >= horizonAngleAt(pos.azimuthDeg, profile)) {
+        effectiveSunset = t;
+        sunsetEarlyMin = min;
+        break;
+      }
+    }
+  }
+
+  return { effectiveSunrise, effectiveSunset, sunriseDelayMin, sunsetEarlyMin };
 }
