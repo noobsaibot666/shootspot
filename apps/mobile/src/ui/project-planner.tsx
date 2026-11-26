@@ -1,10 +1,9 @@
 import {
-  daylightSummary,
+  autoSequenceShootDay,
   distanceMeters,
   formatBearing,
   formatDistance,
-  lightAngle,
-  sunAtCapture,
+  spotBestWindow,
   type PublicRecord,
 } from '@shootspot/shared';
 import { Image } from 'expo-image';
@@ -34,40 +33,17 @@ export function parseLocalYmd(ymd: string | null): Date {
   return new Date(y, m - 1, d, 12, 0, 0);
 }
 
-function fmtTime(d: Date | null | undefined): string {
-  if (!d || Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
-
 function bestWindowForRecord(record: PublicRecord, date: Date): { label: string; timeMs: number } {
-  const s = daylightSummary(date, record.lat, record.lon);
-  const periods = record.bestLight;
-  const pick = (label: string, at: Date | null | undefined, fallbackHour: number) => {
-    const t =
-      at && !Number.isNaN(at.getTime())
-        ? at
-        : new Date(date.getFullYear(), date.getMonth(), date.getDate(), fallbackHour, 0);
-    return { label, timeMs: t.getTime(), date: t };
-  };
-
-  let chosen = pick('Golden PM', s.goldenHour, 18);
-  if (periods.includes('blue_hour_am')) chosen = pick('Blue AM', s.dawn, 5);
-  else if (periods.includes('golden_am')) chosen = pick('Golden AM', s.sunrise, 6);
-  else if (periods.includes('morning'))
-    chosen = pick('Morning', s.sunrise ? new Date(s.sunrise.getTime() + 2 * 3_600_000) : null, 9);
-  else if (periods.includes('midday')) chosen = pick('Midday', s.solarNoon, 12);
-  else if (periods.includes('afternoon'))
-    chosen = pick('Afternoon', new Date(s.solarNoon.getTime() + 2.5 * 3_600_000), 15);
-  else if (periods.includes('golden_pm')) chosen = pick('Golden PM', s.goldenHour, 18);
-  else if (periods.includes('night')) chosen = pick('Night', s.dusk, 21);
-
-  const sun = sunAtCapture(chosen.date, record.lat, record.lon);
-  const angle =
-    record.bearingDeg != null ? lightAngle(record.bearingDeg, sun).replace('_', '-') : null;
-  return {
-    label: `${chosen.label} ${fmtTime(chosen.date)}${angle && angle !== 'sun-down' ? ` · ${angle}` : ''}`,
-    timeMs: chosen.timeMs,
-  };
+  return spotBestWindow(
+    {
+      id: record.id,
+      lat: record.lat,
+      lon: record.lon,
+      bestLight: record.bestLight,
+      bearingDeg: record.bearingDeg,
+    },
+    date,
+  );
 }
 
 /** Shoot-day timeline view with target date, chronological light sorting, reordering, and notes. */
@@ -103,13 +79,46 @@ export function ProjectSchedule(props: {
       (i): i is Extract<ProjectListItem, { available: true }> => i.available,
     );
     const unavailable = props.items.filter((i) => !i.available);
-    const sorted = [...available].sort(
-      (a, b) =>
-        bestWindowForRecord(a.record, targetDate).timeMs -
-        bestWindowForRecord(b.record, targetDate).timeMs,
+    const seq = autoSequenceShootDay(
+      available.map((a) => ({
+        id: a.recordId,
+        lat: a.record.lat,
+        lon: a.record.lon,
+        bestLight: a.record.bestLight,
+        bearingDeg: a.record.bearingDeg,
+      })),
+      targetDate,
     );
-    props.onSortByLight([...sorted, ...unavailable].map((i) => i.recordId));
+    props.onSortByLight([...seq.orderedIds, ...unavailable.map((i) => i.recordId)]);
   }
+
+  const sequenced = useMemo(() => {
+    const available = props.items.filter(
+      (i): i is Extract<ProjectListItem, { available: true }> => i.available,
+    );
+    const map = new Map<string, string | null>();
+    let totalDist = 0;
+    for (let i = 1; i < available.length; i++) {
+      const prev = available[i - 1]!;
+      const curr = available[i]!;
+      const dist = distanceMeters(
+        prev.record.lat,
+        prev.record.lon,
+        curr.record.lat,
+        curr.record.lon,
+      );
+      totalDist += dist;
+      const gapMin =
+        Math.abs(
+          bestWindowForRecord(curr.record, targetDate).timeMs -
+            bestWindowForRecord(prev.record, targetDate).timeMs,
+        ) / 60_000;
+      if (gapMin <= 45 && dist > 15_000) {
+        map.set(curr.recordId, `Tight window · ${Math.round(dist / 1000)} km from prev stop`);
+      }
+    }
+    return { conflicts: map, totalDist };
+  }, [props.items, targetDate]);
 
   let prevCoord: { lat: number; lon: number } | null = null;
 
@@ -220,11 +229,16 @@ export function ProjectSchedule(props: {
               }}
             >
               <Text style={[type.caption, { color: t.onInk, fontWeight: '600', fontSize: 12 }]}>
-                Sort by best light
+                Auto-plan shoot day
               </Text>
             </Pressable>
           ) : null}
         </Row>
+        {sequenced.totalDist > 0 ? (
+          <Text style={[type.caption, { color: t.muted, fontFamily: font.mono, fontSize: 11 }]}>
+            Total route: {formatDistance(sequenced.totalDist)}
+          </Text>
+        ) : null}
       </View>
 
       {/* Chronological stops */}
@@ -248,6 +262,7 @@ export function ProjectSchedule(props: {
         const dist = prevCoord ? distanceMeters(prevCoord.lat, prevCoord.lon, r.lat, r.lon) : null;
         prevCoord = { lat: r.lat, lon: r.lon };
         const win = bestWindowForRecord(r, targetDate);
+        const conflict = sequenced.conflicts.get(item.recordId) ?? null;
 
         return (
           <View
@@ -344,6 +359,13 @@ export function ProjectSchedule(props: {
                 </Pressable>
               </View>
             </Row>
+
+            {/* Conflict warning if two close light windows are >15 km apart */}
+            {conflict ? (
+              <Text style={[type.caption, { color: t.accent, fontWeight: '600', fontSize: 11 }]}>
+                ⚠ {conflict}
+              </Text>
+            ) : null}
 
             {/* Private per-spot note */}
             <Pressable

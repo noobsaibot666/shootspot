@@ -7,3 +7,4 @@ export * from './api';
 export * from './exif';
 export * from './address';
 export * from './calendar';
+export * from './sequencer';

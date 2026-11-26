@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  autoSequenceShootDay,
   buildShootIcs,
   centerCrop,
   checkPublishable,
@@ -304,5 +305,19 @@ describe('scout schema', () => {
     const eff = effectiveSolarTimes(summary, 46.5, 7.9, mountainWest);
     expect(eff.sunsetEarlyMin).toBeGreaterThan(20);
     expect(eff.effectiveSunset!.getTime()).toBeLessThan(summary.sunset!.getTime());
+  });
+
+  it('auto-sequences shoot day by light window, proximity, and flags tight jumps', () => {
+    const day = new Date('2026-06-21T12:00:00Z');
+    const res = autoSequenceShootDay(
+      [
+        { id: 'sunset-far', lat: 39.0, lon: -9.1, bestLight: ['golden_pm'], bearingDeg: 270 },
+        { id: 'sunrise', lat: 38.72, lon: -9.14, bestLight: ['golden_am'], bearingDeg: 90 },
+        { id: 'sunset-near', lat: 38.73, lon: -9.15, bestLight: ['golden_pm'], bearingDeg: 270 },
+      ],
+      day,
+    );
+    expect(res.orderedIds).toEqual(['sunrise', 'sunset-near', 'sunset-far']);
+    expect(res.stops[2]?.conflict).toContain('Tight window');
   });
 });
