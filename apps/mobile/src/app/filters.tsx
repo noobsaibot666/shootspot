@@ -184,6 +184,7 @@ export default function Filters() {
                 ['restrooms', 'Restrooms'],
                 ['easyTerrain', 'Easy terrain'],
                 ['tideDependent', 'Tide-dependent'],
+                ['quiet', 'Quiet / audio-friendly'],
               ] as const
             ).map(([key, text]) => (
               <Chip
@@ -249,6 +250,7 @@ export default function Filters() {
               restrooms: false,
               easyTerrain: false,
               tideDependent: false,
+              quiet: false,
               focalBand: null,
             }))
           }

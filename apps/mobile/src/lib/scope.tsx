@@ -21,6 +21,7 @@ export interface Scope {
   restrooms: boolean;
   easyTerrain: boolean;
   tideDependent: boolean;
+  quiet: boolean;
   focalBand: FocalBand | null;
 }
 
@@ -38,6 +39,7 @@ const DEFAULT: Scope = {
   restrooms: false,
   easyTerrain: false,
   tideDependent: false,
+  quiet: false,
   focalBand: null,
 };
 const file = () => new File(Paths.document, 'scope.json');
@@ -126,6 +128,7 @@ export function activeFilterCount(scope: Scope): number {
     (scope.restrooms ? 1 : 0) +
     (scope.easyTerrain ? 1 : 0) +
     (scope.tideDependent ? 1 : 0) +
+    (scope.quiet ? 1 : 0) +
     (scope.focalBand ? 1 : 0)
   );
 }
@@ -155,6 +158,7 @@ export function filterQuery(scope: Scope): string {
   if (scope.restrooms) q.push('restrooms=true');
   if (scope.easyTerrain) q.push('easyTerrain=true');
   if (scope.tideDependent) q.push('tideDependent=true');
+  if (scope.quiet) q.push('quiet=true');
   if (scope.focalBand) q.push(`focalBand=${scope.focalBand}`);
   return q.join('&');
 }

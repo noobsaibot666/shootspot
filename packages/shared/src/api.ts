@@ -164,6 +164,7 @@ export const scoutFilterSchema = z.object({
   restrooms: boolQuery,
   easyTerrain: boolQuery,
   tideDependent: boolQuery,
+  quiet: boolQuery,
   focalBand: z.enum(FOCAL_BANDS).optional(),
 });
 export type ScoutFilters = z.infer<typeof scoutFilterSchema>;

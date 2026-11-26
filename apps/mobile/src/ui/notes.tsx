@@ -480,6 +480,49 @@ export function DetailFields(props: {
       return (
         <View style={gap}>
           <ChoicePills
+            label="Sound level"
+            value={v.conditions?.noiseLevel}
+            options={{
+              quiet: 'Quiet',
+              moderate: 'Moderate',
+              loud: 'Loud',
+              variable: 'Variable',
+            }}
+            onChange={(noiseLevel) => set('conditions', { noiseLevel })}
+          />
+          <ChoicePills
+            label="Quietest window"
+            value={v.conditions?.quietHours}
+            options={{
+              early_morning: 'Early AM',
+              midday: 'Midday',
+              evening: 'Evening',
+              night: 'Night',
+              always: 'Always',
+            }}
+            onChange={(quietHours) => set('conditions', { quietHours })}
+          />
+          <ChoicePills
+            label="Crowd peak"
+            value={v.conditions?.crowdPeak}
+            options={{
+              morning: 'Morning',
+              midday: 'Midday',
+              afternoon: 'Afternoon',
+              sunset: 'Sunset',
+              weekends: 'Weekends',
+              rare: 'Rarely busy',
+            }}
+            onChange={(crowdPeak) => set('conditions', { crowdPeak })}
+          />
+          <NoteField
+            label="Crowd & sound notes"
+            value={v.conditions?.crowdNote ?? ''}
+            onChangeText={(crowdNote) => set('conditions', { crowdNote })}
+            maxLength={200}
+            placeholder="e.g. Empty before 08:00; tram every 10 min"
+          />
+          <ChoicePills
             label="Tide-dependent"
             value={v.conditions?.tideDependent}
             options={TRI}

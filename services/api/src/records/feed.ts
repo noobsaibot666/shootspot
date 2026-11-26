@@ -46,6 +46,7 @@ function applyScoutFilters(q: ScoutFilters, p: (v: unknown) => string, where: st
   if (q.restrooms) where.push(`l.advanced->'practical'->>'restrooms' = 'yes'`);
   if (q.easyTerrain) where.push(`l.advanced->'access'->>'terrain' = 'easy'`);
   if (q.tideDependent) where.push(`l.advanced->'conditions'->>'tideDependent' = 'yes'`);
+  if (q.quiet) where.push(`l.advanced->'conditions'->>'noiseLevel' = 'quiet'`);
   if (q.focalBand === 'wide') where.push(`l.focal_length_35mm < 28`);
   else if (q.focalBand === 'standard')
     where.push(`l.focal_length_35mm >= 28 and l.focal_length_35mm <= 70`);

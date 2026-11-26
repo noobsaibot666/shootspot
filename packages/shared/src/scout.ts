@@ -132,6 +132,9 @@ export const advancedInputSchema = z
         crowdNote: shortText(200),
         tideDependent: triState,
         hazardsNote: shortText(300),
+        noiseLevel: z.enum(['quiet', 'moderate', 'loud', 'variable']),
+        quietHours: z.enum(['early_morning', 'midday', 'evening', 'night', 'always']),
+        crowdPeak: z.enum(['morning', 'midday', 'afternoon', 'sunset', 'weekends', 'rare']),
       })
       .partial(),
     shot: z
