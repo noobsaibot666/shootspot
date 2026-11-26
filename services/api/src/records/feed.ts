@@ -37,7 +37,7 @@ export function decodeCursor(cursor: string): { at: string; id: string } {
 const SEARCH_LIMIT = { max: 60, timeWindow: '1 minute' };
 
 /** Shared SQL predicates for feed and map queries (Phase 1.5B). */
-function applyScoutFilters(q: ScoutFilters, p: (v: unknown) => string, where: string[]) {
+export function applyScoutFilters(q: ScoutFilters, p: (v: unknown) => string, where: string[]) {
   if (q.goodFor?.length) where.push(`l.good_for && ${p(q.goodFor)}::text[]`);
   if (q.bestLight?.length) where.push(`l.best_light && ${p(q.bestLight)}::text[]`);
   if (q.drone === 'allowed') where.push(`l.advanced->'rules'->>'drone' = 'allowed'`);

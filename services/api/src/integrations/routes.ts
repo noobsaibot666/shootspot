@@ -12,7 +12,8 @@ import {
   toPublicRecord,
   type PublicRow,
 } from '../records/dto';
-import { decodeCursor, encodeCursor } from '../records/feed';
+import { decodeCursor, encodeCursor, applyScoutFilters } from '../records/feed';
+import { activeVocabulary } from '../vocabulary/routes';
 
 const idParam = z.object({ id: z.uuid() });
 const createTokenSchema = z
@@ -178,6 +179,12 @@ export function integrationRoutes(app: FastifyInstance, deps: AppDeps) {
     return { userId: viewer.userId, email: viewer.email };
   });
 
+  /** Active ShootSpot tag vocabulary for Portal's filter UI. */
+  app.get('/v1/integrations/vocabulary', async (req) => {
+    await requireIntegrationViewer(deps, req);
+    return activeVocabulary(pool);
+  });
+
   /** List the connected user's ShootSpot projects. */
   app.get('/v1/integrations/projects', async (req) => {
     const viewer = await requireIntegrationViewer(deps, req);
@@ -296,8 +303,7 @@ export function integrationRoutes(app: FastifyInstance, deps: AppDeps) {
         `(l.label ilike ${qp} or coalesce(l.good_for_note, '') ilike ${qp} or coalesce(l.best_light_note, '') ilike ${qp} or array_to_string(l.good_for_custom, ' ') ilike ${qp} or array_to_string(l.best_light_custom, ' ') ilike ${qp})`,
       );
     }
-    if (q.goodFor?.length) where.push(`l.good_for && ${p(q.goodFor)}::text[]`);
-    if (q.bestLight?.length) where.push(`l.best_light && ${p(q.bestLight)}::text[]`);
+    applyScoutFilters(q, p, where);
     if (cursor) {
       where.push(`(l.published_at, l.id) < (${p(cursor.at)}::timestamptz, ${p(cursor.id)}::uuid)`);
     }
