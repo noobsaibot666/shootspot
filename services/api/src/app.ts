@@ -7,6 +7,7 @@ import { blockRoutes } from './blocks/routes';
 import { APP_ORIGIN, APP_ORIGIN_HEADER } from './auth';
 import { INTERNAL_IP_HEADER, clientIp } from './http/client-ip';
 import { HttpError, sendError, type AppDeps } from './http/context';
+import { integrationRoutes } from './integrations/routes';
 import { meRoutes } from './me/routes';
 import { projectRoutes } from './projects/routes';
 import { feedRoutes } from './records/feed';
@@ -188,6 +189,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   vocabularyRoutes(app, deps);
   weatherRoutes(app, deps);
   webRoutes(app, deps);
+  integrationRoutes(app, deps);
   return app;
 }
 

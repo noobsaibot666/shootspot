@@ -99,6 +99,8 @@ export function webRoutes(app: FastifyInstance, deps: AppDeps) {
             row.sun_azimuth_deg == null || row.sun_elevation_deg == null
               ? null
               : { azimuthDeg: row.sun_azimuth_deg, elevationDeg: row.sun_elevation_deg },
+          lastVerifiedAt: row.last_verified_at ? row.last_verified_at.toISOString() : null,
+          changeFlag: row.change_flag ?? null,
           attribution: row.attr_name
             ? {
                 name: row.attr_name,

@@ -2,6 +2,7 @@
 
 import type { Vocabulary } from '@shootspot/shared';
 import { useEffect, useRef, useState } from 'react';
+import { web, type IntegrationTokenSummary } from '@/lib/api';
 import { usePresence } from '@/lib/motion';
 
 export function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
@@ -131,9 +132,63 @@ export function AccountMenu({
   onSignOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeToken, setActiveToken] = useState<IntegrationTokenSummary | null>(null);
+  const [newToken, setNewToken] = useState<string | null>(null);
+  const [tokenBusy, setTokenBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(open, () => setOpen(false), ref);
   const panel = usePresence(open, 160);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    web
+      .integrationToken()
+      .then((res) => {
+        if (alive) setActiveToken(res.active);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  async function handleGenerateToken() {
+    setTokenBusy(true);
+    setCopied(false);
+    try {
+      const created = await web.createIntegrationToken('Portal');
+      setNewToken(created.token);
+      setActiveToken({
+        id: created.id,
+        label: created.label,
+        tokenPrefix: created.tokenPrefix,
+        createdAt: created.createdAt,
+        lastUsedAt: null,
+      });
+    } finally {
+      setTokenBusy(false);
+    }
+  }
+
+  async function handleRevokeToken() {
+    setTokenBusy(true);
+    try {
+      await web.revokeIntegrationToken();
+      setActiveToken(null);
+      setNewToken(null);
+    } finally {
+      setTokenBusy(false);
+    }
+  }
+
+  async function handleCopy() {
+    if (!newToken) return;
+    await navigator.clipboard?.writeText(newToken);
+    setCopied(true);
+  }
+
   return (
     <div className="menu" ref={ref}>
       <button
@@ -153,6 +208,72 @@ export function AccountMenu({
           <button role="menuitem" className="item" onClick={onExportAll} disabled={exporting}>
             {exporting ? 'Exporting…' : 'Export all locations'}
           </button>
+          <div
+            className="who"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 4, paddingTop: 8 }}
+          >
+            <small>Portal integration token</small>
+            {newToken ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                <code
+                  style={{
+                    fontSize: 11,
+                    wordBreak: 'break-all',
+                    padding: '4px 6px',
+                    borderRadius: 6,
+                    background: 'rgba(255,255,255,0.06)',
+                  }}
+                >
+                  {newToken}
+                </code>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" className="item" onClick={handleCopy}>
+                    {copied ? 'Copied!' : 'Copy token'}
+                  </button>
+                  <button
+                    type="button"
+                    className="item"
+                    onClick={handleRevokeToken}
+                    disabled={tokenBusy}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            ) : activeToken ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                <span style={{ fontSize: 12, opacity: 0.8 }}>{activeToken.tokenPrefix}…</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="item"
+                    onClick={handleGenerateToken}
+                    disabled={tokenBusy}
+                  >
+                    {tokenBusy ? 'Rotating…' : 'Rotate token'}
+                  </button>
+                  <button
+                    type="button"
+                    className="item"
+                    onClick={handleRevokeToken}
+                    disabled={tokenBusy}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="item"
+                onClick={handleGenerateToken}
+                disabled={tokenBusy}
+                style={{ marginTop: 4 }}
+              >
+                {tokenBusy ? 'Creating…' : 'Generate Portal token'}
+              </button>
+            )}
+          </div>
           <button role="menuitem" className="item" onClick={onSignOut}>
             Sign out
           </button>

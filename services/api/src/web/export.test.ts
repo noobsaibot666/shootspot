@@ -21,6 +21,8 @@ const location = (overrides: Partial<ExportLocation> = {}): ExportLocation => ({
   altitudeM: null,
   focalLength35mm: null,
   sun: { azimuthDeg: 180, elevationDeg: 22 },
+  lastVerifiedAt: null,
+  changeFlag: null,
   attribution: null,
   imageBytes: Buffer.from('jpeg-1'),
   ...overrides,

@@ -66,12 +66,36 @@ export async function downloadExport(path: string, filename: string): Promise<vo
   }
 }
 
+export interface IntegrationTokenSummary {
+  id: string;
+  label: string;
+  tokenPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface CreatedIntegrationToken {
+  id: string;
+  token: string;
+  label: string;
+  tokenPrefix: string;
+  createdAt: string;
+}
+
 export const web = {
   me: () => api<{ email: string }>('/web/v1/me'),
   vocabulary: () => api<Vocabulary>('/web/v1/vocabulary'),
   feed: (query: string, signal?: AbortSignal) =>
     api<Page<WebRecord>>(`/web/v1/feed?${query}`, { signal }),
   record: (id: string) => api<WebRecord>(`/web/v1/records/${encodeURIComponent(id)}`),
+  integrationToken: () =>
+    api<{ active: IntegrationTokenSummary | null }>('/web/v1/integration-token'),
+  createIntegrationToken: (label = 'Portal') =>
+    api<CreatedIntegrationToken>('/web/v1/integration-token', {
+      method: 'POST',
+      body: { label },
+    }),
+  revokeIntegrationToken: () => api<void>('/web/v1/integration-token', { method: 'DELETE' }),
 };
 
 export const auth = {

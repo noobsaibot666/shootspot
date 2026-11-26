@@ -20,6 +20,8 @@ export interface ExportLocation {
   altitudeM: number | null;
   focalLength35mm: number | null;
   sun: PublicRecord['sun'];
+  lastVerifiedAt: string | null;
+  changeFlag: string | null;
   attribution: Attribution | null;
   imageBytes: Buffer;
 }
