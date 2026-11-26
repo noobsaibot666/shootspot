@@ -103,13 +103,21 @@ export default function SignIn() {
       (err) =>
         mode === 'create'
           ? err instanceof ApiError && err.code === 'account_exists'
-            ? 'This email already has an account. Sign in instead.'
-            : 'Could not create the account. Try again.'
+            ? 'This email already has an account. Sign in or reset your password instead.'
+            : err instanceof ApiError && err.code === 'invalid_email'
+              ? 'Check that your email address is valid.'
+              : err instanceof ApiError && err.code === 'invalid_password_length'
+                ? `Use between ${MIN_PASSWORD} and 128 characters for your password.`
+                : 'Could not create the account. Try again.'
           : 'Email or password is wrong. No password yet? Tap “Forgot password?”.',
     );
 
-  const sendCode = () =>
-    run(
+  const sendCode = () => {
+    if (!valid) {
+      setError('Enter your email address first so we know where to send the code.');
+      return;
+    }
+    return run(
       async () => {
         await auth.sendCode(address);
         setCode('');
@@ -118,6 +126,7 @@ export default function SignIn() {
       },
       () => 'Could not send the code. Try again.',
     );
+  };
 
   async function verify(value: string) {
     if (busy) return;
@@ -149,7 +158,10 @@ export default function SignIn() {
     setError(null);
   }
 
-  const back = () => {
+  const back = async () => {
+    if (step === 'new-password') {
+      await auth.signOut().catch(() => {});
+    }
     setError(null);
     setCode('');
     setPassword('');
@@ -271,7 +283,7 @@ export default function SignIn() {
                       label="Forgot password?"
                       kind="ghost"
                       size="small"
-                      disabled={!valid || busy}
+                      disabled={busy}
                       onPress={() => void sendCode()}
                     />
                   ) : (
@@ -298,15 +310,24 @@ export default function SignIn() {
                     disabled={busy || wait > 0}
                     onPress={() => void sendCode()}
                   />
-                  <Button label="Back" kind="ghost" size="small" onPress={back} />
+                  <Button label="Back" kind="ghost" size="small" onPress={() => void back()} />
                 </>
               ) : (
-                <Button
-                  label="Save and continue"
-                  busy={busy}
-                  disabled={!longEnough}
-                  onPress={() => void savePassword()}
-                />
+                <>
+                  <Button
+                    label="Save and continue"
+                    busy={busy}
+                    disabled={!longEnough}
+                    onPress={() => void savePassword()}
+                  />
+                  <Button
+                    label="Cancel"
+                    kind="ghost"
+                    size="small"
+                    disabled={busy}
+                    onPress={() => void back()}
+                  />
+                </>
               )}
             </Animated.View>
           </View>

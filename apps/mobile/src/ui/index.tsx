@@ -229,25 +229,48 @@ export function Field(
   props: TextInputProps & { label: string; hint?: string; error?: string | null },
 ) {
   const t = useTheme();
-  const { label, hint, error, style, ...input } = props;
+  const { label, hint, error, style, secureTextEntry, ...input } = props;
+  const [revealed, setRevealed] = useState(false);
   return (
     <View style={{ gap: space.sm }}>
       <Label>{label}</Label>
-      <TextInput
-        placeholderTextColor={t.muted}
-        accessibilityLabel={label}
-        style={[
-          styles.input,
-          type.body,
-          {
-            color: t.ink,
-            backgroundColor: t.surface,
-            borderColor: error ? t.signalRed : 'transparent',
-          },
-          style,
-        ]}
-        {...input}
-      />
+      <View style={{ position: 'relative', justifyContent: 'center' }}>
+        <TextInput
+          placeholderTextColor={t.muted}
+          accessibilityLabel={label}
+          secureTextEntry={Boolean(secureTextEntry && !revealed)}
+          style={[
+            styles.input,
+            type.body,
+            {
+              color: t.ink,
+              backgroundColor: t.surface,
+              borderColor: error ? t.signalRed : 'transparent',
+              paddingRight: secureTextEntry ? 64 : space.lg,
+            },
+            style,
+          ]}
+          {...input}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? `Hide ${label}` : `Show ${label}`}
+            onPress={() => setRevealed((r) => !r)}
+            hitSlop={10}
+            style={{
+              position: 'absolute',
+              right: space.md,
+              paddingHorizontal: space.sm,
+              paddingVertical: space.xs,
+            }}
+          >
+            <Text style={[type.caption, { color: t.muted, fontWeight: '600' }]}>
+              {revealed ? 'Hide' : 'Show'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       {error ? (
         <Text style={[type.caption, { color: t.signalRed }]}>{error}</Text>
       ) : hint ? (

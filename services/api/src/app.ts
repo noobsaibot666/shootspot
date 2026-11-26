@@ -129,9 +129,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         return reply.code(403).send({ code: 'SIGN_UP_DISABLED', message: 'Sign-up is app-only' });
       }
       if (adminWeb && (otpPath || signInPath)) {
-        const email = String(
-          (req.body as { email?: unknown } | undefined)?.email ?? '',
-        ).toLowerCase();
+        const email = String((req.body as { email?: unknown } | undefined)?.email ?? '')
+          .trim()
+          .toLowerCase();
         const { rowCount } = await deps.pool.query(
           `select 1 from auth_users where lower(email) = $1 and role = 'owner'`,
           [email],
@@ -140,6 +140,26 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
           return otpPath
             ? reply.send({ success: true })
             : reply.code(401).send({ code: 'INVALID_OTP', message: 'Invalid OTP' });
+        }
+      } else if (!adminWeb && !memberWeb && (otpPath || signInPath)) {
+        // Password recovery & legacy OTP sign-in: never create ghost accounts for typos
+        // or send emails to non-existent addresses (except the configured store-review account).
+        const email = String((req.body as { email?: unknown } | undefined)?.email ?? '')
+          .trim()
+          .toLowerCase();
+        const isReview =
+          Boolean(deps.config.REVIEW_EMAIL) &&
+          email === deps.config.REVIEW_EMAIL?.trim().toLowerCase();
+        if (!isReview) {
+          const { rowCount } = await deps.pool.query(
+            `select 1 from auth_users where lower(email) = $1`,
+            [email],
+          );
+          if (!rowCount) {
+            return otpPath
+              ? reply.send({ success: true })
+              : reply.code(401).send({ code: 'INVALID_OTP', message: 'Invalid OTP' });
+          }
         }
       }
       const response = await deps.auth.handler(

@@ -28,7 +28,8 @@ export async function setPassword(
   const ctx = await deps.auth.$context;
   const account = await ctx.internalAdapter.findCredentialAccount(viewer.userId);
   const hash = await ctx.password.hash(body.newPassword);
-  if (account?.password) {
+  const hadPassword = Boolean(account?.password);
+  if (hadPassword && account?.password) {
     const current = body.currentPassword
       ? await ctx.password.verify({ hash: account.password, password: body.currentPassword })
       : false;
@@ -44,11 +45,16 @@ export async function setPassword(
         );
       }
     }
+  }
+
+  if (account) {
     await ctx.internalAdapter.updatePassword(viewer.userId, hash);
-    await deps.pool.query(`delete from auth_sessions where "userId" = $1 and id <> $2`, [
-      viewer.userId,
-      viewer.sessionId,
-    ]);
+    if (hadPassword) {
+      await deps.pool.query(`delete from auth_sessions where "userId" = $1 and id <> $2`, [
+        viewer.userId,
+        viewer.sessionId,
+      ]);
+    }
   } else {
     await ctx.internalAdapter.linkAccount({
       userId: viewer.userId,
@@ -60,9 +66,9 @@ export async function setPassword(
   await deps.mailer
     ?.send({
       to: viewer.email,
-      subject: account?.password ? 'Your ShootSpot password was changed' : 'ShootSpot password set',
+      subject: hadPassword ? 'Your ShootSpot password was changed' : 'ShootSpot password set',
       text:
-        `The password for your ShootSpot account ${viewer.email} was ${account?.password ? 'changed' : 'set'}.\n\n` +
+        `The password for your ShootSpot account ${viewer.email} was ${hadPassword ? 'changed' : 'set'}.\n\n` +
         `If this wasn't you, sign in with an email code and change it, or contact hello@expose-u.com.`,
     })
     .catch(() => {});

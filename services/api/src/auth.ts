@@ -32,7 +32,7 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
     type === 'sign-in' &&
     !!config.REVIEW_EMAIL &&
     !!config.REVIEW_CODE &&
-    email.toLowerCase() === config.REVIEW_EMAIL;
+    email.trim().toLowerCase() === config.REVIEW_EMAIL.trim().toLowerCase();
   return betterAuth({
     appName: 'ShootSpot',
     baseURL: config.PUBLIC_API_URL,
@@ -54,9 +54,10 @@ export function createAuth(deps: { pool: pg.Pool; config: Config; mailer: Mailer
       after: createAuthMiddleware(async (ctx) => {
         const session = ctx.context.newSession?.session;
         if (ctx.path === '/sign-in/email' && session) {
-          await pool.query('insert into auth_password_sessions (session_id) values ($1)', [
-            session.id,
-          ]);
+          await pool.query(
+            'insert into auth_password_sessions (session_id) values ($1) on conflict do nothing',
+            [session.id],
+          );
           // Member web gallery (D-44): mark the session so it reads only /web/v1, never admin.
           const origin = ctx.headers?.get('origin');
           if (origin && config.MEMBER_WEB_ORIGINS.includes(origin)) {

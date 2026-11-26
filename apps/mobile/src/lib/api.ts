@@ -66,6 +66,19 @@ export async function api<T = unknown>(
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+async function authErrorCode(res: Response, fallback: string): Promise<string> {
+  if (res.status === 429) return 'rate_limited';
+  try {
+    const body = (await res.json()) as { code?: string };
+    const code = body.code ?? '';
+    if (res.status === 422 || code.startsWith('USER_ALREADY_EXISTS')) return 'account_exists';
+    if (code === 'INVALID_EMAIL') return 'invalid_email';
+    if (code === 'PASSWORD_TOO_SHORT' || code === 'PASSWORD_TOO_LONG')
+      return 'invalid_password_length';
+  } catch {}
+  return res.status === 422 ? 'account_exists' : fallback;
+}
+
 /** Email and password (D-43); the email code is for a forgotten password and older accounts. */
 export const auth = {
   async signUp(email: string, password: string) {
@@ -77,14 +90,7 @@ export const auth = {
     if (!res) throw new ApiError(0, 'offline');
     const issued = res.headers.get('set-auth-token');
     if (!res.ok || !issued)
-      throw new ApiError(
-        res.status,
-        res.status === 429
-          ? 'rate_limited'
-          : res.status === 422
-            ? 'account_exists'
-            : 'sign_up_failed',
-      );
+      throw new ApiError(res.status, await authErrorCode(res, 'sign_up_failed'));
     await saveToken(issued);
   },
   async signInWithPassword(email: string, password: string) {
