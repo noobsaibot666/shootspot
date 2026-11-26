@@ -334,6 +334,7 @@ export default function CameraScreen() {
             preview={preview}
             fix={sensors.fix}
             headingDeg={sensors.headingDeg}
+            headingAccuracy={sensors.headingAccuracy}
           />
         ) : null}
         {histogramOn && frameOutput ? <HistogramView /> : null}

@@ -10,6 +10,7 @@ import {
   type LightAngle,
 } from '@shootspot/shared';
 import { File, Paths } from 'expo-file-system';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
@@ -682,25 +683,57 @@ export function LightPlanner(props: {
         ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add shoot window to calendar"
-        onPress={() => void exportCalendarWindow()}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: space.xs,
-          backgroundColor: t.raised,
-          borderRadius: radius.control,
-          paddingVertical: 9,
-        }}
-      >
-        <Icon name="share" size={14} color={t.ink} />
-        <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>
-          Add shoot window to calendar
-        </Text>
-      </Pressable>
+      <Row style={{ gap: space.sm }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Preview sun in live compass"
+          onPress={() =>
+            router.push({
+              pathname: '/compass',
+              params: {
+                lat: String(lat),
+                lon: String(lon),
+                label: props.recordLabel ?? 'Location',
+                date: selectedTime.toISOString(),
+                ...(bearingDeg != null ? { bearing: String(bearingDeg) } : {}),
+              },
+            })
+          }
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: space.xs,
+            backgroundColor: t.accent,
+            borderRadius: radius.control,
+            paddingVertical: 9,
+          }}
+        >
+          <Icon name="compass" size={14} color="#FFFFFF" />
+          <Text style={[type.caption, { color: '#FFFFFF', fontWeight: '700' }]}>
+            Preview sun here
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add shoot window to calendar"
+          onPress={() => void exportCalendarWindow()}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: space.xs,
+            backgroundColor: t.raised,
+            borderRadius: radius.control,
+            paddingVertical: 9,
+          }}
+        >
+          <Icon name="share" size={14} color={t.ink} />
+          <Text style={[type.caption, { color: t.ink, fontWeight: '600' }]}>Add to calendar</Text>
+        </Pressable>
+      </Row>
     </View>
   );
 }

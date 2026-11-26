@@ -28,16 +28,20 @@ function signedDeltaDeg(target: number, center: number): number {
  */
 export function ScoutCompassOverlay(props: {
   preview: LayoutRectangle;
-  fix: FieldFix | null;
+  fix: Pick<FieldFix, 'lat' | 'lon'> | null;
   headingDeg: number | null;
+  headingAccuracy?: number | null;
+  date?: Date;
+  targetBearingDeg?: number | null;
 }) {
-  const { preview, fix, headingDeg } = props;
-  const now = useMemo(() => new Date(), []);
+  const { preview, fix, headingDeg, headingAccuracy, targetBearingDeg } = props;
+  const fallbackNow = useMemo(() => new Date(), []);
+  const activeDate = props.date ?? fallbackNow;
 
   const solar = useMemo(() => {
     if (!fix) return null;
-    const summary = daylightSummary(now, fix.lat, fix.lon);
-    const sun = sunAtCapture(now, fix.lat, fix.lon);
+    const summary = daylightSummary(activeDate, fix.lat, fix.lon);
+    const sun = sunAtCapture(activeDate, fix.lat, fix.lon);
     const sunriseAz = summary.sunrise
       ? sunAtCapture(summary.sunrise, fix.lat, fix.lon).azimuthDeg
       : null;
@@ -48,7 +52,7 @@ export function ScoutCompassOverlay(props: {
       ? sunAtCapture(summary.goldenHour, fix.lat, fix.lon).azimuthDeg
       : null;
     return { summary, sun, sunriseAz, sunsetAz, goldenPmAz };
-  }, [fix, now]);
+  }, [fix, activeDate]);
 
   if (headingDeg == null) {
     return (
@@ -173,6 +177,32 @@ export function ScoutCompassOverlay(props: {
           />
         ) : null}
 
+        {/* Target camera bearing marker (when launched from a location record) */}
+        {targetBearingDeg != null &&
+        Math.abs(signedDeltaDeg(targetBearingDeg, headingDeg)) <= VIEW_FOV_DEG / 2 ? (
+          <>
+            <Line
+              x1={projectX(targetBearingDeg)}
+              y1={horizonY - 26}
+              x2={projectX(targetBearingDeg)}
+              y2={horizonY + 26}
+              stroke="#FF3B2C"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+            />
+            <SvgText
+              x={projectX(targetBearingDeg)}
+              y={horizonY - 32}
+              fontSize={10}
+              fontWeight="700"
+              fill="#FF3B2C"
+              textAnchor="middle"
+            >
+              CAM
+            </SvgText>
+          </>
+        ) : null}
+
         {/* Active sun dot */}
         {solar && sunInView ? (
           <>
@@ -198,7 +228,7 @@ export function ScoutCompassOverlay(props: {
         ) : null}
       </Svg>
 
-      {/* Top HUD: live heading + sun direction cue */}
+      {/* Top HUD: live heading + sun direction cue + calibration */}
       <View style={styles.hud}>
         <View style={styles.pill}>
           <Text style={styles.pillText}>{formatBearing(headingDeg)}</Text>
@@ -213,7 +243,21 @@ export function ScoutCompassOverlay(props: {
           ) : !fix ? (
             <Text style={styles.sunCue}> · Waiting for GPS</Text>
           ) : null}
+          {headingAccuracy != null && headingAccuracy >= 0 ? (
+            <Text
+              style={[styles.calText, { color: headingAccuracy <= 15 ? '#30D158' : '#FFB800' }]}
+            >
+              {` · ±${Math.round(headingAccuracy)}°`}
+            </Text>
+          ) : null}
         </View>
+        {headingAccuracy != null && (headingAccuracy < 0 || headingAccuracy > 15) ? (
+          <View style={[styles.pill, { marginTop: 6 }]}>
+            <Text style={[styles.sunCue, { color: '#FFB800' }]}>
+              Low compass accuracy — move phone in a figure-8
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -253,5 +297,10 @@ const styles = StyleSheet.create({
     fontFamily: font.mono,
     fontSize: 12,
     fontWeight: '600',
+  },
+  calText: {
+    fontFamily: font.mono,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

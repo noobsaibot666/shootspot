@@ -65,6 +65,10 @@ function Navigator() {
           name="capture"
           options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
         />
+        <Stack.Screen
+          name="compass"
+          options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
+        />
         {/* A slow, soft cross-fade (UI thread, both platforms); the photo is painted at once from
             the tile's cached image and settles in with a gentle scale. */}
         <Stack.Screen
