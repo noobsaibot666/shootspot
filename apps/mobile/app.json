@@ -10,7 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.exposeu.shootspot",
       "appleTeamId": "RD7UU4Z3D2",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "supportsTablet": false,
       "config": { "usesNonExemptEncryption": false },
       "entitlements": {
